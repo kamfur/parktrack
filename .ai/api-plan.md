@@ -4,14 +4,14 @@ This document outlines the REST API for the ParkTrack application, based on the 
 
 ## 1. Resources
 
-| Resource | Database Table | Description |
-| :--- | :--- | :--- |
-| **Reservations** | `public.reservations` | Manages customer parking reservations. |
-| **Payments** | `public.payments` | Tracks payments associated with reservations. |
-| **Daily Occupancy** | `public.daily_occupancy` | Stores daily parking occupancy for reporting. |
-| **Settings** | `public.settings` | A key-value store for global application settings. |
-| **Pricing Rules** | `public.pricing_rules` | Defines pricing tiers based on stay duration. |
-| **Transfer Vehicles**| `public.transfer_vehicles`| Manages the fleet of transfer vehicles. |
+| Resource              | Database Table             | Description                                        |
+| :-------------------- | :------------------------- | :------------------------------------------------- |
+| **Reservations**      | `public.reservations`      | Manages customer parking reservations.             |
+| **Payments**          | `public.payments`          | Tracks payments associated with reservations.      |
+| **Daily Occupancy**   | `public.daily_occupancy`   | Stores daily parking occupancy for reporting.      |
+| **Settings**          | `public.settings`          | A key-value store for global application settings. |
+| **Pricing Rules**     | `public.pricing_rules`     | Defines pricing tiers based on stay duration.      |
+| **Transfer Vehicles** | `public.transfer_vehicles` | Manages the fleet of transfer vehicles.            |
 
 ## 2. Endpoints
 
@@ -42,7 +42,7 @@ This document outlines the REST API for the ParkTrack application, based on the 
         "license_plate": "WX12345",
         "status": "confirmed",
         "source": "phone",
-        "total_cost": 210.00,
+        "total_cost": 210.0,
         "is_paid": false,
         "notes": "Customer will be late.",
         "planned_check_in": "2025-11-10T14:00:00Z",
@@ -67,7 +67,7 @@ This document outlines the REST API for the ParkTrack application, based on the 
     "planned_check_in": "2025-12-01T08:00:00Z",
     "planned_check_out": "2025-12-05T18:00:00Z",
     "source": "walk_in",
-    "total_cost": 120.00,
+    "total_cost": 120.0,
     "email": "anna.nowak@example.com"
   }
   ```

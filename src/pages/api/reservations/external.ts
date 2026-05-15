@@ -4,25 +4,8 @@ import type { CreateExternalReservationCommand } from "../../../types";
 
 export const prerender = false;
 
-// Constant-time string comparison to prevent timing attacks
-const safeCompare = (a: string, b: string) => {
-  if (a.length !== b.length) return false;
-  return a.split("").reduce((acc, char, i) => acc && char === b[i], true);
-};
-
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
-    // Verify API key
-    const apiKey = request.headers.get("x-api-key");
-    if (!apiKey || !safeCompare(apiKey, import.meta.env.API_SECRET_KEY)) {
-      return new Response(
-        JSON.stringify({
-          error: { message: "Forbidden: Invalid or missing API key" },
-        }),
-        { status: 403 }
-      );
-    }
-
     // Parse request body
     const body = (await request.json()) as CreateExternalReservationCommand;
 

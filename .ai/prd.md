@@ -29,23 +29,28 @@
 ### Główne Wymagania Funkcjonalne
 
 #### Moduł Zarządzania Rezerwacjami
+
 - Tworzenie nowej rezerwacji przez obsługę (szybka ścieżka: nazwisko, daty; pełna: Imię, nazwisko, nr rej., e-mail, telefon, kierunek lotu)
 - Wyszukiwanie, edycja i anulowanie istniejących rezerwacji
 - Możliwość oznaczenia rezerwacji jako "nie zrealizowana" (no-show)
 
 #### Moduł Obsługi Parkingu
+
 - Osobne widoki "Dzisiejsze Przyjazdy" i "Dzisiejsze Wyjazdy", sortowane chronologicznie
 - Funkcja "Check-in": zmiana statusu rezerwacji na "W realizacji" i umieszczenie jej na liście stanu parkingu
 - Funkcja "Check-out": zmiana statusu rezerwacji na "Zakończona" i przeniesienie jej do archiwum
 
 #### Moduł Raportów
+
 - Wizualny kalendarz obłożenia parkingu
 - Podstawowe statystyki dobowe: liczba przyjazdów i wyjazdów
 
 #### API
+
 - Pojedynczy endpoint `POST /reservations` do przyjmowania nowych rezerwacji z systemów zewnętrznych
 
 #### Powiadomienia
+
 - Automatyczna wysyłka e-maila z potwierdzeniem po pomyślnym utworzeniu rezerwacji
 
 ### Kluczowe Historie Użytkownika
@@ -76,10 +81,12 @@
 ### Kryteria Sukcesu
 
 #### KPI 1 (Mierzalny)
+
 - Osiągnięcie 60% rezerwacji pochodzących z kanałów online (API) w ciągu 6 miesięcy od wdrożenia
 - Pomiar: `(Liczba rezerwacji z API / Łączna liczba rezerwacji) * 100%`
 
 #### KPI 2 (Niemierzalny / Jakościowy)
+
 - Pełna cyfryzacja i zastąpienie manualnych procesów centralnym systemem
 - Pomiar: Obserwacja i feedback od pracowników parkingu po wdrożeniu
 

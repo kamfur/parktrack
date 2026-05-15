@@ -1,8 +1,21 @@
 ---
-import Welcome from "../components/Welcome.astro";
 import Layout from "../layouts/Layout.astro";
+import { DashboardContainer } from "../components/dashboard/DashboardContainer";
+import { NewReservationButton } from "../components/shared/NewReservationButton";
 ---
 
-<Layout>
-  <Welcome />
+<Layout title="Dashboard - ParkTrack">
+  <main class="container mx-auto p-6">
+    <div class="mb-6 flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-4xl font-bold mb-2">Dashboard</h1>
+        <p class="text-muted-foreground">Przegląd dzisiejszych operacji parkingowych</p>
+      </div>
+      <div class="hidden sm:block">
+        <NewReservationButton client:load />
+      </div>
+    </div>
+    <DashboardContainer client:load />
+  </main>
+  <NewReservationButton variant="floating" client:load />
 </Layout>

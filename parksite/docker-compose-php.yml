@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  php-server:
+    image: php:8.2-apache
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
+    command: >
+      bash -c "
+      apt-get update &&
+      apt-get install -y libzip-dev &&
+      docker-php-ext-install zip &&
+      apache2-foreground
+      "

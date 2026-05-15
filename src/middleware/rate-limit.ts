@@ -16,6 +16,18 @@ export function createRateLimiter(config: RateLimitConfig) {
       return await next();
     }
 
+    // Skip rate limiting for specific endpoints that need higher limits
+    // These endpoints are called frequently during form interactions
+    const excludedPaths = [
+      "/api/availability", // Called multiple times during date selection
+      "/api/calculate-cost", // Called multiple times during date selection
+      "/api/health", // Health check endpoint
+    ];
+
+    if (excludedPaths.some((path) => context.url.pathname.startsWith(path))) {
+      return await next();
+    }
+
     const clientIp = context.request.headers.get("x-forwarded-for") || context.clientAddress || "unknown";
 
     const now = Date.now();

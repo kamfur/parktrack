@@ -1,0 +1,130 @@
+﻿@model parksite.Models.ReservationModel
+@{
+    var isMissingPlace = DateTime.Now <= new DateTime(2025, 06, 22);
+    // var isMissingPlace = false;
+}
+
+<section id="testimonials" class="parallax">
+    <div class="overlay">
+        <div class="container">
+            <div class="row">
+                <div class="sec-title text-center wow animated fadeInDown">
+                    <h2>Rezerwacja</h2>
+                    @{
+                        // if(DateTime.Now.Day <=new DateTime(2024, 08, 22).Day)
+                        if (isMissingPlace)
+                        {
+                            <p>Uwaga! Do 22.06 brak wolnych miejsc.</p>
+                        }
+                    }            
+                    </div>
+                <div class="col-md-5 contact-form wow animated fadeInDown">
+                    <div id="target">
+                        <form id="reservationForm">
+                            <div class="form-horizontal">
+                                @*<h4>Rezerwacja on-line</h4>*@
+                                <hr>
+                                <div id="validationInfo"></div>
+                                <div class="form-group wow animated zoomIn animated" style="visibility: visible; animation-name: zoomIn;">
+                                    <label class="control-label col-md-2" for="Imie">Imię i nazwisko:</label>
+                                    <div class="col-md-10">
+                                        <input class="form-control text-box single-line" data-val="true" data-val-length="The field Imie: must be a string with a maximum length of 100." data-val-length-max="100" data-val-required="Dane kontaktowe są wymagane!" id="Imie" name="Imie" type="text" value="">
+                                        <span class="field-validation-valid text-danger" data-valmsg-for="Imie" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group wow animated zoomIn animated" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: zoomIn;">
+                                    <label class="control-label col-md-2" for="Email">Email:</label>
+                                    <div class="col-md-10">
+                                        <input class="form-control text-box single-line" data-val="true" data-val-length="The field Email: must be a string with a maximum length of 100." data-val-length-max="100" data-val-required="Adres e-mail jest wymagany" id="Email" name="Email" type="email" value="">
+                                        <span class="field-validation-valid text-danger" data-valmsg-for="Email" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group wow animated zoomIn animated" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: zoomIn;">
+                                    <label class="control-label col-md-2" for="Telefon">Telefon:</label>
+                                    <div class="col-md-10">
+                                        <input class="form-control text-box single-line" data-val="true" data-val-number="The field Telefon: must be a number." data-val-required="Telefon kontaktowy jest wymagany" id="Telefon" name="Telefon" type="tel" value="">
+                                        <span class="field-validation-valid text-danger" data-valmsg-for="Telefon" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group wow animated zoomIn animated" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: zoomIn;">
+                                    <label class="control-label col-md-2" for="DataPrzyjazdu">Data przyjazdu:</label>
+                                    <div class="col-md-10">
+                                        @{
+                                            if (isMissingPlace)
+                                            {
+                                                <input class="form-control text-box single-line" data-val="true" data-val-length="The field Data przyjazdu: must be a string with a maximum length of 100." data-val-length-max="100" data-val-required="Proszę wprowadzić date poprawnie RRRR-MM-DD" id="DataPrzyjazdu" name="DataPrzyjazdu" min="2025-06-22" type="date" value="">
+
+                                            }
+                                            else
+                                            {
+                                                <input class="form-control text-box single-line" data-val="true" data-val-length="The field Data przyjazdu: must be a string with a maximum length of 100." data-val-length-max="100" data-val-required="Proszę wprowadzić date poprawnie RRRR-MM-DD" id="DataPrzyjazdu" name="DataPrzyjazdu" min="@DateTime.Today.AddHours(28).Date.ToString("yyyy-MM-dd")" type="date" value="">
+
+                                            }
+                                        }
+                                        <span class="field-validation-valid text-danger" data-valmsg-for="DataPrzyjazdu" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+
+
+                                <div class="form-group wow animated zoomIn animated" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: zoomIn;">
+                                    <label class="control-label col-md-2" for="GodzinaPrzyjazdu">Godzina przyjazdu:</label>
+                                    <div class="col-md-10">
+                                        <input class="form-control text-box single-line" data-val="true" data-val-length="The field Godzina przyjazdu: must be a string with a maximum length of 100." data-val-length-max="100" data-val-required="Proszę wprowadzić godzine poprawnie GG:MM" id="GodzinaPrzyjazdu" name="GodzinaPrzyjazdu" type="time" value="">
+                                        <span class="field-validation-valid text-danger" data-valmsg-for="GodzinaPrzyjazdu" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group wow animated zoomIn animated" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: zoomIn;">
+                                    <label class="control-label col-md-2" for="DataWyjazdu">Data wyjazdu:</label>
+                                    <div class="col-md-10">
+                                        <input class="form-control text-box single-line" data-val="true" data-val-length="The field Data wyjazdu: must be a string with a maximum length of 100." data-val-length-max="100" data-val-required="Proszę wprowadzić date poprawnie RRRR-MM-DD" id="DataWyjazdu" name="DataWyjazdu" type="date" value="" min="@DateTime.Today.AddHours(28).Date.ToString("yyyy-MM-dd")">
+                                        <span class="field-validation-valid text-danger" data-valmsg-for="DataWyjazdu" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+                                <div class="form-group wow animated zoomIn animated" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: zoomIn;">
+                                    <label class="control-label col-md-2" for="GodzinaWyjazdu">Godzina wyjazdu:</label>
+                                    <div class="col-md-10">
+                                        <input class="form-control text-box single-line" data-val="true" data-val-length="The field Godzina wyjazdu: must be a string with a maximum length of 100." data-val-length-max="100" data-val-required="Proszę wprowadzić godzine poprawnie GG:MM" id="GodzinaWyjazdu" name="GodzinaWyjazdu"  type="time" value="">
+                                        <span class="field-validation-valid text-danger" data-valmsg-for="GodzinaWyjazdu" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group wow animated zoomIn animated" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: zoomIn;">
+                                    <label class="control-label col-md-2" for="Rejestracja">Nr rejestracyjny pojazdu:</label>
+                                    <div class="col-md-10">
+                                        <input class="form-control text-box single-line" data-val="true" data-val-length="The field Nr rejestracji: must be a string with a maximum length of 100." data-val-length-max="100" id="Rejestracja" name="Rejestracja" type="text" value="">
+                                        <span class="field-validation-valid text-danger" data-valmsg-for="Rejestracja" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group wow animated zoomIn animated" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: zoomIn;">
+                                    <div class="col-md-offset-2 col-md-10">
+                                        <input type="submit" id="submit" value="Rezerwuj" class="btn btn-blue btn-effect">
+
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+
+                    </div>
+                </div>
+
+
+                <div class="col-md-5 wow animated fadeInRight">
+                    <div class="form-horizontal">
+                        <h4>Rezerwacja telefoniczna</h4>
+                        <hr />
+                        <p><i class="fa fa-phone wow animated zoomIn" data-wow-delay="0.3s"></i><a href="tel:+48505462262">(+48) 505-462-262</a> </p>
+
+
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+</section>

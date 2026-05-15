@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker info *)",
+      "Bash(docker system *)",
+      "Bash(docker-credential-desktop get *)"
+    ]
+  }
+}

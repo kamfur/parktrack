@@ -1,0 +1,17 @@
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\parksite.exe
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\appsettings.Development.json
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\appsettings.json
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\parksite.dll
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\parksite.deps.json
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\parksite.runtimeconfig.json
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\parksite.pdb
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\Microsoft.Bcl.Memory.dll
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\Microsoft.Bcl.TimeProvider.dll
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\Microsoft.IdentityModel.Logging.dll
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\Microsoft.IdentityModel.Tokens.dll
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\Newtonsoft.Json.dll
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\KamilFurtak\Desktop\parksite\parksite\obj\Docker\publish\Twilio.dll

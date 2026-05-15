@@ -40,7 +40,7 @@ Wybrany stos technologiczny jest **bardzo dobrym i nowoczesnym wyborem**, który
 
 **✅ TAK** - To rozwiązanie tylko pozornie wygląda na złożone. W rzeczywistości jest upraszczające:
 
-- **Uproszczenie backendu:** Supabase to *uproszczenie*, a nie komplikacja. Alternatywą byłoby samodzielne postawienie i zarządzanie bazą danych, napisanie API, implementacja logowania, co jest o rzędy wielkości bardziej złożone.
+- **Uproszczenie backendu:** Supabase to _uproszczenie_, a nie komplikacja. Alternatywą byłoby samodzielne postawienie i zarządzanie bazą danych, napisanie API, implementacja logowania, co jest o rzędy wielkości bardziej złożone.
 
 - **Uproszczenie frontendu:** `Shadcn/ui` upraszcza tworzenie UI. Jedynym elementem, który można by uznać za "nadmiarowy", jest Astro – dla czystej aplikacji webowej (dashboardu) sam React z Vite byłby nieco prostszy.
 
@@ -91,6 +91,7 @@ Wybrany stos technologiczny jest **doskonałym wyborem** dla tego projektu. Jest
 ## Stack Technologiczny - Finalna Wersja
 
 ### Frontend
+
 - **Astro 5** - Framework webowy z "wyspami interaktywności"
 - **React 19** - Biblioteka do komponentów interaktywnych
 - **TypeScript 5** - Typowanie statyczne
@@ -98,6 +99,7 @@ Wybrany stos technologiczny jest **doskonałym wyborem** dla tego projektu. Jest
 - **Shadcn/ui** - Komponenty UI
 
 ### Backend
+
 - **Supabase** - Backend-as-a-Service
   - PostgreSQL jako baza danych
   - Wbudowana autentykacja
@@ -105,9 +107,11 @@ Wybrany stos technologiczny jest **doskonałym wyborem** dla tego projektu. Jest
   - Edge Functions dla API
 
 ### AI (Opcjonalne w MVP)
+
 - **Openrouter.ai** - Komunikacja z modelami AI
 
 ### CI/CD i Hosting
+
 - **GitHub Actions** - Pipeline'y CI/CD
 - **DigitalOcean** - Hosting aplikacji przez Docker
 - **Alternatywnie:** Vercel/Netlify dla frontendu

@@ -3,6 +3,7 @@
 ## Schema Organization
 
 The database will be organized into the following schemas:
+
 - `public` - Main application tables
 - `auth` - Managed by Supabase Auth (users, sessions, etc.)
 
@@ -50,32 +51,32 @@ CREATE TABLE public.reservations (
   phone text,
   flight_direction text CHECK (flight_direction IN ('departure', 'arrival')),
   license_plate text,
-  
+
   -- Reservation details
   status public.reservation_status NOT NULL DEFAULT 'confirmed',
   source public.reservation_source NOT NULL,
   total_cost decimal(10,2) NOT NULL,
   is_paid boolean NOT NULL DEFAULT false,
   notes text,
-  
+
   -- Planned dates
   planned_check_in timestamptz NOT NULL,
   planned_check_out timestamptz NOT NULL,
-  
+
   -- Actual dates
   actual_check_in timestamptz,
   actual_check_out timestamptz,
-  
+
   -- Metadata (Supabase managed)
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   created_by uuid NOT NULL REFERENCES auth.users(id),
   last_modified_by uuid NOT NULL REFERENCES auth.users(id),
-  
+
   -- Constraints
   CONSTRAINT check_dates CHECK (planned_check_out > planned_check_in),
   CONSTRAINT check_actual_dates CHECK (
-    (actual_check_out IS NULL) OR 
+    (actual_check_out IS NULL) OR
     (actual_check_in IS NOT NULL AND actual_check_out > actual_check_in)
   )
 );
@@ -85,7 +86,7 @@ CREATE TABLE public.daily_occupancy (
   date date PRIMARY KEY,
   occupied_spots integer NOT NULL DEFAULT 0,
   updated_at timestamptz NOT NULL DEFAULT now(),
-  
+
   CONSTRAINT positive_spots CHECK (occupied_spots >= 0)
 );
 
@@ -97,11 +98,11 @@ CREATE TABLE public.payments (
   status public.payment_status NOT NULL DEFAULT 'pending',
   payment_date timestamptz NOT NULL DEFAULT now(),
   notes text,
-  
+
   -- Metadata (Supabase managed)
   created_at timestamptz NOT NULL DEFAULT now(),
   created_by uuid NOT NULL REFERENCES auth.users(id),
-  
+
   CONSTRAINT positive_amount CHECK (amount > 0)
 );
 ```
@@ -125,11 +126,11 @@ CREATE TABLE public.pricing_rules (
   days_to integer NOT NULL,
   price_per_day decimal(10,2) NOT NULL,
   is_active boolean NOT NULL DEFAULT true,
-  
+
   -- Metadata (Supabase managed)
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  
+
   CONSTRAINT valid_range CHECK (days_to >= days_from),
   CONSTRAINT positive_price CHECK (price_per_day > 0),
   UNIQUE (days_from, days_to)
@@ -143,11 +144,11 @@ CREATE TABLE public.transfer_vehicles (
   capacity integer NOT NULL,
   is_active boolean NOT NULL DEFAULT true,
   notes text,
-  
+
   -- Metadata (Supabase managed)
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  
+
   CONSTRAINT positive_capacity CHECK (capacity > 0)
 );
 ```
@@ -249,10 +250,10 @@ DECLARE
   v_rule RECORD;
 BEGIN
   v_total_days := CEIL(EXTRACT(EPOCH FROM (p_check_out - p_check_in)) / 86400);
-  
-  FOR v_rule IN 
-    SELECT * FROM public.pricing_rules 
-    WHERE is_active = true 
+
+  FOR v_rule IN
+    SELECT * FROM public.pricing_rules
+    WHERE is_active = true
     ORDER BY days_from
   LOOP
     IF v_total_days >= v_rule.days_from THEN
@@ -264,7 +265,7 @@ BEGIN
       );
     END IF;
   END LOOP;
-  
+
   RETURN v_total_cost;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -288,7 +289,7 @@ CREATE TRIGGER trg_update_occupancy
 CREATE OR REPLACE FUNCTION public.update_reservation_cost()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF (NEW.planned_check_in != OLD.planned_check_in) OR 
+  IF (NEW.planned_check_in != OLD.planned_check_in) OR
      (NEW.planned_check_out != OLD.planned_check_out) THEN
     NEW.total_cost := public.calculate_total_cost(NEW.planned_check_in, NEW.planned_check_out);
   END IF;
@@ -311,13 +312,13 @@ SELECT cron.schedule(
   '0 0 * * *', -- Run daily at midnight
   $$
     UPDATE public.reservations
-    SET 
+    SET
       first_name = NULL,
       email = NULL,
       phone = NULL,
       license_plate = NULL
-    WHERE 
-      status = 'completed' 
+    WHERE
+      status = 'completed'
       AND actual_check_out < now() - interval '1 month'
   $$
 );

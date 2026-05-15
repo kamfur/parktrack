@@ -1,5 +1,6 @@
 import { sequence } from "astro:middleware";
 import { createRateLimiter } from "./rate-limit";
+import { supabaseMiddleware } from "./supabase";
 
 // Create rate limiter middleware with configuration
 const rateLimiter = createRateLimiter({
@@ -8,4 +9,5 @@ const rateLimiter = createRateLimiter({
 });
 
 // Export the middleware sequence
-export const onRequest = sequence(rateLimiter);
+// Note: supabaseMiddleware must run before other middleware that use locals.supabase
+export const onRequest = sequence(supabaseMiddleware, rateLimiter);

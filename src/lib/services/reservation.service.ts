@@ -1,6 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CreateExternalReservationCommand } from "../../types";
-import { createExternalReservationSchema } from "../schemas/reservation.schema";
+import type {
+  CreateExternalReservationCommand,
+  CreateReservationCommand,
+  ReservationDto,
+  UpdateReservationCommand,
+} from "../../types";
+import {
+  createExternalReservationSchema,
+  createReservationSchema,
+  updateReservationSchema,
+} from "../schemas/reservation.schema";
+import { createSupabaseAdminClient } from "../supabase-admin";
 
 export class ReservationService {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -21,10 +31,30 @@ export class ReservationService {
     const checkIn = new Date(validatedData.checkInDate);
     const checkOut = new Date(validatedData.checkOutDate);
 
-    const { data: settings } = await this.supabase.from("settings").select("total_parking_spots").single();
+    // Get total parking spots from settings table
+    const { data: settings, error: settingsError } = await this.supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "total_parking_spots")
+      .maybeSingle();
 
-    if (!settings) {
-      throw new Error("Failed to fetch parking settings");
+    // Default value if setting doesn't exist or error occurs
+    let totalSpots = 100;
+
+    if (settingsError) {
+      console.warn("Error fetching total_parking_spots setting:", settingsError.message);
+      // Use default value instead of throwing error
+    } else if (settings && settings.value !== null && settings.value !== undefined) {
+      // Parse value from JSONB (value is stored as JSONB, e.g. "100" or 100)
+      const parsedValue = typeof settings.value === "string" ? parseInt(settings.value, 10) : Number(settings.value);
+
+      if (!isNaN(parsedValue) && parsedValue > 0) {
+        totalSpots = parsedValue;
+      } else {
+        console.warn("Invalid total_parking_spots setting value, using default 100");
+      }
+    } else {
+      console.warn("total_parking_spots setting not found, using default 100");
     }
 
     // Check occupancy for each day in the range
@@ -37,20 +67,27 @@ export class ReservationService {
 
     if (occupancy) {
       for (const day of occupancy) {
-        if (day.occupied_spots >= settings.total_parking_spots) {
+        if (day.occupied_spots >= totalSpots) {
           throw new Error(`No available parking spots for date ${day.date}`);
         }
       }
     }
 
     // Calculate total cost using database function
+    // Note: Parameter names must match exactly with function definition (p_check_in, p_check_out)
     const { data: costData } = await this.supabase.rpc("calculate_total_cost", {
-      check_in: validatedData.checkInDate,
-      check_out: validatedData.checkOutDate,
+      p_check_in: validatedData.checkInDate,
+      p_check_out: validatedData.checkOutDate,
     });
 
     if (!costData) {
       throw new Error("Failed to calculate reservation cost");
+    }
+
+    // Get system user ID for audit fields
+    const { data: systemUserId, error: systemUserError } = await this.supabase.rpc("get_system_user");
+    if (systemUserError || !systemUserId) {
+      throw new Error(`Failed to get system user: ${systemUserError?.message || "Unknown error"}`);
     }
 
     // Map command to database schema
@@ -62,12 +99,20 @@ export class ReservationService {
       license_plate: validatedData.licensePlate,
       planned_check_in: validatedData.checkInDate,
       planned_check_out: validatedData.checkOutDate,
-      source: "api",
+      source: "api" as const,
       total_cost: costData,
+      created_by: systemUserId,
+      last_modified_by: systemUserId,
     };
 
-    // Insert reservation
-    const { data: reservation, error } = await this.supabase
+    // Use admin client for INSERT operation to bypass RLS
+    const adminClient = createSupabaseAdminClient();
+    if (!adminClient) {
+      throw new Error("Admin client not available. Please configure SUPABASE_SERVICE_ROLE_KEY.");
+    }
+
+    // Insert reservation using admin client (bypasses RLS)
+    const { data: reservation, error } = await adminClient
       .from("reservations")
       .insert(reservationData)
       .select("id")
@@ -78,5 +123,165 @@ export class ReservationService {
     }
 
     return reservation.id;
+  }
+
+  /**
+   * Creates a new reservation through internal API endpoints (staff use).
+   * Validates input data and creates reservation with audit fields.
+   *
+   * @param command - The reservation details from internal API
+   * @returns The created reservation object
+   * @throws Error if validation fails or database operation fails
+   */
+  async createReservation(command: CreateReservationCommand, userId?: string): Promise<ReservationDto> {
+    // Validate input data
+    const validatedData = await createReservationSchema.parseAsync(command);
+
+    // Calculate total cost if not provided
+    let totalCost = validatedData.total_cost;
+    if (!totalCost) {
+      const { data: costData } = await this.supabase.rpc("calculate_total_cost", {
+        p_check_in: validatedData.planned_check_in,
+        p_check_out: validatedData.planned_check_out,
+      });
+
+      if (!costData) {
+        throw new Error("Failed to calculate reservation cost");
+      }
+      totalCost = costData;
+    }
+
+    // Get user ID for audit fields (use provided userId or system user)
+    let auditUserId: string;
+    if (userId) {
+      auditUserId = userId;
+    } else {
+      const { data: systemUserId, error: systemUserError } = await this.supabase.rpc("get_system_user");
+      if (systemUserError || !systemUserId) {
+        throw new Error(`Failed to get system user: ${systemUserError?.message || "Unknown error"}`);
+      }
+      auditUserId = systemUserId;
+    }
+
+    // Prepare reservation data for database insertion
+    const reservationData = {
+      ...validatedData,
+      total_cost: totalCost as number, // Always calculated or provided
+      created_by: auditUserId,
+      last_modified_by: auditUserId,
+    };
+
+    // Use admin client for INSERT operation to bypass RLS
+    const adminClient = createSupabaseAdminClient();
+    if (!adminClient) {
+      throw new Error("Admin client not available. Please configure SUPABASE_SERVICE_ROLE_KEY.");
+    }
+
+    // Insert reservation into database using admin client (bypasses RLS)
+    const { data: reservation, error } = await adminClient
+      .from("reservations")
+      .insert(reservationData)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create reservation: ${error.message}`);
+    }
+
+    return reservation;
+  }
+
+  /**
+   * Updates an existing reservation with partial data.
+   * Validates input data and performs an update operation on the database.
+   *
+   * @param id - The UUID of the reservation to update
+   * @param command - The partial update data for the reservation
+   * @returns The updated reservation object
+   * @throws Error if validation fails, reservation not found, or database operation fails
+   */
+  async updateReservation(id: string, command: UpdateReservationCommand): Promise<ReservationDto> {
+    // Validate input data
+    const validatedData = await updateReservationSchema.parseAsync(command);
+
+    // Prepare update data with audit fields
+    const updateData = {
+      ...validatedData,
+    };
+
+    // Perform update operation
+    const { data: reservation, error } = await this.supabase
+      .from("reservations")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No rows found/updated
+        throw new Error(`Reservation with ID ${id} not found`);
+      }
+      throw new Error(`Failed to update reservation: ${error.message}`);
+    }
+
+    return reservation;
+  }
+
+  /**
+   * Retrieves all reservations where the planned check-in date is today.
+   * Used for displaying today's arrivals in the admin panel.
+   *
+   * @returns Array of reservations for today's arrivals, sorted by check-in time
+   * @throws Error if database operation fails
+   */
+  async getTodaysArrivals(): Promise<ReservationDto[]> {
+    const { data, error } = await this.supabase.rpc("get_todays_arrivals");
+
+    if (error) {
+      throw new Error(`Failed to fetch today's arrivals: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Retrieves all reservations where the planned check-out date is today.
+   * Used for displaying today's departures in the admin panel.
+   *
+   * @returns Array of reservations for today's departures, sorted by check-out time
+   * @throws Error if database operation fails
+   */
+  async getTodaysDepartures(): Promise<ReservationDto[]> {
+    const { data, error } = await this.supabase.rpc("get_todays_departures");
+
+    if (error) {
+      throw new Error(`Failed to fetch today's departures: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Deletes an existing reservation by its ID.
+   * Performs a delete operation on the database.
+   *
+   * @param id - The UUID of the reservation to delete
+   * @returns Object indicating success or failure of the operation
+   * @throws Error if database operation fails
+   */
+  async deleteReservation(id: string): Promise<{ success: boolean; error?: string }> {
+    // Perform delete operation and select the deleted row to check if it existed
+    const { error } = await this.supabase.from("reservations").delete().eq("id", id).select().single();
+
+    if (error) {
+      // Check for "not found" error (PGRST116 is the code for no rows found)
+      if (error.code === "PGRST116") {
+        return { success: false, error: "Not Found" };
+      }
+      throw new Error(`Failed to delete reservation: ${error.message}`);
+    }
+
+    return { success: true };
   }
 }

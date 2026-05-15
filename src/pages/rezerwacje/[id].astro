@@ -1,0 +1,43 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { ReservationDetailsView } from '../../components/reservations/details';
+
+const { id } = Astro.params;
+
+// Validate UUID format
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+if (!id || !uuidRegex.test(id)) {
+  return Astro.redirect('/rezerwacje');
+}
+
+export const prerender = false;
+---
+
+<Layout title="Szczegóły rezerwacji">
+  <div class="container mx-auto py-8">
+    <ReservationDetailsView 
+      client:load
+      reservationId={id}
+      isOpen={true}
+      onClose={() => {
+        window.history.back();
+      }}
+    />
+  </div>
+</Layout>
+
+<script>
+  // Handle browser back button
+  window.addEventListener('popstate', () => {
+    window.location.href = '/rezerwacje';
+  });
+
+  // Handle Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      window.history.back();
+    }
+  });
+</script>
+

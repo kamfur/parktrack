@@ -1,0 +1,11 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { ReservationsListContainer } from "../components/reservations/ReservationsListContainer";
+import { NewReservationButton } from "../components/shared/NewReservationButton";
+---
+
+<Layout title="Rezerwacje - ParkTrack">
+  <ReservationsListContainer client:load />
+  <NewReservationButton variant="floating" client:load />
+</Layout>
+

@@ -22,3 +22,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# Windows reserved device name (breaks `git add` if present as a file)
+/nul

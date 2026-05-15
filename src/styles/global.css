@@ -117,4 +117,32 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Smooth scrolling dla lepszego UX */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Custom scrollbar dla lepszego wyglądu */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-muted rounded-lg;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-lg;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+  
+  /* Focus visible dla accessibility */
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
 }
