@@ -3,7 +3,14 @@
     "allow": [
       "Bash(docker info *)",
       "Bash(docker system *)",
-      "Bash(docker-credential-desktop get *)"
+      "Bash(docker-credential-desktop get *)",
+      "Bash(doctl registry *)",
+      "Bash(docker --version)",
+      "Bash(winget install *)",
+      "Bash($DOCTL registry *)",
+      "Read(//c/git/private/parktrack/**)",
+      "Bash(docker build *)",
+      "Bash(docker push *)"
     ]
   }
 }

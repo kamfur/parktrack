@@ -1,28 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\KamilFurtak\\Desktop\\parksite\\parksite\\parksite.csproj": {}
+    "C:\\git\\private\\parktrack\\parksite\\parksite\\parksite.csproj": {}
   },
   "projects": {
-    "C:\\Users\\KamilFurtak\\Desktop\\parksite\\parksite\\parksite.csproj": {
+    "C:\\git\\private\\parktrack\\parksite\\parksite\\parksite.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\KamilFurtak\\Desktop\\parksite\\parksite\\parksite.csproj",
+        "projectUniqueName": "C:\\git\\private\\parktrack\\parksite\\parksite\\parksite.csproj",
         "projectName": "parksite",
-        "projectPath": "C:\\Users\\KamilFurtak\\Desktop\\parksite\\parksite\\parksite.csproj",
+        "projectPath": "C:\\git\\private\\parktrack\\parksite\\parksite\\parksite.csproj",
         "packagesPath": "C:\\Users\\KamilFurtak\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\KamilFurtak\\Desktop\\parksite\\parksite\\obj\\",
+        "outputPath": "C:\\git\\private\\parktrack\\parksite\\parksite\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\KamilFurtak\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\KamilFurtak\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net6.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -40,7 +37,8 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        }
+        },
+        "SdkAnalysisLevel": "10.0.200"
       },
       "frameworks": {
         "net6.0": {
@@ -100,7 +98,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.420\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.202\\RuntimeIdentifierGraph.json"
         }
       }
     }

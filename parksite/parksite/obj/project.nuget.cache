@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "eLx/8apYb2I=",
+  "dgSpecHash": "Isy5VuQevuQ=",
   "success": true,
-  "projectFilePath": "C:\\Users\\KamilFurtak\\Desktop\\parksite\\parksite\\parksite.csproj",
+  "projectFilePath": "C:\\git\\private\\parktrack\\parksite\\parksite\\parksite.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\KamilFurtak\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\8.0.0\\microsoft.bcl.asyncinterfaces.8.0.0.nupkg.sha512",
     "C:\\Users\\KamilFurtak\\.nuget\\packages\\microsoft.bcl.memory\\9.0.0\\microsoft.bcl.memory.9.0.0.nupkg.sha512",
@@ -47,8 +47,8 @@
     "C:\\Users\\KamilFurtak\\.nuget\\packages\\system.threading\\4.3.0\\system.threading.4.3.0.nupkg.sha512",
     "C:\\Users\\KamilFurtak\\.nuget\\packages\\system.threading.tasks\\4.3.0\\system.threading.tasks.4.3.0.nupkg.sha512",
     "C:\\Users\\KamilFurtak\\.nuget\\packages\\twilio\\7.9.1\\twilio.7.9.1.nupkg.sha512",
-    "C:\\Users\\KamilFurtak\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\6.0.36\\microsoft.windowsdesktop.app.ref.6.0.36.nupkg.sha512",
     "C:\\Users\\KamilFurtak\\.nuget\\packages\\microsoft.netcore.app.ref\\6.0.36\\microsoft.netcore.app.ref.6.0.36.nupkg.sha512",
+    "C:\\Users\\KamilFurtak\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\6.0.36\\microsoft.windowsdesktop.app.ref.6.0.36.nupkg.sha512",
     "C:\\Users\\KamilFurtak\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\6.0.36\\microsoft.aspnetcore.app.ref.6.0.36.nupkg.sha512",
     "C:\\Users\\KamilFurtak\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\6.0.36\\microsoft.netcore.app.host.win-x64.6.0.36.nupkg.sha512"
   ],
