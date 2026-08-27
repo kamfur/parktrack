@@ -234,26 +234,26 @@ New code in S-02 and S-03 that reads any numeric setting must also use `Number()
 
 #### Automated
 
-- [x] 2.1 No TypeScript errors: `npm run build`
-- [x] 2.2 Linting passes: `npm run lint`
+- [x] 2.1 No TypeScript errors: `npm run build` — 212dccd
+- [x] 2.2 Linting passes: `npm run lint` — 212dccd
 
 #### Manual
 
-- [x] 2.3 `/ustawienia` loads with `daily_rate = 0` and `total_parking_spots = 100`
-- [x] 2.4 Saving `daily_rate = 150` persists after page reload
-- [x] 2.5 Saving `total_parking_spots = 75` persists after page reload
-- [x] 2.6 Negative rate shows inline Zod error; no PATCH fired
-- [x] 2.7 Zero capacity shows inline Zod error; no PATCH fired
+- [x] 2.3 `/ustawienia` loads with `daily_rate = 0` and `total_parking_spots = 100` — 212dccd
+- [x] 2.4 Saving `daily_rate = 150` persists after page reload — 212dccd
+- [x] 2.5 Saving `total_parking_spots = 75` persists after page reload — 212dccd
+- [x] 2.6 Negative rate shows inline Zod error; no PATCH fired — 212dccd
+- [x] 2.7 Zero capacity shows inline Zod error; no PATCH fired — 212dccd
 
 ### Phase 3: Navigation
 
 #### Automated
 
-- [ ] 3.1 No TypeScript errors: `npm run build`
-- [ ] 3.2 Linting passes: `npm run lint`
+- [x] 3.1 No TypeScript errors: `npm run build`
+- [x] 3.2 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 3.3 "Ustawienia" link appears in desktop sidebar
-- [ ] 3.4 Active highlight applied when on `/ustawienia`
-- [ ] 3.5 Mobile drawer shows and navigates to "Ustawienia"
+- [x] 3.3 "Ustawienia" link appears in desktop sidebar — 212dccd
+- [x] 3.4 Active highlight applied when on `/ustawienia` — 212dccd
+- [x] 3.5 Mobile drawer shows and navigates to "Ustawienia" — 212dccd
