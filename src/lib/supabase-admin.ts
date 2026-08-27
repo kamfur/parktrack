@@ -17,16 +17,10 @@ export function createSupabaseAdminClient(): ReturnType<typeof createClient<Data
   }
 
   if (!serviceRoleKey) {
-    console.warn(
-      "SUPABASE_SERVICE_ROLE_KEY not set. Some operations may fail due to RLS policies."
+    console.error(
+      "Missing SUPABASE_SERVICE_ROLE_KEY environment variable. Admin operations require the service role key to bypass RLS."
     );
-    // Fallback to anon key if service role key is not available
-    const anonKey = import.meta.env.SUPABASE_KEY;
-    if (!anonKey) {
-      console.error("Missing SUPABASE_KEY environment variable");
-      return null;
-    }
-    return createClient<Database>(supabaseUrl, anonKey);
+    return null;
   }
 
   return createClient<Database>(supabaseUrl, serviceRoleKey, {
@@ -36,4 +30,3 @@ export function createSupabaseAdminClient(): ReturnType<typeof createClient<Data
     },
   });
 }
-

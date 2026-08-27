@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { createSupabaseAdminClient } from "../../lib/supabase-admin";
 
 export const prerender = false;
 
@@ -163,8 +164,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
  *
  * Body: { value: any }
  */
-export const PATCH: APIRoute = async ({ url, request, locals }) => {
+export const PATCH: APIRoute = async ({ url, request }) => {
   try {
+    const supabase = createSupabaseAdminClient();
+    if (!supabase) {
+      return new Response(
+        JSON.stringify({ error: "Admin client unavailable — check SUPABASE_SERVICE_ROLE_KEY env var" }),
+        { status: 503, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const keyParam = url.searchParams.get("key");
 
     if (!keyParam || !keyParam.startsWith("eq.")) {
@@ -184,7 +193,7 @@ export const PATCH: APIRoute = async ({ url, request, locals }) => {
       });
     }
 
-    const { data, error } = await locals.supabase
+    const { data, error } = await supabase
       .from("settings")
       .update({ value: body.value })
       .eq("key", key)
