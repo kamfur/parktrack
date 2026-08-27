@@ -221,29 +221,29 @@ New code in S-02 and S-03 that reads any numeric setting must also use `Number()
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly: `npx supabase db push`
-- [x] 1.2 No TypeScript errors: `npm run build`
-- [x] 1.3 Linting passes: `npm run lint`
+- [x] 1.1 Migration applies cleanly: `npx supabase db push` — ef39c88
+- [x] 1.2 No TypeScript errors: `npm run build` — ef39c88
+- [x] 1.3 Linting passes: `npm run lint` — ef39c88
 
 #### Manual
 
-- [x] 1.4 Railway dashboard shows `SUPABASE_SERVICE_ROLE_KEY` set
-- [x] 1.5 Supabase Table Editor shows `daily_rate = 0` in settings table
+- [x] 1.4 Railway dashboard shows `SUPABASE_SERVICE_ROLE_KEY` set — ef39c88
+- [x] 1.5 Supabase Table Editor shows `daily_rate = 0` in settings table — ef39c88
 
 ### Phase 2: Settings UI
 
 #### Automated
 
-- [ ] 2.1 No TypeScript errors: `npm run build`
-- [ ] 2.2 Linting passes: `npm run lint`
+- [x] 2.1 No TypeScript errors: `npm run build`
+- [x] 2.2 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 2.3 `/ustawienia` loads with `daily_rate = 0` and `total_parking_spots = 100`
-- [ ] 2.4 Saving `daily_rate = 150` persists after page reload
-- [ ] 2.5 Saving `total_parking_spots = 75` persists after page reload
-- [ ] 2.6 Negative rate shows inline Zod error; no PATCH fired
-- [ ] 2.7 Zero capacity shows inline Zod error; no PATCH fired
+- [x] 2.3 `/ustawienia` loads with `daily_rate = 0` and `total_parking_spots = 100`
+- [x] 2.4 Saving `daily_rate = 150` persists after page reload
+- [x] 2.5 Saving `total_parking_spots = 75` persists after page reload
+- [x] 2.6 Negative rate shows inline Zod error; no PATCH fired
+- [x] 2.7 Zero capacity shows inline Zod error; no PATCH fired
 
 ### Phase 3: Navigation
 

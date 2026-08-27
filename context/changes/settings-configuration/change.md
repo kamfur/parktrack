@@ -3,7 +3,7 @@ change_id: settings-configuration
 title: Settings configuration
 status: implementing
 created: 2026-08-26
-updated: 2026-08-27
+updated: 2026-08-26
 archived_at: null
 ---
 

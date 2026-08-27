@@ -1,0 +1,27 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { SettingsForm } from "../components/settings/SettingsForm";
+import { createSupabaseAdminClient } from "../lib/supabase-admin";
+
+const supabaseAdmin = createSupabaseAdminClient();
+
+let initialDailyRate = 0;
+let initialTotalSpots = 100;
+
+if (supabaseAdmin) {
+  const { data } = await supabaseAdmin.from("settings").select("key, value");
+  if (data) {
+    const dailyRateRow = data.find((r) => r.key === "daily_rate");
+    const totalSpotsRow = data.find((r) => r.key === "total_parking_spots");
+    if (dailyRateRow) initialDailyRate = Number(dailyRateRow.value);
+    if (totalSpotsRow) initialTotalSpots = Number(totalSpotsRow.value);
+  }
+}
+---
+
+<Layout title="Ustawienia - ParkTrack">
+  <div class="p-6">
+    <h1 class="text-2xl font-semibold mb-6">Ustawienia</h1>
+    <SettingsForm client:load initialDailyRate={initialDailyRate} initialTotalSpots={initialTotalSpots} />
+  </div>
+</Layout>
