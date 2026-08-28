@@ -2,16 +2,24 @@
 import "../styles/global.css";
 import ToasterWrapper from "../components/ToasterWrapper";
 import { AppProvider } from "../components/AppProvider";
+import { Navigation } from "../components/Navigation";
 
 interface Props {
   title?: string;
 }
 
-const { title = "10x Astro Starter" } = Astro.props;
+const { title = "ParkTrack" } = Astro.props;
+const currentPath = Astro.url.pathname;
+const user = Astro.locals.user
+  ? {
+      id: Astro.locals.user.id,
+      email: Astro.locals.user.email,
+    }
+  : null;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="pl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -20,9 +28,14 @@ const { title = "10x Astro Starter" } = Astro.props;
     <title>{title}</title>
   </head>
   <body>
-    <AppProvider client:load>
-      <slot />
-    </AppProvider>
+    <div class="flex flex-col md:flex-row h-screen overflow-hidden">
+      <Navigation currentPath={currentPath} user={user} client:load />
+      <div class="flex-1 overflow-y-auto">
+        <AppProvider client:load>
+          <slot />
+        </AppProvider>
+      </div>
+    </div>
     <ToasterWrapper client:load />
   </body>
 </html>

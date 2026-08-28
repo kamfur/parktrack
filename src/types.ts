@@ -706,3 +706,45 @@ export interface ActionFooterProps {
   onCancel: () => void;
   isProcessing: boolean;
 }
+
+// ############################################################################
+//
+// AUTH DTOs / COMMANDS
+//
+// ############################################################################
+
+export interface AuthUserDTO {
+  id: string;
+  email: string;
+}
+
+export interface LoginCommand {
+  email: string;
+  password: string;
+}
+
+export interface RegisterCommand {
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface ForgotPasswordCommand {
+  email: string;
+}
+
+export interface ResetPasswordCommand {
+  password: string;
+  confirmPassword: string;
+  accessToken?: string;
+}
+
+export interface AuthErrorResponse {
+  error: string;
+  details?: unknown;
+}
+
+export interface AuthSuccessResponse {
+  user?: AuthUserDTO;
+  message?: string;
+}

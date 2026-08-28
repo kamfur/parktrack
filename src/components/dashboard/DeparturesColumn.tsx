@@ -9,11 +9,19 @@ interface DeparturesColumnProps {
   isLoading?: boolean;
 }
 
+function formatNearestDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) return "Dzisiaj";
+  return new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short" }).format(date);
+}
+
 /**
- * Kolumna wyświetlająca listę dzisiejszych wyjazdów.
+ * Kolumna wyświetlająca listę wyjazdów z najbliższego dnia.
  * Każda rezerwacja jest reprezentowana przez ReservationCard z przyciskiem "Check-out".
  */
 export function DeparturesColumn({ departures, onCheckOut, isLoading = false }: DeparturesColumnProps) {
+  const dateLabel = departures[0]?.planned_check_out ? formatNearestDate(departures[0].planned_check_out) : null;
   // Loading skeletons
   if (isLoading) {
     return (
@@ -63,6 +71,7 @@ export function DeparturesColumn({ departures, onCheckOut, isLoading = false }: 
       <div className="flex items-center justify-between mb-4 pb-4 border-b">
         <h2 className="text-2xl font-bold" id="departures-heading">
           Wyjazdy
+          {dateLabel && <span className="ml-2 text-base font-normal text-muted-foreground">{dateLabel}</span>}
         </h2>
         <span
           className="text-sm font-medium text-purple-600 bg-purple-100 px-3 py-1 rounded-full"

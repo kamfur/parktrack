@@ -1,0 +1,14 @@
+---
+import AuthLayout from "../layouts/AuthLayout.astro";
+import { LoginForm } from "../components/auth/login-form";
+
+export const prerender = false;
+
+const rawRedirectTo = Astro.url.searchParams.get("redirectTo");
+const redirectTo =
+  rawRedirectTo && rawRedirectTo.startsWith("/") && !rawRedirectTo.startsWith("//") ? rawRedirectTo : "/";
+---
+
+<AuthLayout title="Logowanie — ParkTrack">
+  <LoginForm client:load redirectTo={redirectTo} />
+</AuthLayout>

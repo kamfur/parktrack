@@ -9,11 +9,19 @@ interface ArrivalsColumnProps {
   isLoading?: boolean;
 }
 
+function formatNearestDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) return "Dzisiaj";
+  return new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short" }).format(date);
+}
+
 /**
- * Kolumna wyświetlająca listę dzisiejszych przyjazdów.
+ * Kolumna wyświetlająca listę przyjazdów z najbliższego dnia.
  * Każda rezerwacja jest reprezentowana przez ReservationCard z przyciskiem "Check-in".
  */
 export function ArrivalsColumn({ arrivals, onCheckIn, isLoading = false }: ArrivalsColumnProps) {
+  const dateLabel = arrivals[0]?.planned_check_in ? formatNearestDate(arrivals[0].planned_check_in) : null;
   // Loading skeletons
   if (isLoading) {
     return (
@@ -63,6 +71,7 @@ export function ArrivalsColumn({ arrivals, onCheckIn, isLoading = false }: Arriv
       <div className="flex items-center justify-between mb-4 pb-4 border-b">
         <h2 className="text-2xl font-bold" id="arrivals-heading">
           Przyjazdy
+          {dateLabel && <span className="ml-2 text-base font-normal text-muted-foreground">{dateLabel}</span>}
         </h2>
         <span
           className="text-sm font-medium text-orange-600 bg-orange-100 px-3 py-1 rounded-full"

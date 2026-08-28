@@ -9,6 +9,7 @@ declare global {
       supabase: SupabaseClient<Database>;
       user?: {
         id: string;
+        email: string;
         role?: string;
       };
     }
