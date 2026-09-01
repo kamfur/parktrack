@@ -512,11 +512,11 @@ For non-completed statuses, render nothing for the invoice slot.
 
 #### Automated
 
-- [x] 5.1 No TypeScript errors: `npm run build`
-- [x] 5.2 Linting passes: `npm run lint`
+- [x] 5.1 No TypeScript errors: `npm run build` — e4c36c9
+- [x] 5.2 Linting passes: `npm run lint` — e4c36c9
 
 #### Manual
 
-- [x] 5.3 Completed reservation detail shows Generuj fakturę button
-- [x] 5.4 After invoice created, reservation detail shows Pokaż fakturę link
-- [x] 5.5 Non-completed reservation shows no invoice button
+- [x] 5.3 Completed reservation detail shows Generuj fakturę button — e4c36c9
+- [x] 5.4 After invoice created, reservation detail shows Pokaż fakturę link — e4c36c9
+- [x] 5.5 Non-completed reservation shows no invoice button — e4c36c9
