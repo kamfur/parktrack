@@ -1,0 +1,54 @@
+---
+export const prerender = false;
+
+import { z } from "zod";
+import Layout from "../../layouts/Layout.astro";
+import { InvoiceForm } from "../../components/invoices/InvoiceForm";
+
+const reservationId = Astro.url.searchParams.get("reservationId");
+
+if (!reservationId || !z.string().uuid().safeParse(reservationId).success) {
+  return Astro.redirect("/");
+}
+
+const supabase = Astro.locals.supabase;
+
+const { data: reservation } = await supabase
+  .from("reservations")
+  .select("id, last_name, first_name, planned_check_in, planned_check_out, total_cost, status")
+  .eq("id", reservationId)
+  .maybeSingle();
+
+if (!reservation || reservation.status !== "completed") {
+  return Astro.redirect("/");
+}
+
+const { data: existingInvoice } = await supabase
+  .from("invoices")
+  .select("id")
+  .eq("reservation_id", reservationId)
+  .maybeSingle();
+
+if (existingInvoice) {
+  return Astro.redirect(`/faktury/${existingInvoice.id}/druk`);
+}
+
+const reservationSummary = {
+  lastName: reservation.last_name,
+  firstName: reservation.first_name,
+  plannedCheckIn: reservation.planned_check_in,
+  plannedCheckOut: reservation.planned_check_out,
+  totalCost: reservation.total_cost,
+};
+---
+
+<Layout title="Generuj fakturę - ParkTrack">
+  <div class="p-6">
+    <h1 class="text-2xl font-semibold mb-6">Generuj fakturę</h1>
+    <InvoiceForm
+      client:load
+      reservationId={reservationId}
+      reservationSummary={reservationSummary}
+    />
+  </div>
+</Layout>

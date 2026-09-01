@@ -1,0 +1,149 @@
+---
+export const prerender = false;
+
+import { z } from "zod";
+
+const { id } = Astro.params;
+
+if (!id || !z.string().uuid().safeParse(id).success) {
+  return Astro.redirect("/");
+}
+
+const supabase = Astro.locals.supabase;
+
+const { data: invoice } = await supabase
+  .from("invoices")
+  .select("*")
+  .eq("id", id)
+  .maybeSingle();
+
+if (!invoice) {
+  return new Response("Faktura nie znaleziona", { status: 404 });
+}
+
+const { data: reservation } = await supabase
+  .from("reservations")
+  .select("is_paid, planned_check_in, planned_check_out")
+  .eq("id", invoice.reservation_id)
+  .maybeSingle();
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+const formatCurrency = (amount: number) =>
+  amount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " PLN";
+
+const createdDate = formatDate(invoice.created_at);
+const checkInDate = reservation ? formatDate(reservation.planned_check_in) : "—";
+const checkOutDate = reservation ? formatDate(reservation.planned_check_out) : "—";
+const isPaid = reservation?.is_paid ?? false;
+---
+
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Faktura {invoice.invoice_number} - ParkTrack</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: Arial, sans-serif; font-size: 14px; color: #111; background: #f5f5f5; }
+      .page { max-width: 800px; margin: 0 auto; background: #fff; padding: 40px; }
+      .no-print-bar { background: #1e293b; color: #fff; padding: 12px 24px; display: flex; gap: 16px; align-items: center; }
+      .no-print-bar a { color: #93c5fd; text-decoration: none; font-size: 13px; }
+      .no-print-bar button { background: #3b82f6; color: #fff; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+      .invoice-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
+      .invoice-title { font-size: 24px; font-weight: bold; }
+      .invoice-meta { text-align: right; font-size: 13px; color: #555; }
+      .invoice-meta .number { font-size: 18px; font-weight: bold; color: #111; }
+      .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+      .party { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+      .party h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 10px; }
+      .party p { font-size: 14px; line-height: 1.6; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+      th { background: #f3f4f6; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+      td { padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+      .total-row { background: #f9fafb; }
+      .total-row td { font-weight: bold; font-size: 15px; }
+      .payment-status { margin-top: 24px; padding: 12px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; }
+      .paid { background: #dcfce7; color: #166534; }
+      .unpaid { background: #fef9c3; color: #854d0e; }
+
+      @media print {
+        .no-print { display: none !important; }
+        body { background: #fff; font-size: 12pt; }
+        .page { padding: 0; max-width: none; }
+        .party { break-inside: avoid; }
+        table { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="no-print no-print-bar">
+      <button onclick="window.print()">Drukuj</button>
+      <a href={`/rezerwacje`}>← Wróć do listy</a>
+    </div>
+
+    <div class="page">
+      <div class="invoice-header">
+        <div class="invoice-title">FAKTURA VAT</div>
+        <div class="invoice-meta">
+          <div class="number">{invoice.invoice_number}</div>
+          <div>Wystawiono: {createdDate}</div>
+        </div>
+      </div>
+
+      <div class="parties">
+        <div class="party">
+          <h3>Sprzedawca</h3>
+          <p>
+            <strong>{invoice.seller_name}</strong><br />
+            {invoice.seller_address}<br />
+            NIP: {invoice.seller_nip}<br />
+            Konto: {invoice.seller_bank_account}
+          </p>
+        </div>
+        <div class="party">
+          <h3>Nabywca</h3>
+          <p>
+            <strong>{invoice.buyer_name}</strong><br />
+            {invoice.buyer_address}<br />
+            NIP: {invoice.buyer_nip}
+            {invoice.buyer_email && <><br />{invoice.buyer_email}</>}
+          </p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Lp</th>
+            <th>Nazwa usługi</th>
+            <th>Ilość</th>
+            <th>J.m.</th>
+            <th>Cena jedn.</th>
+            <th>Wartość</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Usługa parkingowa – {checkInDate} – {checkOutDate}</td>
+            <td>{invoice.days_count}</td>
+            <td>dzień</td>
+            <td>{formatCurrency(invoice.daily_rate_snapshot)}</td>
+            <td>{formatCurrency(invoice.total_amount)}</td>
+          </tr>
+          <tr class="total-row">
+            <td colspan="5" style="text-align: right;">Razem:</td>
+            <td>{formatCurrency(invoice.total_amount)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class={`payment-status ${isPaid ? "paid" : "unpaid"}`}>
+        {isPaid ? "Opłacono" : "Oczekuje na płatność"}
+      </div>
+    </div>
+  </body>
+</html>

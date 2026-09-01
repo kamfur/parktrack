@@ -480,33 +480,33 @@ For non-completed statuses, render nothing for the invoice slot.
 
 #### Automated
 
-- [x] 3.1 No TypeScript errors: `npm run build`
-- [x] 3.2 Linting passes: `npm run lint`
+- [x] 3.1 No TypeScript errors: `npm run build` — 46597ff
+- [x] 3.2 Linting passes: `npm run lint` — 46597ff
 
 #### Manual
 
-- [x] 3.3 POST /api/invoices for completed reservation returns 201 + FV/2026/09/001
-- [x] 3.4 Second POST for same reservation returns 409
-- [x] 3.5 POST for non-completed reservation returns 422
-- [x] 3.6 POST for non-existent reservation returns 404
-- [x] 3.7 GET /api/invoices?reservation_id=... returns 200 + invoice data
-- [x] 3.8 GET /api/invoices/[id] returns 200 + invoice data
+- [x] 3.3 POST /api/invoices for completed reservation returns 201 + FV/2026/09/001 — 46597ff
+- [x] 3.4 Second POST for same reservation returns 409 — 46597ff
+- [x] 3.5 POST for non-completed reservation returns 422 — 46597ff
+- [x] 3.6 POST for non-existent reservation returns 404 — 46597ff
+- [x] 3.7 GET /api/invoices?reservation_id=... returns 200 + invoice data — 46597ff
+- [x] 3.8 GET /api/invoices/[id] returns 200 + invoice data — 46597ff
 
 ### Phase 4: Invoice Pages
 
 #### Automated
 
-- [ ] 4.1 No TypeScript errors: `npm run build`
-- [ ] 4.2 Linting passes: `npm run lint`
+- [x] 4.1 No TypeScript errors: `npm run build`
+- [x] 4.2 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 4.3 /faktury/nowy?reservationId=[valid-completed] loads with reservation summary
-- [ ] 4.4 /faktury/nowy?reservationId=[missing or invalid] redirects to /
-- [ ] 4.5 /faktury/nowy?reservationId=[already-has-invoice] redirects to print view
-- [ ] 4.6 Form submit creates invoice and redirects to /faktury/[id]/druk
-- [ ] 4.7 Print view shows all invoice data correctly
-- [ ] 4.8 Print preview shows only invoice content (no navigation, no print button)
+- [x] 4.3 /faktury/nowy?reservationId=[valid-completed] loads with reservation summary
+- [x] 4.4 /faktury/nowy?reservationId=[missing or invalid] redirects to /
+- [x] 4.5 /faktury/nowy?reservationId=[already-has-invoice] redirects to print view
+- [x] 4.6 Form submit creates invoice and redirects to /faktury/[id]/druk
+- [x] 4.7 Print view shows all invoice data correctly
+- [x] 4.8 Print preview shows only invoice content (no navigation, no print button)
 
 ### Phase 5: Reservation Detail Integration
 
