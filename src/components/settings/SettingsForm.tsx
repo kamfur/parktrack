@@ -9,14 +9,29 @@ import { Button } from "@/components/ui/button";
 interface SettingsFormProps {
   initialDailyRate: number;
   initialTotalSpots: number;
+  initialSellerName: string;
+  initialSellerAddress: string;
+  initialSellerNip: string;
+  initialSellerBankAccount: string;
 }
 
-export function SettingsForm({ initialDailyRate, initialTotalSpots }: SettingsFormProps) {
+export function SettingsForm({
+  initialDailyRate,
+  initialTotalSpots,
+  initialSellerName,
+  initialSellerAddress,
+  initialSellerNip,
+  initialSellerBankAccount,
+}: SettingsFormProps) {
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
       daily_rate: initialDailyRate,
       total_parking_spots: initialTotalSpots,
+      seller_name: initialSellerName,
+      seller_address: initialSellerAddress,
+      seller_nip: initialSellerNip,
+      seller_bank_account: initialSellerBankAccount,
     },
   });
 
@@ -24,7 +39,7 @@ export function SettingsForm({ initialDailyRate, initialTotalSpots }: SettingsFo
 
   const onSubmit = async (data: SettingsFormData) => {
     try {
-      const [rateRes, spotsRes] = await Promise.all([
+      const results = await Promise.all([
         fetch("/api/settings?key=eq.daily_rate", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -35,9 +50,29 @@ export function SettingsForm({ initialDailyRate, initialTotalSpots }: SettingsFo
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ value: data.total_parking_spots }),
         }),
+        fetch("/api/settings?key=eq.seller_name", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: data.seller_name }),
+        }),
+        fetch("/api/settings?key=eq.seller_address", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: data.seller_address }),
+        }),
+        fetch("/api/settings?key=eq.seller_nip", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: data.seller_nip }),
+        }),
+        fetch("/api/settings?key=eq.seller_bank_account", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: data.seller_bank_account }),
+        }),
       ]);
 
-      if (!rateRes.ok || !spotsRes.ok) throw new Error("Błąd zapisu ustawień");
+      if (results.some((r) => !r.ok)) throw new Error("Błąd zapisu ustawień");
       toast.success("Ustawienia zapisane");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Błąd zapisu ustawień");
@@ -89,6 +124,68 @@ export function SettingsForm({ initialDailyRate, initialTotalSpots }: SettingsFo
             </FormItem>
           )}
         />
+
+        <div className="border-t pt-6">
+          <h2 className="text-lg font-medium mb-4">Dane sprzedawcy</h2>
+
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="seller_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nazwa firmy</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="seller_address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Adres firmy</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="seller_nip"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>NIP</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="seller_bank_account"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Numer konta bankowego</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
 
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Zapisywanie…" : "Zapisz ustawienia"}

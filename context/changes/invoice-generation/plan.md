@@ -455,26 +455,26 @@ For non-completed statuses, render nothing for the invoice slot.
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly: `npx supabase db push`
-- [x] 1.2 No TypeScript errors: `npm run build`
+- [x] 1.1 Migration applies cleanly: `npx supabase db push` — d8ac35f
+- [x] 1.2 No TypeScript errors: `npm run build` — d8ac35f
 
 #### Manual
 
-- [x] 1.3 invoices table visible in Supabase Table Editor with all expected columns
-- [x] 1.4 Settings table shows 4 new seller_* rows with empty-string JSONB values
+- [x] 1.3 invoices table visible in Supabase Table Editor with all expected columns — d8ac35f
+- [x] 1.4 Settings table shows 4 new seller_* rows with empty-string JSONB values — d8ac35f
 
 ### Phase 2: Seller Settings UI
 
 #### Automated
 
-- [ ] 2.1 No TypeScript errors: `npm run build`
-- [ ] 2.2 Linting passes: `npm run lint`
+- [x] 2.1 No TypeScript errors: `npm run build`
+- [x] 2.2 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 2.3 /ustawienia loads with Dane sprzedawcy section showing 4 fields
-- [ ] 2.4 Saving seller data persists after page reload
-- [ ] 2.5 Existing daily_rate and total_parking_spots fields still work
+- [x] 2.3 /ustawienia loads with Dane sprzedawcy section showing 4 fields
+- [x] 2.4 Saving seller data persists after page reload
+- [x] 2.5 Existing daily_rate and total_parking_spots fields still work
 
 ### Phase 3: Invoice Backend
 
