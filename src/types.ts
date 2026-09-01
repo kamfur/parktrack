@@ -85,6 +85,18 @@ export interface CreateExternalReservationCommand {
 //
 // ############################################################################
 
+export type StatsPeriod = 'day' | 'month';
+
+export interface StatsData {
+  arrivalsCount: number;
+  departuresCount: number;
+  occupancyPct: number;
+  freeSpots: number;
+  totalSpots: number;
+  revenue: number;
+  period: StatsPeriod;
+}
+
 /**
  * ViewModel dla metryk dashboardu.
  * Reprezentuje kluczowe wskaźniki wyświetlane w sekcji metryk.
@@ -111,6 +123,8 @@ export interface DashboardData {
   todaysArrivals: ReservationDto[];
   /** Lista rezerwacji z zaplanowanym check-out na dziś */
   todaysDepartures: ReservationDto[];
+  /** Statystyki z endpointu /api/stats */
+  stats: StatsData | null;
 }
 
 /**
@@ -160,13 +174,15 @@ export interface MetricCardProps {
   /** Ikona do wyświetlenia (komponent React) */
   icon: React.ReactNode;
   /** Wartość metryki */
-  value: number;
+  value: number | string;
   /** Etykieta opisowa */
   label: string;
   /** Kolor akcentu dla border-left */
   accentColor: "green" | "blue" | "orange" | "purple";
   /** Czy karta jest w stanie ładowania */
   isLoading?: boolean;
+  /** Opcjonalny podtytuł wyświetlany pod wartością */
+  subtitle?: string;
 }
 
 /**

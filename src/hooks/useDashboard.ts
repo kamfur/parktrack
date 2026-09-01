@@ -1,21 +1,20 @@
-import { useState, useEffect } from "react";
-import type { DashboardState, DashboardMetrics, ReservationDto, CheckInCommand, CheckOutCommand } from "@/types";
+import { useState, useEffect, useRef } from "react";
+import type {
+  DashboardState,
+  DashboardMetrics,
+  ReservationDto,
+  CheckInCommand,
+  CheckOutCommand,
+  StatsPeriod,
+  StatsData,
+} from "@/types";
 
-/**
- * Funkcja pomocnicza do kalkulacji metryk dashboardu.
- * @param arrivals - Lista dzisiejszych przyjazdów
- * @param departures - Lista dzisiejszych wyjazdów
- * @param totalSpots - Całkowita liczba miejsc parkingowych
- * @returns Obiekt z metrykami dashboardu
- */
 function calculateMetrics(
   arrivals: ReservationDto[],
   departures: ReservationDto[],
   totalSpots: number
 ): DashboardMetrics {
-  // Rezerwacje aktywne na dziś (in_progress + confirmed arrivals)
   const activeReservations = arrivals.filter((r) => r.status === "confirmed" || r.status === "in_progress").length;
-
   return {
     availableSpots: totalSpots - activeReservations,
     totalReservations: arrivals.length + departures.length,
@@ -24,34 +23,25 @@ function calculateMetrics(
   };
 }
 
-/**
- * Custom hook do zarządzania stanem i logiką dashboardu.
- * Obsługuje pobieranie danych, check-in i check-out rezerwacji.
- *
- * @returns Obiekt zawierający stan dashboardu i funkcje do wykonywania akcji
- */
 export function useDashboard() {
-  // Stan
   const [state, setState] = useState<DashboardState>({
     data: null,
     isLoading: true,
     error: null,
     isProcessing: false,
   });
+  const [period, setPeriod] = useState<StatsPeriod>("day");
+  const initialized = useRef(false);
 
-  /**
-   * Funkcja pobierająca dane dashboardu z API.
-   * Wykonuje równoległe zapytania do endpointów arrivals, departures i settings.
-   */
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (activePeriod: StatsPeriod = period) => {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      // Równoległe zapytania do API
-      const [arrivalsRes, departuresRes, settingsRes] = await Promise.all([
+      const [arrivalsRes, departuresRes, settingsRes, statsRes] = await Promise.all([
         fetch("/api/rpc/get_todays_arrivals", { method: "POST" }),
         fetch("/api/reservations/departures", { method: "POST" }),
         fetch("/api/settings?key=eq.total_parking_spots"),
+        fetch(`/api/stats?period=${activePeriod}`),
       ]);
 
       if (!arrivalsRes.ok || !departuresRes.ok) {
@@ -61,12 +51,10 @@ export function useDashboard() {
       const arrivals: ReservationDto[] = await arrivalsRes.json();
       const departures: ReservationDto[] = await departuresRes.json();
 
-      // Pobierz total_parking_spots z settings (fallback do 100 jeśli błąd lub brak danych)
-      let totalSpots = 100; // Default fallback value
+      let totalSpots = 100;
       if (settingsRes.ok) {
         try {
           const settings = await settingsRes.json();
-          // value jest JSONB, więc trzeba sparsować
           if (settings && settings.value !== null && settings.value !== undefined) {
             const parsedValue =
               typeof settings.value === "string" ? parseInt(settings.value, 10) : Number(settings.value);
@@ -75,24 +63,27 @@ export function useDashboard() {
             }
           }
         } catch (error) {
-          // Używaj domyślnej wartości 100 jeśli parsing się nie powiedzie
           console.warn("Failed to parse total_parking_spots setting, using default 100:", error);
         }
       } else {
-        // 404 lub inny błąd - używamy fallback value
-        console.warn(
-          `Failed to fetch total_parking_spots setting (status: ${settingsRes.status}), using default 100`
-        );
+        console.warn(`Failed to fetch total_parking_spots setting (status: ${settingsRes.status}), using default 100`);
       }
 
-      // Kalkulacja metryk
       const metrics = calculateMetrics(arrivals, departures, totalSpots);
+
+      let stats: StatsData | null = null;
+      if (statsRes.ok) {
+        stats = await statsRes.json();
+      } else {
+        console.warn(`Failed to fetch stats (status: ${statsRes.status})`);
+      }
 
       setState({
         data: {
           todaysArrivals: arrivals,
           todaysDepartures: departures,
           metrics,
+          stats,
         },
         isLoading: false,
         error: null,
@@ -107,76 +98,67 @@ export function useDashboard() {
     }
   };
 
-  /**
-   * Funkcja wykonująca check-in rezerwacji.
-   * @param reservationId - UUID rezerwacji do zameldowania
-   * @throws Error jeśli operacja się nie powiedzie
-   */
   const handleCheckIn = async (reservationId: string) => {
     setState((prev) => ({ ...prev, isProcessing: true }));
-
     try {
       const command: CheckInCommand = {
         status: "in_progress",
         actual_check_in: new Date().toISOString(),
       };
-
       const response = await fetch(`/api/reservations?id=eq.${reservationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(command),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to check-in");
-      }
-
-      // Odświeżenie danych po sukcesie
-      await fetchDashboardData();
+      if (!response.ok) throw new Error("Failed to check-in");
+      await fetchDashboardData(period);
     } finally {
       setState((prev) => ({ ...prev, isProcessing: false }));
     }
   };
 
-  /**
-   * Funkcja wykonująca check-out rezerwacji.
-   * @param reservationId - UUID rezerwacji do wymeldowania
-   * @throws Error jeśli operacja się nie powiedzie
-   */
   const handleCheckOut = async (reservationId: string) => {
     setState((prev) => ({ ...prev, isProcessing: true }));
-
     try {
       const command: CheckOutCommand = {
         status: "completed",
         actual_check_out: new Date().toISOString(),
       };
-
       const response = await fetch(`/api/reservations?id=eq.${reservationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(command),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to check-out");
-      }
-
-      // Odświeżenie danych po sukcesie
-      await fetchDashboardData();
+      if (!response.ok) throw new Error("Failed to check-out");
+      await fetchDashboardData(period);
     } finally {
       setState((prev) => ({ ...prev, isProcessing: false }));
     }
   };
 
-  // Inicjalizacja: pobierz dane przy montowaniu
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    let timer: ReturnType<typeof setTimeout>;
+
+    if (!initialized.current) {
+      initialized.current = true;
+      fetchDashboardData(period);
+    } else {
+      // Debounce period-change fetches so rapid toggle clicks don't spam requests
+      timer = setTimeout(() => fetchDashboardData(period), 400);
+    }
+
+    const id = setInterval(() => fetchDashboardData(period), 60000);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(id);
+    };
+  }, [period]);
 
   return {
     ...state,
-    refetch: fetchDashboardData,
+    period,
+    setPeriod,
+    refetch: () => fetchDashboardData(period),
     handleCheckIn,
     handleCheckOut,
   };

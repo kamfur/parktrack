@@ -6,8 +6,7 @@ import { cn } from "@/lib/utils";
  * Komponent wyświetlający pojedynczą kartę metryki.
  * Prezentuje wartość liczbową, etykietę oraz ikonę z kolorowym akcentem.
  */
-export function MetricCard({ icon, value, label, accentColor, isLoading = false }: MetricCardProps) {
-  // Mapowanie kolorów akcentu na klasy Tailwind
+export function MetricCard({ icon, value, label, accentColor, isLoading = false, subtitle }: MetricCardProps) {
   const accentColorClasses = {
     green: "border-l-green-500",
     blue: "border-l-blue-500",
@@ -22,8 +21,7 @@ export function MetricCard({ icon, value, label, accentColor, isLoading = false 
     purple: "text-purple-500",
   };
 
-  // Walidacja wartości
-  const displayValue = value >= 0 ? value : "N/A";
+  const displayValue = typeof value === "number" && value < 0 ? "N/A" : value;
 
   if (isLoading) {
     return (
@@ -48,6 +46,7 @@ export function MetricCard({ icon, value, label, accentColor, isLoading = false 
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">{label}</p>
             <p className="text-3xl font-bold">{displayValue}</p>
+            {subtitle && <p className="text-sm text-neutral-500">{subtitle}</p>}
           </div>
           <div className={cn("text-4xl", iconColorClasses[accentColor])}>{icon}</div>
         </div>

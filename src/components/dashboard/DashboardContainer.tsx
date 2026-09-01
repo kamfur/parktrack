@@ -4,14 +4,10 @@ import { TodayView } from "./TodayView";
 import { ErrorState } from "@/components/common/ErrorState";
 import { toast } from "sonner";
 
-/**
- * Główny kontener React odpowiedzialny za zarządzanie stanem całego dashboardu.
- * Wykorzystuje custom hook useDashboard do zarządzania logiką biznesową.
- */
 export function DashboardContainer() {
-  const { data, isLoading, error, isProcessing, refetch, handleCheckIn, handleCheckOut } = useDashboard();
+  const { data, isLoading, error, isProcessing, refetch, handleCheckIn, handleCheckOut, period, setPeriod } =
+    useDashboard();
 
-  // Wrapper dla handleCheckIn z toast notifications
   const onCheckIn = async (reservationId: string) => {
     try {
       await handleCheckIn(reservationId);
@@ -21,7 +17,6 @@ export function DashboardContainer() {
     }
   };
 
-  // Wrapper dla handleCheckOut z toast notifications
   const onCheckOut = async (reservationId: string) => {
     try {
       await handleCheckOut(reservationId);
@@ -31,7 +26,6 @@ export function DashboardContainer() {
     }
   };
 
-  // Error state
   if (error && !isLoading) {
     return (
       <ErrorState
@@ -42,33 +36,20 @@ export function DashboardContainer() {
     );
   }
 
-  // Loading state (initial load)
   if (isLoading && !data) {
     return (
       <div className="space-y-6">
-        <MetricsSection
-          metrics={{
-            availableSpots: 0,
-            totalReservations: 0,
-            plannedArrivals: 0,
-            plannedDepartures: 0,
-          }}
-          isLoading={true}
-        />
+        <MetricsSection stats={null} period={period} onPeriodChange={setPeriod} isLoading={true} />
         <TodayView arrivals={[]} departures={[]} onCheckIn={onCheckIn} onCheckOut={onCheckOut} isLoading={true} />
       </div>
     );
   }
 
-  // Success state - render dashboard with data
   if (!data) return null;
 
   return (
     <div className="space-y-6">
-      {/* Sekcja metryk */}
-      <MetricsSection metrics={data.metrics} isLoading={isLoading} />
-
-      {/* Sekcja list przyjazdów i wyjazdów */}
+      <MetricsSection stats={data.stats} period={period} onPeriodChange={setPeriod} isLoading={isLoading} />
       <TodayView
         arrivals={data.todaysArrivals}
         departures={data.todaysDepartures}

@@ -2,7 +2,8 @@
 project: "ParkTrack — Statistics & Invoicing"
 version: 1
 status: draft
-created: 2026-08-26
+created: 2026-08-30
+updated: 2026-08-30
 main_goal: low-complexity
 top_blocker: decisions
 milestone_id: statistics-and-invoicing-mvp
@@ -36,7 +37,7 @@ All baseline layers are present and production-deployed. No foundation slices ne
 | Change ID | Slice | Status | PRD refs |
 |---|---|---|---|
 | settings-configuration | S-01: Staff configures daily rate and capacity | in-progress | FR-007, FR-013, FR-015 |
-| statistics-dashboard | S-02: Staff views statistics dashboard | proposed | FR-001, FR-002, FR-003, FR-004, FR-005, FR-012 |
+| statistics-dashboard | S-02: Staff views statistics dashboard | in-progress | FR-001, FR-002, FR-003, FR-004, FR-005, FR-012 |
 | invoice-generation | S-03: Staff generates and prints invoice | blocked | FR-008, FR-009, FR-010, FR-011, FR-013, FR-014, US-01 |
 
 ---
@@ -66,7 +67,7 @@ All baseline layers are present and production-deployed. No foundation slices ne
 ### S-02 — Staff views statistics dashboard
 
 **Change ID:** `statistics-dashboard`
-**Status:** proposed
+**Status:** in-progress
 **Stream:** A (after S-01)
 **North star:** yes
 
