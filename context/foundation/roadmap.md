@@ -3,7 +3,7 @@ project: "ParkTrack — Statistics & Invoicing"
 version: 1
 status: draft
 created: 2026-08-30
-updated: 2026-08-30
+updated: 2026-09-01
 main_goal: low-complexity
 top_blocker: decisions
 milestone_id: statistics-and-invoicing-mvp
@@ -36,7 +36,7 @@ All baseline layers are present and production-deployed. No foundation slices ne
 
 | Change ID | Slice | Status | PRD refs |
 |---|---|---|---|
-| settings-configuration | S-01: Staff configures daily rate and capacity | in-progress | FR-007, FR-013, FR-015 |
+| settings-configuration | S-01: Staff configures daily rate and capacity | done | FR-007, FR-013, FR-015 |
 | statistics-dashboard | S-02: Staff views statistics dashboard | in-progress | FR-001, FR-002, FR-003, FR-004, FR-005, FR-012 |
 | invoice-generation | S-03: Staff generates and prints invoice | blocked | FR-008, FR-009, FR-010, FR-011, FR-013, FR-014, US-01 |
 
@@ -47,7 +47,7 @@ All baseline layers are present and production-deployed. No foundation slices ne
 ### S-01 — Staff configures daily rate and capacity
 
 **Change ID:** `settings-configuration`
-**Status:** in-progress
+**Status:** done
 **North star prerequisite:** yes — S-02 reads `daily_rate` from settings; S-03 uses it for invoice total.
 
 **User-visible outcome:** Staff opens a settings page, sets the daily rate (PLN) and total parking capacity, saves, and the values take effect immediately across the app.
@@ -156,3 +156,7 @@ These items were identified during decomposition and deliberately excluded from 
 ## Milestone History
 
 _(Populated by /10x-archive when slices complete)_
+
+## Done
+
+- **S-01: Staff configures daily rate and capacity** — Archived 2026-09-01 → `context/archive/2026-08-26-settings-configuration/`. Lesson: —.
