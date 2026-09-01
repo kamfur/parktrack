@@ -60,6 +60,14 @@ Seed the `daily_rate` row in the DB (so the form always has a row to PATCH) and 
 
 **Contract**: Inserts `{ key: "daily_rate", value: 0, description: "Stawka dobowa parkingu (PLN)", updated_by: <first_auth_user_id> }`. The `DO $$ ... $$` block looks up a user via `SELECT id FROM auth.users LIMIT 1`. If no user exists (empty DB), the insert is skipped entirely to avoid a NOT NULL / FK violation. Value is SQL `'0'` which becomes JSONB number `0` — not the string `'"0"'` used by other settings; this is intentional because `daily_rate` is used arithmetically.
 
+#### 1b. Admin client helper (addendum — unplanned, identified during review)
+
+**File**: `src/lib/supabase-admin.ts`
+
+**Intent**: Exports `createSupabaseAdminClient()` which returns a Supabase client using `SUPABASE_SERVICE_ROLE_KEY`, bypassing RLS. Returns `null` if env var is missing. Used by both the PATCH handler and `ustawienia.astro`.
+
+**Contract**: Modified in ef39c88 alongside the Phase 1 planned files. Change is safe and load-bearing.
+
 #### 2. Settings PATCH handler — switch to admin client
 
 **File**: `src/pages/api/settings.ts`

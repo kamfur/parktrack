@@ -24,20 +24,20 @@ export function SettingsForm({ initialDailyRate, initialTotalSpots }: SettingsFo
 
   const onSubmit = async (data: SettingsFormData) => {
     try {
-      const rateRes = await fetch("/api/settings?key=eq.daily_rate", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: data.daily_rate }),
-      });
-      if (!rateRes.ok) throw new Error("Nie udało się zapisać stawki dobowej");
+      const [rateRes, spotsRes] = await Promise.all([
+        fetch("/api/settings?key=eq.daily_rate", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: data.daily_rate }),
+        }),
+        fetch("/api/settings?key=eq.total_parking_spots", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: data.total_parking_spots }),
+        }),
+      ]);
 
-      const spotsRes = await fetch("/api/settings?key=eq.total_parking_spots", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: data.total_parking_spots }),
-      });
-      if (!spotsRes.ok) throw new Error("Nie udało się zapisać pojemności parkingu");
-
+      if (!rateRes.ok || !spotsRes.ok) throw new Error("Błąd zapisu ustawień");
       toast.success("Ustawienia zapisane");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Błąd zapisu ustawień");

@@ -2,7 +2,7 @@ do $$
 declare
   v_system_user_id uuid;
 begin
-  select id into v_system_user_id from auth.users limit 1;
+  v_system_user_id := get_system_user();
 
   if v_system_user_id is not null then
     insert into public.settings (key, value, description, updated_by)

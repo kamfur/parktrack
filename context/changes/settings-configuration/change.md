@@ -1,9 +1,9 @@
 ---
 change_id: settings-configuration
 title: Settings configuration
-status: implementing
+status: impl_reviewed
 created: 2026-08-26
-updated: 2026-08-26
+updated: 2026-08-29
 archived_at: null
 ---
 

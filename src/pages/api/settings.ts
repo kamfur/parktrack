@@ -33,18 +33,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
       }
 
       if (!data) {
-        // Debug: Check if any settings exist and what keys are available
-        const { data: allSettings, error: allError } = await locals.supabase.from("settings").select("key");
-        if (allError) {
-          console.error("Error fetching all settings:", allError);
-        }
-        const availableKeys = allSettings?.map((s) => s.key) || [];
-        const errorMessage =
-          availableKeys.length > 0
-            ? `Setting '${key}' not found. Available keys: ${availableKeys.join(", ")}`
-            : `Setting '${key}' not found. No settings found in database.`;
-
-        return new Response(JSON.stringify({ error: errorMessage }), {
+        return new Response(JSON.stringify({ error: `Setting '${key}' not found.` }), {
           status: 404,
           headers: { "Content-Type": "application/json" },
         });
@@ -83,78 +72,6 @@ export const GET: APIRoute = async ({ url, locals }) => {
   }
 };
 
-/**
- * POST /api/settings
- * Creates a new setting or initializes default settings if they don't exist.
- *
- * Body: { key: string, value: any, description?: string }
- */
-export const POST: APIRoute = async ({ request, locals }) => {
-  try {
-    const body = await request.json();
-
-    if (!body.key || body.value === undefined) {
-      return new Response(JSON.stringify({ error: "Missing required fields: 'key' and 'value' are required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    // Check if setting already exists
-    const { data: existing } = await locals.supabase.from("settings").select("key").eq("key", body.key).maybeSingle();
-
-    if (existing) {
-      return new Response(JSON.stringify({ error: `Setting with key '${body.key}' already exists` }), {
-        status: 409,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    // Get current user ID (or use system user)
-    // For now, we'll use a default system user ID
-    // In production, this should come from authenticated user session
-    const userId = locals.user?.id || "00000000-0000-0000-0000-000000000000";
-
-    // Use upsert to create or update setting
-    const { data, error } = await locals.supabase
-      .from("settings")
-      .upsert(
-        {
-          key: body.key,
-          value: body.value,
-          description: body.description || null,
-          updated_by: userId,
-        },
-        {
-          onConflict: "key",
-        }
-      )
-      .select()
-      .single();
-
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify(data), {
-      status: 201,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "An unexpected error occurred",
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
-};
 /**
  * PATCH /api/settings
  * Updates a setting value.
