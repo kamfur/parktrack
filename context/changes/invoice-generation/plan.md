@@ -467,30 +467,30 @@ For non-completed statuses, render nothing for the invoice slot.
 
 #### Automated
 
-- [x] 2.1 No TypeScript errors: `npm run build`
-- [x] 2.2 Linting passes: `npm run lint`
+- [x] 2.1 No TypeScript errors: `npm run build` — 37d144e
+- [x] 2.2 Linting passes: `npm run lint` — 37d144e
 
 #### Manual
 
-- [x] 2.3 /ustawienia loads with Dane sprzedawcy section showing 4 fields
-- [x] 2.4 Saving seller data persists after page reload
-- [x] 2.5 Existing daily_rate and total_parking_spots fields still work
+- [x] 2.3 /ustawienia loads with Dane sprzedawcy section showing 4 fields — 37d144e
+- [x] 2.4 Saving seller data persists after page reload — 37d144e
+- [x] 2.5 Existing daily_rate and total_parking_spots fields still work — 37d144e
 
 ### Phase 3: Invoice Backend
 
 #### Automated
 
-- [ ] 3.1 No TypeScript errors: `npm run build`
-- [ ] 3.2 Linting passes: `npm run lint`
+- [x] 3.1 No TypeScript errors: `npm run build`
+- [x] 3.2 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 3.3 POST /api/invoices for completed reservation returns 201 + FV/2026/09/001
-- [ ] 3.4 Second POST for same reservation returns 409
-- [ ] 3.5 POST for non-completed reservation returns 422
-- [ ] 3.6 POST for non-existent reservation returns 404
-- [ ] 3.7 GET /api/invoices?reservation_id=... returns 200 + invoice data
-- [ ] 3.8 GET /api/invoices/[id] returns 200 + invoice data
+- [x] 3.3 POST /api/invoices for completed reservation returns 201 + FV/2026/09/001
+- [x] 3.4 Second POST for same reservation returns 409
+- [x] 3.5 POST for non-completed reservation returns 422
+- [x] 3.6 POST for non-existent reservation returns 404
+- [x] 3.7 GET /api/invoices?reservation_id=... returns 200 + invoice data
+- [x] 3.8 GET /api/invoices/[id] returns 200 + invoice data
 
 ### Phase 4: Invoice Pages
 

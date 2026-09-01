@@ -755,6 +755,42 @@ export interface ResetPasswordCommand {
   accessToken?: string;
 }
 
+// ############################################################################
+//
+// INVOICE TYPES
+//
+// ############################################################################
+
+export interface InvoiceDto {
+  id: string;
+  reservation_id: string;
+  invoice_number: string;
+  invoice_year: number;
+  invoice_month: number;
+  invoice_seq: number;
+  seller_name: string;
+  seller_address: string;
+  seller_nip: string;
+  seller_bank_account: string;
+  buyer_name: string;
+  buyer_nip: string;
+  buyer_address: string;
+  buyer_email: string | null;
+  total_amount: number;
+  days_count: number;
+  daily_rate_snapshot: number;
+  created_at: string;
+  created_by: string;
+}
+
+export interface CreateInvoiceCommand {
+  reservation_id: string;
+  buyer_name: string;
+  buyer_nip: string;
+  buyer_address: string;
+  buyer_email?: string;
+}
+
 export interface AuthErrorResponse {
   error: string;
   details?: unknown;
