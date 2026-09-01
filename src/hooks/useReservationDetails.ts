@@ -7,6 +7,7 @@ import type {
   FinancialInfoViewModel,
   CheckInCommand,
   CheckOutCommand,
+  InvoiceDto,
 } from "@/types";
 
 interface UseReservationDetailsParams {
@@ -18,6 +19,7 @@ interface UseReservationDetailsResult {
   // Data
   reservation: ReservationDto | null;
   viewModel: ReservationDetailsViewModel | null;
+  existingInvoice: InvoiceDto | null;
 
   // Loading states
   isLoading: boolean;
@@ -67,6 +69,7 @@ export function useReservationDetails({
 }: UseReservationDetailsParams): UseReservationDetailsResult {
   // State
   const [reservation, setReservation] = useState<ReservationDto | null>(null);
+  const [existingInvoice, setExistingInvoice] = useState<InvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -87,16 +90,19 @@ export function useReservationDetails({
     setError(null);
 
     try {
-      const response = await fetch(`/api/reservations?id=eq.${reservationId}`);
+      const [reservationRes, invoiceRes] = await Promise.all([
+        fetch(`/api/reservations?id=eq.${reservationId}`),
+        fetch(`/api/invoices?reservation_id=${reservationId}`),
+      ]);
 
-      if (!response.ok) {
-        if (response.status === 404) {
+      if (!reservationRes.ok) {
+        if (reservationRes.status === 404) {
           throw new Error("Reservation not found");
         }
         throw new Error("Failed to fetch reservation");
       }
 
-      const data = await response.json();
+      const data = await reservationRes.json();
 
       if (!data) {
         throw new Error("Reservation not found");
@@ -104,6 +110,12 @@ export function useReservationDetails({
 
       // API returns single object
       setReservation(data);
+
+      if (invoiceRes.ok) {
+        setExistingInvoice(await invoiceRes.json());
+      } else {
+        setExistingInvoice(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Unknown error"));
     } finally {
@@ -255,6 +267,7 @@ export function useReservationDetails({
   return {
     reservation,
     viewModel,
+    existingInvoice,
     isLoading,
     isUpdating,
     error,
@@ -485,20 +498,20 @@ function calculateDays(checkIn: string, checkOut: string): number {
   try {
     const start = new Date(checkIn);
     const end = new Date(checkOut);
-    
+
     // Validate dates
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return 0;
     }
-    
+
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     // Ensure we return a valid number
     if (isNaN(days) || days < 0) {
       return 0;
     }
-    
+
     return days;
   } catch {
     return 0;

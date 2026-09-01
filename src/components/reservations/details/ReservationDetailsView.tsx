@@ -25,6 +25,7 @@ export function ReservationDetailsView({ reservationId, isOpen, onClose, onUpdat
   const {
     reservation,
     viewModel,
+    existingInvoice,
     isLoading,
     error,
     isDirty,
@@ -174,6 +175,7 @@ export function ReservationDetailsView({ reservationId, isOpen, onClose, onUpdat
                 onEdit={enterEditMode}
                 onCancel={openCancelDialog}
                 isProcessing={isProcessing}
+                existingInvoiceId={existingInvoice?.id ?? null}
               />
             </>
           )}

@@ -721,6 +721,7 @@ export interface ActionFooterProps {
   onEdit: () => void;
   onCancel: () => void;
   isProcessing: boolean;
+  existingInvoiceId: string | null;
 }
 
 // ############################################################################

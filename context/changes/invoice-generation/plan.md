@@ -496,27 +496,27 @@ For non-completed statuses, render nothing for the invoice slot.
 
 #### Automated
 
-- [x] 4.1 No TypeScript errors: `npm run build`
-- [x] 4.2 Linting passes: `npm run lint`
+- [x] 4.1 No TypeScript errors: `npm run build` — 6a74f12
+- [x] 4.2 Linting passes: `npm run lint` — 6a74f12
 
 #### Manual
 
-- [x] 4.3 /faktury/nowy?reservationId=[valid-completed] loads with reservation summary
-- [x] 4.4 /faktury/nowy?reservationId=[missing or invalid] redirects to /
-- [x] 4.5 /faktury/nowy?reservationId=[already-has-invoice] redirects to print view
-- [x] 4.6 Form submit creates invoice and redirects to /faktury/[id]/druk
-- [x] 4.7 Print view shows all invoice data correctly
-- [x] 4.8 Print preview shows only invoice content (no navigation, no print button)
+- [x] 4.3 /faktury/nowy?reservationId=[valid-completed] loads with reservation summary — 6a74f12
+- [x] 4.4 /faktury/nowy?reservationId=[missing or invalid] redirects to / — 6a74f12
+- [x] 4.5 /faktury/nowy?reservationId=[already-has-invoice] redirects to print view — 6a74f12
+- [x] 4.6 Form submit creates invoice and redirects to /faktury/[id]/druk — 6a74f12
+- [x] 4.7 Print view shows all invoice data correctly — 6a74f12
+- [x] 4.8 Print preview shows only invoice content (no navigation, no print button) — 6a74f12
 
 ### Phase 5: Reservation Detail Integration
 
 #### Automated
 
-- [ ] 5.1 No TypeScript errors: `npm run build`
-- [ ] 5.2 Linting passes: `npm run lint`
+- [x] 5.1 No TypeScript errors: `npm run build`
+- [x] 5.2 Linting passes: `npm run lint`
 
 #### Manual
 
-- [ ] 5.3 Completed reservation detail shows Generuj fakturę button
-- [ ] 5.4 After invoice created, reservation detail shows Pokaż fakturę link
-- [ ] 5.5 Non-completed reservation shows no invoice button
+- [x] 5.3 Completed reservation detail shows Generuj fakturę button
+- [x] 5.4 After invoice created, reservation detail shows Pokaż fakturę link
+- [x] 5.5 Non-completed reservation shows no invoice button

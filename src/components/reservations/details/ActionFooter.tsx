@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { LogIn, LogOut, Edit, XCircle } from "lucide-react";
+import { LogIn, LogOut, Edit, XCircle, FileText } from "lucide-react";
 import type { ActionFooterProps, ReservationStatus } from "@/types";
 
 /**
@@ -14,6 +14,7 @@ export function ActionFooter({
   onEdit,
   onCancel,
   isProcessing,
+  existingInvoiceId,
 }: ActionFooterProps) {
   // Determine which actions are available based on status
   const availableActions = getAvailableActions(status);
@@ -38,7 +39,12 @@ export function ActionFooter({
         )}
 
         {availableActions.canEdit && (
-          <Button onClick={onEdit} disabled={isProcessing} variant="secondary" className="gap-2 min-h-[44px] text-sm sm:text-base">
+          <Button
+            onClick={onEdit}
+            disabled={isProcessing}
+            variant="secondary"
+            className="gap-2 min-h-[44px] text-sm sm:text-base"
+          >
             <Edit className="h-4 w-4" />
             <span className="hidden sm:inline">Edytuj</span>
             <span className="sm:hidden">Edytuj</span>
@@ -46,12 +52,34 @@ export function ActionFooter({
         )}
 
         {availableActions.canCancel && (
-          <Button onClick={onCancel} disabled={isProcessing} variant="destructive" className="gap-2 min-h-[44px] text-sm sm:text-base">
+          <Button
+            onClick={onCancel}
+            disabled={isProcessing}
+            variant="destructive"
+            className="gap-2 min-h-[44px] text-sm sm:text-base"
+          >
             <XCircle className="h-4 w-4" />
             <span className="hidden sm:inline">Anuluj rezerwację</span>
             <span className="sm:hidden">Anuluj</span>
           </Button>
         )}
+
+        {status === "completed" &&
+          (existingInvoiceId ? (
+            <a href={`/faktury/${existingInvoiceId}/druk`}>
+              <Button variant="outline" className="gap-2 min-h-[44px] text-sm sm:text-base">
+                <FileText className="h-4 w-4" />
+                Pokaż fakturę
+              </Button>
+            </a>
+          ) : (
+            <a href={`/faktury/nowy?reservationId=${reservationId}`}>
+              <Button className="gap-2 min-h-[44px] text-sm sm:text-base">
+                <FileText className="h-4 w-4" />
+                Generuj fakturę
+              </Button>
+            </a>
+          ))}
       </div>
     </div>
   );
