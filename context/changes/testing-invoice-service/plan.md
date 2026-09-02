@@ -308,8 +308,8 @@ business rules against a mock supabase client.
 
 #### Automated
 
-- [x] 3.1 `npm run lint` passes on test-plan.md
+- [x] 3.1 `npm run lint` passes on test-plan.md — 7ab0916
 
 #### Manual
 
-- [x] 3.2 §6.1 and §6.4 are no longer TBD — contain actionable patterns
+- [x] 3.2 §6.1 and §6.4 are no longer TBD — contain actionable patterns — 7ab0916
