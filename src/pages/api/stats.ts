@@ -8,7 +8,7 @@ const querySchema = z.object({
   period: z.enum(["day", "month"]).default("day"),
 });
 
-function getWarsawPeriodBounds(period: "day" | "month"): {
+export function getWarsawPeriodBounds(period: "day" | "month"): {
   start: string;
   end: string;
 } {

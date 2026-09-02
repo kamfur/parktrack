@@ -47,7 +47,7 @@ research's job, see §1 principle #3).
 |---|---|---|---|---|
 | 1 | Staff receives an invoice whose total differs from what the customer actually paid — the cost stored on the reservation diverges from what the invoice records | High | Medium | Interview Q1; PRD §Business Logic (billing rule); invoice-generation archive |
 | 2 | An invoice is created for a reservation that is not `completed` — the API-level guard is bypassed while the page-level guard appears intact, or vice versa | High | Medium | PRD US-01 AC; invoice-generation archive (two-layer guard) |
-| 3 | Settings write fails silently when the service role key is absent — RLS blocks the anon client, PATCH returns 200 but nothing persists; daily rate and seller data become unconfigurable | High | Medium | Interview Q3; settings-configuration archive; stack-assessment Gap 1 |
+| 3 | Settings write fails with a visible 503 when the service role key is absent — if the null check is removed in a future refactor, PATCH reverts to a crash or silent success; the SSR page read still fails silently (renders hardcoded defaults) with no user warning | High | Medium | Interview Q3; settings-configuration archive; stack-assessment Gap 1 |
 | 4 | Two near-simultaneous invoice creations in the same calendar month produce the same invoice number — the MAX+1 pattern has no advisory lock; the DB constraint either catches it with a clear error or is absent | High | Low | PRD FR-011; invoice-generation archive (noted "deferred to M-2") |
 | 5 | Unauthenticated request reaches a protected route (`/faktury/*`, `/api/invoices`, `/api/stats`) after auth middleware regression — new M-1 routes may not be covered by the catch-all | High | Medium | hot-spot `src/middleware` (3 commits/30d); hot-spot `src/pages/api/auth` (3 commits/30d); tech-stack (`has_auth: true`) |
 | 6 | Revenue stats display the wrong month total at month-end — the Warsaw timezone clause is dropped in a future stats query touch, shifting the month boundary by 1–2 hours | Medium | Low | statistic-dashboard archive (Warsaw timezone boundary); hot-spot `src/pages/api` (4 commits/30d) |
@@ -75,9 +75,9 @@ orchestrator updates Status as artifacts appear on disk.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
-| 1 | Test runner bootstrap + auth guard | Install Vitest and prove auth middleware covers all new M-1 routes | #5 | integration | change opened | testing-auth-guard |
-| 2 | Invoice service correctness | Prove invoice total accuracy, completed-only guard, numbering integrity, and external API contract | #1, #2, #4, #7 | unit + integration | planned | testing-invoice-service |
-| 3 | Settings admin client + stats correctness | Prove settings write failure surfaces visibly and Warsaw timezone boundary is enforced | #3, #6 | integration | not started | — |
+| 1 | Test runner bootstrap + auth guard | Install Vitest and prove auth middleware covers all new M-1 routes | #5 | integration | complete | testing-auth-guard |
+| 2 | Invoice service correctness | Prove invoice total accuracy, completed-only guard, numbering integrity, and external API contract | #1, #2, #4, #7 | unit + integration | complete | testing-invoice-service |
+| 3 | Settings admin client + stats correctness | Prove settings write failure surfaces visibly and Warsaw timezone boundary is enforced | #3, #6 | integration | researched | testing-settings-stats |
 | 4 | Quality gates wiring | Wire `npm run test`, lint, and build into a GitHub Actions CI workflow on every PR | cross-cutting | CI config | not started | — |
 
 **Status vocabulary** (parser literals — do not rename):
