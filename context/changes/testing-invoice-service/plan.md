@@ -296,20 +296,20 @@ business rules against a mock supabase client.
 
 #### Automated
 
-- [x] 2.1 `npm run test` exits 0 — all schema contract tests pass
-- [x] 2.2 `npm run lint` passes on reservation.schema.test.ts
+- [x] 2.1 `npm run test` exits 0 — all schema contract tests pass — 2b9a242
+- [x] 2.2 `npm run lint` passes on reservation.schema.test.ts — 2b9a242
 
 #### Manual
 
-- [x] 2.3 Test output names each external API field
-- [x] 2.4 Mutation check: removing a schema field causes the matching test to fail
+- [x] 2.3 Test output names each external API field — 2b9a242
+- [x] 2.4 Mutation check: removing a schema field causes the matching test to fail — 2b9a242
 
 ### Phase 3: Cookbook Update
 
 #### Automated
 
-- [ ] 3.1 `npm run lint` passes on test-plan.md
+- [x] 3.1 `npm run lint` passes on test-plan.md
 
 #### Manual
 
-- [ ] 3.2 §6.1 and §6.4 are no longer TBD — contain actionable patterns
+- [x] 3.2 §6.1 and §6.4 are no longer TBD — contain actionable patterns
