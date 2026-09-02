@@ -274,8 +274,8 @@ without re-reading the plan.
 
 #### Automated
 
-- [x] 1.1 Build succeeds: `npm run build`
-- [x] 1.2 Lint passes: `npm run lint`
+- [x] 1.1 Build succeeds: `npm run build` — 706a1df
+- [x] 1.2 Lint passes: `npm run lint` — 706a1df
 
 #### Manual
 
@@ -286,8 +286,8 @@ without re-reading the plan.
 
 #### Automated
 
-- [ ] 2.1 All tests pass: `npm run test`
-- [ ] 2.2 Both 503 test cases appear in verbose output
+- [x] 2.1 All tests pass: `npm run test`
+- [x] 2.2 Both 503 test cases appear in verbose output
 
 #### Manual
 
