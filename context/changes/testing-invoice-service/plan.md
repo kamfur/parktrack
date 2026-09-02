@@ -284,25 +284,25 @@ business rules against a mock supabase client.
 
 #### Automated
 
-- [x] 1.1 `npm run test` exits 0 — all InvoiceService tests pass
-- [x] 1.2 `npm run lint` passes on invoice.service.test.ts
+- [x] 1.1 `npm run test` exits 0 — all InvoiceService tests pass — 4e12608
+- [x] 1.2 `npm run lint` passes on invoice.service.test.ts — 4e12608
 
 #### Manual
 
-- [x] 1.3 Test output names each risk and status in test descriptions
-- [x] 1.4 Mutation check: guard regression causes Risk #2 tests to fail
+- [x] 1.3 Test output names each risk and status in test descriptions — 4e12608
+- [x] 1.4 Mutation check: guard regression causes Risk #2 tests to fail — 4e12608
 
 ### Phase 2: External API Schema Contract Test
 
 #### Automated
 
-- [ ] 2.1 `npm run test` exits 0 — all schema contract tests pass
-- [ ] 2.2 `npm run lint` passes on reservation.schema.test.ts
+- [x] 2.1 `npm run test` exits 0 — all schema contract tests pass
+- [x] 2.2 `npm run lint` passes on reservation.schema.test.ts
 
 #### Manual
 
-- [ ] 2.3 Test output names each external API field
-- [ ] 2.4 Mutation check: removing a schema field causes the matching test to fail
+- [x] 2.3 Test output names each external API field
+- [x] 2.4 Mutation check: removing a schema field causes the matching test to fail
 
 ### Phase 3: Cookbook Update
 
