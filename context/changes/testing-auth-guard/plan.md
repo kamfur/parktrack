@@ -297,23 +297,23 @@ rollout phases.
 
 #### Automated
 
-- [x] 1.1 `npm run test` exits 0 with one passing smoke test
-- [x] 1.2 `npm run lint` passes
-- [x] 1.3 `npm run build` passes
+- [x] 1.1 `npm run test` exits 0 with one passing smoke test — 1b90a29
+- [x] 1.2 `npm run lint` passes — 1b90a29
+- [x] 1.3 `npm run build` passes — 1b90a29
 
 #### Manual
 
-- [x] 1.4 Terminal shows runner starting and one test passing
+- [x] 1.4 Terminal shows runner starting and one test passing — 1b90a29
 
 ### Phase 2: Auth Guard Tests
 
 #### Automated
 
-- [ ] 2.1 `npm run test` exits 0 — all auth guard tests pass
-- [ ] 2.2 `npx tsc --noEmit` passes
-- [ ] 2.3 `npm run lint` passes
+- [x] 2.1 `npm run test` exits 0 — all auth guard tests pass
+- [x] 2.2 `npx tsc --noEmit` passes
+- [x] 2.3 `npm run lint` passes
 
 #### Manual
 
-- [ ] 2.4 Test output names M-1 route paths in test descriptions
-- [ ] 2.5 Test output names public routes in test descriptions
+- [x] 2.4 Test output names M-1 route paths in test descriptions
+- [x] 2.5 Test output names public routes in test descriptions

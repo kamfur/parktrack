@@ -6,7 +6,7 @@ const PUBLIC_API_PREFIXES = ["/api/auth/", "/api/health", "/api/reservations/ext
 
 const PUBLIC_ASSET_PREFIXES = ["/_astro/", "/favicon", "/sitemap"];
 
-function isPublicPath(pathname: string): boolean {
+export function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PAGE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
     return true;
   }
