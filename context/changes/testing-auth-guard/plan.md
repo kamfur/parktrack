@@ -309,11 +309,11 @@ rollout phases.
 
 #### Automated
 
-- [x] 2.1 `npm run test` exits 0 — all auth guard tests pass
-- [x] 2.2 `npx tsc --noEmit` passes
-- [x] 2.3 `npm run lint` passes
+- [x] 2.1 `npm run test` exits 0 — all auth guard tests pass — 922992e
+- [x] 2.2 `npx tsc --noEmit` passes — 922992e
+- [x] 2.3 `npm run lint` passes — 922992e
 
 #### Manual
 
-- [x] 2.4 Test output names M-1 route paths in test descriptions
-- [x] 2.5 Test output names public routes in test descriptions
+- [x] 2.4 Test output names M-1 route paths in test descriptions — 922992e
+- [x] 2.5 Test output names public routes in test descriptions — 922992e
