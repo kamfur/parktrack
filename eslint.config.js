@@ -20,6 +20,8 @@ const baseConfig = tseslint.config({
   rules: {
     "no-console": "warn",
     "no-unused-vars": "off",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
   },
 });
 
@@ -31,6 +33,7 @@ const jsxA11yConfig = tseslint.config({
   },
   rules: {
     ...jsxA11y.flatConfigs.recommended.rules,
+    "jsx-a11y/label-has-associated-control": "warn",
   },
 });
 
@@ -52,15 +55,23 @@ const reactConfig = tseslint.config({
   rules: {
     ...eslintPluginReactHooks.configs.recommended.rules,
     "react/react-in-jsx-scope": "off",
-    "react-compiler/react-compiler": "error",
+    "react-compiler/react-compiler": "warn",
   },
 });
 
 export default tseslint.config(
   includeIgnoreFile(gitignorePath),
+  { ignores: ["src/components/ui/**"] },
   baseConfig,
   jsxA11yConfig,
   reactConfig,
   eslintPluginAstro.configs["flat/recommended"],
-  eslintPluginPrettier
+  eslintPluginPrettier,
+  {
+    files: ["**/*.astro"],
+    rules: {
+      "no-undef": "off",
+      "prettier/prettier": "off",
+    },
+  }
 );

@@ -10,7 +10,7 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 /**
  * Sekcja z notatkami o rezerwacji, edytowalna z auto-save.
  */
-export function NotesSection({ reservationId, initialNotes, isEditable, onSave }: NotesSectionProps) {
+export function NotesSection({ reservationId: _reservationId, initialNotes, isEditable, onSave }: NotesSectionProps) {
   const [notes, setNotes] = useState(initialNotes || "");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const debouncedNotes = useDebounce(notes, 1000);

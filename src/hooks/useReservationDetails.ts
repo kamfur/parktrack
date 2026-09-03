@@ -162,8 +162,6 @@ export function useReservationDetails({
         // API returns single object
         setReservation(updated);
         setIsDirty(false);
-      } catch (err) {
-        throw err;
       } finally {
         setIsUpdating(false);
       }
@@ -208,8 +206,6 @@ export function useReservationDetails({
       try {
         await updateReservation(data);
         closeCheckInModal();
-      } catch (err) {
-        throw err;
       } finally {
         setIsProcessing(false);
       }
@@ -223,8 +219,6 @@ export function useReservationDetails({
       try {
         await updateReservation(data);
         closeCheckOutModal();
-      } catch (err) {
-        throw err;
       } finally {
         setIsProcessing(false);
       }
@@ -249,8 +243,6 @@ export function useReservationDetails({
 
         await updateReservation(updateData);
         closeCancelDialog();
-      } catch (err) {
-        throw err;
       } finally {
         setIsProcessing(false);
       }

@@ -38,10 +38,10 @@ export function DateTimePicker({
   minDate,
   maxDate,
   error = false,
-  label,
+  label: _label,
 }: DateTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  
+
   // Synchronizuj timeValue z value
   const timeValue = value ? format(value, "HH:mm") : "00:00";
 
@@ -84,12 +84,6 @@ export function DateTimePicker({
     onChange(newDate);
   };
 
-  // Walidacja czasu (HH:MM)
-  const validateTime = (time: string): boolean => {
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    return timeRegex.test(time);
-  };
-
   // Wyłącz daty poza dozwolonym zakresem
   const disabledDates = (date: Date) => {
     if (minDate && date < minDate) return true;
@@ -97,9 +91,7 @@ export function DateTimePicker({
     return false;
   };
 
-  const displayValue = value
-    ? `${format(value, "dd.MM.yyyy", { locale: pl })} ${format(value, "HH:mm")}`
-    : placeholder;
+  const displayValue = value ? `${format(value, "dd.MM.yyyy", { locale: pl })} ${format(value, "HH:mm")}` : placeholder;
 
   return (
     <div className="space-y-2">
@@ -132,13 +124,7 @@ export function DateTimePicker({
               <div className="flex items-center gap-2">
                 <ClockIcon className="h-4 w-4 text-neutral-500" />
                 <label className="text-sm font-medium">Godzina:</label>
-                <Input
-                  type="time"
-                  value={timeValue}
-                  onChange={handleTimeChange}
-                  className="w-32"
-                  disabled={!value}
-                />
+                <Input type="time" value={timeValue} onChange={handleTimeChange} className="w-32" disabled={!value} />
               </div>
             </div>
           </div>
@@ -147,4 +133,3 @@ export function DateTimePicker({
     </div>
   );
 }
-

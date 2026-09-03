@@ -28,10 +28,7 @@ export const GET: APIRoute = async ({ locals }) => {
     }
 
     // Test 1: Simple query to settings table (should work even if empty)
-    const { data: settingsData, error: settingsError } = await locals.supabase
-      .from("settings")
-      .select("key")
-      .limit(1);
+    const { error: settingsError } = await locals.supabase.from("settings").select("key").limit(1);
 
     if (settingsError) {
       return new Response(
@@ -68,7 +65,7 @@ export const GET: APIRoute = async ({ locals }) => {
     }
 
     // Test 3: Check if total_parking_spots setting exists
-    const { data: parkingSpotsSetting, error: parkingSpotsError } = await locals.supabase
+    const { data: parkingSpotsSetting } = await locals.supabase
       .from("settings")
       .select("key, value")
       .eq("key", "total_parking_spots")
@@ -113,4 +110,3 @@ export const GET: APIRoute = async ({ locals }) => {
     );
   }
 };
-
