@@ -297,8 +297,8 @@ without re-reading the plan.
 
 #### Automated
 
-- [x] 3.1 All tests pass: `npm run test`
-- [x] 3.2 Lint passes: `npm run lint`
+- [x] 3.1 All tests pass: `npm run test` — b051d15
+- [x] 3.2 Lint passes: `npm run lint` — b051d15
 
 #### Manual
 
