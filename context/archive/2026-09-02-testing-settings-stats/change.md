@@ -1,11 +1,10 @@
 ---
 change_id: testing-settings-stats
 title: Settings admin client and stats correctness tests
-status: implemented
+status: archived
 created: 2026-09-02
 updated: 2026-09-03
-
-archived_at: null
+archived_at: 2026-09-03T06:11:25Z
 ---
 
 ## Notes
