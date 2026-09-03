@@ -152,7 +152,30 @@ TBD — see §3 Phase 1. Will cover: the pattern for asserting redirect/401 with
 
 ### 6.5 Adding a settings or stats integration test
 
-TBD — see §3 Phase 3. Will cover: env var override pattern for testing the missing-key failure surface, and the seeding pattern for Warsaw timezone boundary assertions.
+#### Admin-client guard test
+
+Use when you need to assert that a handler returns 503 (not a silent success) when
+`createSupabaseAdminClient()` returns null.
+
+- **Mock the module** at the top of the test file (before any imports that depend on it):
+  `vi.mock("../../lib/supabase-admin", () => ({ createSupabaseAdminClient: vi.fn() }))`.
+  Vitest hoists `vi.mock` calls — place the import of the mocked module *after* the `vi.mock` line.
+- **Return null in `beforeEach`**: `vi.mocked(createSupabaseAdminClient).mockReturnValue(null)`.
+- **Construct a minimal context** matching the handler's destructured parameters (e.g., `{ url, request }` for PATCH). Cast with `as unknown as Parameters<typeof PATCH>[0]`.
+- **Assert `res.status === 503`** and that `res.json().error` mentions `SUPABASE_SERVICE_ROLE_KEY`.
+- **Reference test**: `src/pages/api/settings.test.ts`
+
+#### Timezone boundary test
+
+Use when you need to assert that `getWarsawPeriodBounds()` emits the correct Warsaw UTC offset
+and month-start strings.
+
+- **Export the function** (it must carry the `export` keyword in `stats.ts` — see Phase 1 of this change).
+- **Freeze time**: `vi.useFakeTimers(); vi.setSystemTime(new Date("YYYY-MM-DDTHH:MM:SSZ"))`.
+  Pass a UTC instant whose Warsaw-local date/offset you know (e.g. `"2026-08-15T10:00:00Z"` = Aug 15 12:00 CEST, offset +02:00).
+- **Call `getWarsawPeriodBounds("month")`** and assert the full ISO 8601 string including offset suffix (e.g. `"2026-08-01T00:00:00+02:00"`). Asserting the full string catches a regression that strips the `${tz}` suffix.
+- **Restore timers in `afterEach`**: `vi.useRealTimers()` — prevents bleed between test cases.
+- **Reference test**: `src/pages/api/stats.test.ts`
 
 ---
 

@@ -286,8 +286,8 @@ without re-reading the plan.
 
 #### Automated
 
-- [x] 2.1 All tests pass: `npm run test`
-- [x] 2.2 Both 503 test cases appear in verbose output
+- [x] 2.1 All tests pass: `npm run test` — 8b9a74d
+- [x] 2.2 Both 503 test cases appear in verbose output — 8b9a74d
 
 #### Manual
 
@@ -297,8 +297,8 @@ without re-reading the plan.
 
 #### Automated
 
-- [ ] 3.1 All tests pass: `npm run test`
-- [ ] 3.2 Lint passes: `npm run lint`
+- [x] 3.1 All tests pass: `npm run test`
+- [x] 3.2 Lint passes: `npm run lint`
 
 #### Manual
 
