@@ -38,7 +38,7 @@ All baseline layers are present and production-deployed. No foundation slices ne
 |---|---|---|---|
 | settings-configuration | S-01: Staff configures daily rate and capacity | done | FR-007, FR-013, FR-015 |
 | statistics-dashboard | S-02: Staff views statistics dashboard | in-progress | FR-001, FR-002, FR-003, FR-004, FR-005, FR-012 |
-| invoice-generation | S-03: Staff generates and prints invoice | blocked | FR-008, FR-009, FR-010, FR-011, FR-013, FR-014, US-01 |
+| invoice-generation | S-03: Staff generates and prints invoice | done | FR-008, FR-009, FR-010, FR-011, FR-013, FR-014, US-01 |
 
 ---
 
@@ -89,7 +89,7 @@ All baseline layers are present and production-deployed. No foundation slices ne
 ### S-03 — Staff generates and prints invoice
 
 **Change ID:** `invoice-generation`
-**Status:** blocked
+**Status:** done
 **Stream:** B (independent, but shares daily_rate from S-01)
 
 **User-visible outcome:** Staff selects a completed reservation, fills in the customer's company data, and generates a printable invoice with correct line items and totals.
@@ -160,3 +160,4 @@ _(Populated by /10x-archive when slices complete)_
 ## Done
 
 - **S-01: Staff configures daily rate and capacity** — Archived 2026-09-01 → `context/archive/2026-08-26-settings-configuration/`. Lesson: —.
+- **S-03: Staff generates and prints invoice** — Archived 2026-09-01 → `context/archive/2026-09-01-invoice-generation/`. Lesson: —.

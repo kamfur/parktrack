@@ -83,4 +83,3 @@ export class ReservationDetailsErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
-

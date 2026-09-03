@@ -69,4 +69,3 @@ export function ErrorState({ error, onRetry, onBack }: ErrorStateProps) {
     </div>
   );
 }
-

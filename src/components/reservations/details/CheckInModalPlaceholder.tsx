@@ -14,12 +14,7 @@ interface CheckInModalPlaceholderProps {
   onSuccess?: () => void;
 }
 
-export function CheckInModalPlaceholder({
-  isOpen,
-  onClose,
-  reservationId,
-  onSuccess,
-}: CheckInModalPlaceholderProps) {
+export function CheckInModalPlaceholder({ isOpen, onClose, reservationId, onSuccess }: CheckInModalPlaceholderProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -38,9 +33,7 @@ export function CheckInModalPlaceholder({
                 Ten modal będzie zaimplementowany w osobnym zadaniu. Będzie zawierał formularz check-in z opcją
                 weryfikacji danych i oznaczenia płatności.
               </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 font-mono mt-2">
-                Reservation ID: {reservationId}
-              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-mono mt-2">Reservation ID: {reservationId}</p>
             </div>
           </div>
 
@@ -62,4 +55,3 @@ export function CheckInModalPlaceholder({
     </Dialog>
   );
 }
-

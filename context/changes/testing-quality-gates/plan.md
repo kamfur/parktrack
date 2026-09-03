@@ -176,8 +176,8 @@ a manual verification item — the CI lint step passing green is the gate.
 
 #### Automated
 
-- [x] 1.1 File exists: `test -f .github/workflows/ci.yml`
-- [x] 1.2 Build passes locally: `npm run build`
+- [x] 1.1 File exists: `test -f .github/workflows/ci.yml` — 6fd44e8
+- [x] 1.2 Build passes locally: `npm run build` — 6fd44e8
 
 #### Manual
 
@@ -188,9 +188,9 @@ a manual verification item — the CI lint step passing green is the gate.
 
 #### Automated
 
-- [ ] 2.1 File exists: `test -f .husky/pre-push`
-- [ ] 2.2 File is executable: `test -x .husky/pre-push`
-- [ ] 2.3 Tests pass: `npm run test`
+- [x] 2.1 File exists: `test -f .husky/pre-push`
+- [x] 2.2 File is executable: `test -x .husky/pre-push`
+- [x] 2.3 Tests pass: `npm run test`
 
 #### Manual
 

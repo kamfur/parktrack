@@ -16,12 +16,18 @@ export function createRateLimiter(config: RateLimitConfig) {
       return await next();
     }
 
+    // Dev HMR + React Strict Mode + dashboard parallel fetches exceed any low limit quickly
+    if (import.meta.env.DEV) {
+      return await next();
+    }
+
     // Skip rate limiting for specific endpoints that need higher limits
     // These endpoints are called frequently during form interactions
     const excludedPaths = [
       "/api/availability", // Called multiple times during date selection
       "/api/calculate-cost", // Called multiple times during date selection
       "/api/health", // Health check endpoint
+      "/api/auth/", // Login/session/logout — not abuse vectors for DoS volume
     ];
 
     if (excludedPaths.some((path) => context.url.pathname.startsWith(path))) {

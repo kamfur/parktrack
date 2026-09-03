@@ -85,7 +85,7 @@ export interface CreateExternalReservationCommand {
 //
 // ############################################################################
 
-export type StatsPeriod = 'day' | 'month';
+export type StatsPeriod = "day" | "month";
 
 export interface StatsData {
   arrivalsCount: number;

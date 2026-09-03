@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -15,12 +22,7 @@ interface CancelDialogPlaceholderProps {
   isLoading?: boolean;
 }
 
-export function CancelDialogPlaceholder({
-  isOpen,
-  onClose,
-  onConfirm,
-  isLoading,
-}: CancelDialogPlaceholderProps) {
+export function CancelDialogPlaceholder({ isOpen, onClose, onConfirm, isLoading }: CancelDialogPlaceholderProps) {
   const [reason, setReason] = useState("");
 
   const handleConfirm = async () => {
@@ -71,4 +73,3 @@ export function CancelDialogPlaceholder({
     </Dialog>
   );
 }
-

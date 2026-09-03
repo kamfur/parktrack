@@ -1,19 +1,16 @@
-import { useEffect, useState } from 'react';
-import type { UseAvailabilityCheckResult, AvailabilityCheckResponse } from '@/types';
-import { useDebounce } from './useDebounce';
+import { useEffect, useState } from "react";
+import type { UseAvailabilityCheckResult, AvailabilityCheckResponse } from "@/types";
+import { useDebounce } from "./useDebounce";
 
 /**
  * Hook do sprawdzania dostępności miejsc parkingowych.
  * Wykonuje debounced API call gdy zmieniają się daty.
- * 
+ *
  * @param checkInDate - Data przyjazdu
  * @param checkOutDate - Data wyjazdu
  * @returns Stan sprawdzania dostępności
  */
-export function useAvailabilityCheck(
-  checkInDate: Date | null,
-  checkOutDate: Date | null
-): UseAvailabilityCheckResult {
+export function useAvailabilityCheck(checkInDate: Date | null, checkOutDate: Date | null): UseAvailabilityCheckResult {
   const [availableSpots, setAvailableSpots] = useState<number | null>(null);
   const [isAvailable, setIsAvailable] = useState<boolean>(false);
   const [isChecking, setIsChecking] = useState<boolean>(false);
@@ -44,17 +41,17 @@ export function useAvailabilityCheck(
         });
 
         const response = await fetch(`/api/availability?${params.toString()}`);
-        
+
         if (!response.ok) {
-          throw new Error('Failed to check availability');
+          throw new Error("Failed to check availability");
         }
 
         const data: AvailabilityCheckResponse = await response.json();
-        
+
         setAvailableSpots(data.availableSpots);
         setIsAvailable(data.available);
       } catch (err) {
-        setError(err instanceof Error ? err : new Error('Unknown error'));
+        setError(err instanceof Error ? err : new Error("Unknown error"));
         setAvailableSpots(null);
         setIsAvailable(false);
       } finally {
@@ -72,4 +69,3 @@ export function useAvailabilityCheck(
     error,
   };
 }
-

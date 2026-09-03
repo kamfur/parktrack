@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Set-Clipboard *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Read(//c/Users/KAMILF~1/AppData/Local/Temp/claude/C--git-private-parktrack/d4bb8038-5e2c-4ec4-adf4-1e8d28a73262/tasks/**)",
+      "PowerShell(Move-Item *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(git commit *)",
+      "Bash(npx eslint *)",
+      "Bash(git *)",
+      "Bash(xargs grep *)",
+      "Skill(10x-implement)",
+      "Bash(chmod +x /c/git/private/parktrack/.husky/pre-push)"
+    ]
+  }
+}

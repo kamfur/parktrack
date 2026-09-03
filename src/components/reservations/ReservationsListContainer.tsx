@@ -73,25 +73,22 @@ export function ReservationsListContainer() {
   }, []);
 
   // Handler dla akcji na rezerwacji
-  const handleAction = useCallback(
-    (action: "view" | "edit" | "cancel", reservation: ReservationDto) => {
-      if (action === "view") {
-        // Otwórz widok szczegółów
-        window.location.href = `/rezerwacje/${reservation.id}`;
-      } else if (action === "edit") {
-        // TODO: Implementacja edycji (otwieranie widoku edycji)
-        // eslint-disable-next-line no-console
-        console.log("Edit action:", reservation);
-      } else if (action === "cancel") {
-        // TODO: Pokazać confirmation dialog
-        // Po potwierdzeniu: wywołać API do anulowania rezerwacji
-        // Po sukcesie: refetch()
-        // eslint-disable-next-line no-console
-        console.log("Cancel action:", reservation);
-      }
-    },
-    []
-  );
+  const handleAction = useCallback((action: "view" | "edit" | "cancel", reservation: ReservationDto) => {
+    if (action === "view") {
+      // Otwórz widok szczegółów
+      window.location.href = `/rezerwacje/${reservation.id}`;
+    } else if (action === "edit") {
+      // TODO: Implementacja edycji (otwieranie widoku edycji)
+      // eslint-disable-next-line no-console
+      console.log("Edit action:", reservation);
+    } else if (action === "cancel") {
+      // TODO: Pokazać confirmation dialog
+      // Po potwierdzeniu: wywołać API do anulowania rezerwacji
+      // Po sukcesie: refetch()
+      // eslint-disable-next-line no-console
+      console.log("Cancel action:", reservation);
+    }
+  }, []);
 
   // Sprawdź czy są aktywne filtry
   const hasFilters = hasActiveFilters(filters);

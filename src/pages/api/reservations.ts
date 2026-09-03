@@ -6,9 +6,52 @@ import type { Database } from "../../db/database.types";
 
 export const prerender = false;
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Accepts raw UUID or PostgREST-style `eq.<uuid>` (used by the UI). */
+function parseReservationId(raw: string | null): string | null {
+  if (!raw) return null;
+  const id = raw.startsWith("eq.") ? raw.slice(3) : raw;
+  return UUID_REGEX.test(id) ? id : null;
+}
+
 export const GET: APIRoute = async ({ url, locals }) => {
   try {
     const searchParams = url.searchParams;
+
+    // Single reservation: GET /api/reservations?id=eq.<uuid>
+    const idParam = searchParams.get("id");
+    if (idParam) {
+      const reservationId = parseReservationId(idParam);
+      if (!reservationId) {
+        return new Response(JSON.stringify({ error: "Invalid reservation ID format. Must be a valid UUID." }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const { data, error } = await locals.supabase
+        .from("reservations")
+        .select("*")
+        .eq("id", reservationId)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(`Failed to fetch reservation: ${error.message}`);
+      }
+
+      if (!data) {
+        return new Response(JSON.stringify({ error: "Reservation not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify(data), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     // Budowanie zapytania Supabase
     let query = locals.supabase.from("reservations").select("*", { count: "exact" });
@@ -205,22 +248,20 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
 export const PATCH: APIRoute = async ({ request, locals, url }) => {
   try {
-    // Parse and validate reservation ID from query parameters
-    const reservationId = url.searchParams.get("id");
+    // Parse and validate reservation ID from query parameters (supports id=eq.<uuid>)
+    const reservationId = parseReservationId(url.searchParams.get("id"));
     if (!reservationId) {
-      return new Response(JSON.stringify({ error: "Reservation ID is required as query parameter 'id'" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(reservationId)) {
-      return new Response(JSON.stringify({ error: "Invalid reservation ID format. Must be a valid UUID." }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: url.searchParams.get("id")
+            ? "Invalid reservation ID format. Must be a valid UUID."
+            : "Reservation ID is required as query parameter 'id'",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Parse request body
@@ -295,22 +336,18 @@ export const PATCH: APIRoute = async ({ request, locals, url }) => {
 
 export const DELETE: APIRoute = async ({ locals, url }) => {
   try {
-    // Parse and validate reservation ID from query parameters
-    const reservationId = url.searchParams.get("id");
+    // Parse and validate reservation ID from query parameters (supports id=eq.<uuid>)
+    const reservationId = parseReservationId(url.searchParams.get("id"));
     if (!reservationId) {
-      return new Response(JSON.stringify({ error: "Reservation ID is required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(reservationId)) {
-      return new Response(JSON.stringify({ error: "Invalid reservation ID format" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: url.searchParams.get("id") ? "Invalid reservation ID format" : "Reservation ID is required",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Delete reservation

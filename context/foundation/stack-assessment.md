@@ -77,7 +77,6 @@ No quality gates failed. The two practical gaps below do not lower the gate scor
 ### Gap 1: No test runner configured
 
 **What failed:** No test runner (Vitest, Jest, Playwright) is installed or configured. `package.json` contains no `test` script.
-
 **Why it matters for agent workflows:** Agents use test suites as a correctness signal — "run tests, check output, iterate." Without one, an agent working on the statistics module or invoice generation has no automated feedback loop beyond TypeScript type-checking. The agent will default to building and relying on the type system alone, which catches shape errors but not behavioral bugs.
 
 **Current compensation (already in CLAUDE.md):**

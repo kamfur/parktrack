@@ -17,12 +17,12 @@ export function ReservationDetailsCard({
   const formatDate = (dateString: string): string => {
     try {
       const date = new Date(dateString);
-      
+
       // Validate date
       if (isNaN(date.getTime())) {
         return dateString;
       }
-      
+
       return format(date, "d MMMM yyyy, HH:mm", { locale: pl });
     } catch {
       return dateString;
@@ -33,19 +33,19 @@ export function ReservationDetailsCard({
     try {
       const checkIn = new Date(plannedCheckIn);
       const checkOut = new Date(plannedCheckOut);
-      
+
       // Validate dates
       if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
         return 0;
       }
-      
+
       const days = differenceInDays(checkOut, checkIn);
-      
+
       // Ensure we return a valid number
       if (isNaN(days) || days < 0) {
         return 0;
       }
-      
+
       return days;
     } catch {
       return 0;

@@ -1,5 +1,5 @@
 ---
-project: "ParkTrack — Statistics & Invoicing"
+project: "ParkTrack — Driver Operations"
 version: 1
 status: draft
 context_type: brownfield
@@ -9,179 +9,235 @@ target_scale:
   qps: low
   data_volume: small
 timeline_budget:
-  delivery_weeks: 4
+  delivery_weeks: 3
   hard_deadline: null
   after_hours_only: true
-created: 2026-06-07
-updated: 2026-06-07
+created: 2026-09-01
+updated: 2026-09-01
 checkpoint:
   current_phase: 8
-  phases_completed: [1, 2, 3, 4, 5, 6]
-  frs_drafted: 14
+  phases_completed: [1, 2, 3, 4, 5, 6, 7]
+  frs_drafted: 20
   gray_areas_resolved:
     - topic: "context type"
-      decision: "brownfield — git history (5 commits), package-lock.json, src/"
-    - topic: "must preserve"
-      decision: "reservations, external API endpoint, email notifications"
+      decision: "brownfield — git history (21 commits), package-lock.json, src/"
     - topic: "change type"
-      decision: "two new modules: statistics dashboard + invoice creation"
-    - topic: "pricing model"
-      decision: "v1: single configurable daily rate. Multi-tier pricing (by spot/season) deferred to v2."
-    - topic: "invoice persona"
-      decision: "same parking staff — no role separation needed"
-    - topic: "invoice output"
-      decision: "v1: browser view + print. PDF deferred to v2."
-    - topic: "scope"
-      decision: "scoped down from full 5-7 week scope; user explicitly chose v1 at 3-4 weeks"
+      decision: "new module — driver views alongside existing staff panel"
+    - topic: "insight"
+      decision: "mobile-first — driver works on the move; simplified mobile views, not full staff panel"
+    - topic: "primary persona"
+      decision: "driver only — airport parking driver, single role, mobile access"
+    - topic: "auth model"
+      decision: "add driver role — Supabase Auth today is single staff role; new driver role with module-scoped access"
+    - topic: "driver access scope"
+      decision: "driver module only — no invoices, statistics, or full administration"
+    - topic: "mvp scope"
+      decision: "full seed flow confirmed — arrivals, departures, payments/dopłata, lot occupancy; shift module deferred"
+    - topic: "blast radius"
+      decision: "reservations + invoices — driver modifies same reservation/payment data as staff"
+    - topic: "timeline"
+      decision: "~3 weeks after-hours delivery"
   quality_check_status: accepted
+seed_idea: |
+  jednym z założeń parktrack jest możliwość korzystania jako kierowca parkingu, który jest w stanie widzieć najbliższe przyjazdy oraz wyjazdy w ramach zmiany(moduł zarządzania zmianami też fajnie byłoby zrobić później).
+  - Kierowca przy przyjeździe klienta na parkign jest w stanie potwierdzić przyjazd oraz zmienić podstawowe parametry takie jak czas parkowania, jesli by się zmienił oraz zapisać kierunek lotu(tak aby można było monitorować czy samolot się opóźnił - jest to parking przy lotnisku), liczbe pasażerów oraz sektor w którym zaparkowany jest samochód, jest w stanie, zmienić czy zapłacono - wtedy informacja zapłacono u kierowcy po przyjeździe
+  - Kierowca otrzymuje telefon, że klienci czekają na podwiezienie na parking po przylocie, w takim razie kierowca powinien widzieć na karcie przyjazdów, nazwisko, rejestracje, liczbe osób oraz kierunek lotu tak aby też wiedział jakim samochodem udać się na lotnisko. Po przywiezieniu pasażerów, jest w stanie odznaczyć wyjazd z parkingu, zapisać notatki oraz przyjąć płatność(z andotacją zapłacone u kierowcy po powrrocie) lub też dopłate jeśli jest wymagana(klient przedłużył pobyt, pierowrny czas powrotu nie zgadza się z rzeczywista dataą powrotu)
+  - kierowca powinien widzieć jaki jest obecny stan na parkingu, wraz z listą jakie samochody znajdują się na parkingu
+  Widoki te muszą być zooptymalizowane pod urzadzenai mobilnew ponieważ kierowcy często korzystajaz tabletów lub smartfonów
 ---
 
 ## Current System
 
 ParkTrack — web application for parking lot management staff.
 
-**Tech stack:** Astro 5, React 19, TypeScript 5, Tailwind CSS 4, Shadcn/ui, Supabase (PostgreSQL + Auth + RLS + Edge Functions), GitHub Actions CI, Docker on DigitalOcean.
+**Tech stack:** Astro with Supabase (PostgreSQL, Auth, RLS).
 
-**Current users:** Parking lot management staff (single role, all operations).
+**Current users:** Person operating/managing the parking — handles reservations, daily operations, and billing.
 
 **Core functionality today:**
-- Reservation management: quick-entry + full details form, search, edit, cancel, no-show
-- Parking operations: today's arrivals/departures, check-in (mark In Progress), check-out (mark Completed)
-- Reporting: visual occupancy calendar, daily arrival/departure stats
-- External API: `POST /reservations` endpoint for external booking systems
-- Notifications: automated email confirmation on reservation creation
+- Reservation creation and state management with operational views
+- Management panel for day-to-day parking operations
+- Invoice generation module
+- Dashboard and reporting (from prior modules)
 
 ## Vision & Problem Statement
 
-**What's changing:** Adding two new modules — a statistics dashboard and invoice creation — to extend ParkTrack beyond day-to-day operations into financial visibility and customer billing.
+**What's changing:** A new driver operations module alongside the existing staff panel — mobile-optimized views for airport parking drivers to handle arrivals, departures, on-lot status, and field payments.
 
-**Why now:** The system has reservation and check-in/out data but no way to turn it into management insights or produce billable documents. Staff currently cannot report on occupancy trends or revenue, and cannot issue invoices from within the system.
+**Why now:** Drivers work on the move (tablets/smartphones) and need a simplified operational surface — not the full management panel. Current ParkTrack serves staff who manage reservations and invoices; drivers need focused flows for confirming arrivals, picking up passengers after landing, recording departures, and seeing current lot occupancy.
 
-**Current workaround:** Manual reports in spreadsheets; invoices issued outside the system.
+**Current workaround:** Drivers likely use the staff panel on mobile (poor fit) or operate outside the system (phone calls, paper, verbal handoffs).
 
-**What this change enables:** Staff can view occupancy trends and revenue statistics, configure a single daily rate, and generate invoices for customers at check-out.
+**What this change enables:** Drivers can see upcoming arrivals/departures for their shift context, confirm and update reservation details at arrival, respond to pickup calls with the right vehicle info, complete departures with notes and payment/dopłata, and view live parking occupancy — all from mobile-optimized screens.
+
+**Deferred:** Shift management module (assigning drivers to shifts, shift-scoped views) — planned for a later phase.
 
 ## User & Persona
 
-**Primary persona:** Parking lot management staff member — handles reservations, daily parking operations, and customer billing. Single role, same person uses all modules.
+**Primary persona:** Airport parking driver — operates on tablet or smartphone during shifts. Confirms customer arrivals on the lot, drives to the airport for passenger pickup after phone notification, completes departures and collects payment. Does not need access to full staff administration (invoicing dashboard, statistics, reservation admin beyond their operational tasks).
 
 ## Access Control
 
-No access control changes — current model preserved.
+**Current model:** Supabase Auth with a single staff role. All authenticated users see all system functions (reservations, management panel, invoices, dashboard). RLS enforced at database level.
 
-Current: Supabase Auth, single staff role, RLS enforced at database level. All authenticated staff have access to all system functions. No role separation.
+**Planned changes:**
+- Add a **driver** role alongside existing staff.
+- Drivers authenticate via the same Supabase Auth flow but are routed to the driver module only.
+- Drivers cannot access: invoice generation, statistics dashboard, full reservation administration, or staff management panel.
+- Staff role preserved unchanged — existing staff users retain full access.
 
-This change adds statistics and invoicing under the same access model: any logged-in staff member can view statistics and create invoices.
-
-## Functional Requirements
-
-### Statistics
-
-- FR-001: Staff can filter statistics by preset period (last 7 days, last month, this year). Priority: must-have. Change: new
-  > Socrates: Counter-argument considered: "free date picker adds complexity — presets cover 90% of use cases." Resolution: changed to presets for v1; custom range deferred to v2.
-
-- FR-002: Staff can view parking occupancy (%) for the selected period. Priority: must-have. Change: new
-  > Socrates: Counter-argument considered: "occupancy without defined total capacity is meaningless." Resolution: added FR-015 (capacity configuration) as prerequisite.
-
-- FR-003: Staff can view reservation and cancellation counts with trend vs previous period. Priority: must-have. Change: new
-  > Socrates: Counter-argument considered: "count without context is a number without meaning." Resolution: FR updated to include trend % vs equivalent previous period.
-
-- FR-004: Staff can view revenue totals for the selected period. Priority: must-have. Change: new
-  > Socrates: No counter-argument — FR stands as written. Staff understands historical data before pricing config will show as 0.
-
-- FR-005: Staff can view arrival and departure statistics for the selected period. Priority: must-have. Change: new
-  > Socrates: No counter-argument — FR stands as written. Trend over a period differs from the existing day-view.
-
-### Invoicing
-
-- FR-007: Staff can configure the daily parking rate (single configurable rate). Priority: must-have. Change: new
-  > Socrates: No counter-argument — FR stands as written.
-
-- FR-008: Staff can generate an invoice directly from a completed reservation's detail view. Priority: must-have. Change: new
-  > Socrates: Counter-argument considered: "separate search module is a redundant step — invoice is always tied to a reservation." Resolution: invoice action moved to reservation detail view; no separate invoicing search module.
-
-- FR-009: Staff can view a generated invoice in the browser for a selected reservation. Priority: must-have. Change: new
-  > Socrates: Counter-argument considered: "CSS print styles require precision and are hard to get right." Resolution: accepted as v1 compromise; PDF generation deferred to v2.
-
-- FR-010: Staff can enter customer company billing data (name, NIP, address) when creating an invoice. Priority: must-have. Change: new
-  > Socrates: No counter-argument — no NIP format validation in v1; staff is responsible for data accuracy.
-
-- FR-011: Staff can print an invoice from the browser. Priority: must-have. Change: new
-  > Socrates: No counter-argument — FR stands as written.
-
-### Configuration
-
-- FR-015: Staff can configure total parking capacity (number of spots). Priority: must-have. Change: new
-  [Added as resolution to FR-002 Socrates challenge — required for occupancy % to be meaningful.]
-
-### Preserved behavior
-
-- FR-012: Staff can create, edit, and cancel reservations. Priority: must-have. Change: preserved
-- FR-013: External systems can create reservations via POST /reservations. Priority: must-have. Change: preserved
-- FR-014: System sends email confirmation upon reservation creation. Priority: must-have. Change: preserved
-
-## Non-Goals
-
-- **No PDF invoice generation in v1** — invoices rendered in browser for printing only. PDF deferred to v2. (User selected.)
-- **No pricing by spot type or season** — v1 has a single configurable daily rate. Multi-tier pricing deferred to v2. (Decided in Phase 3 scope-down.)
-- **No invoice history / archive** — invoices are generated on-demand from the reservation detail view; no persistent invoice list. (Follows from FR-008 design decision.)
-- **No statistics CSV export** — statistics visible on-screen only in v1. Export deferred to v2. (Decided in Socrates FR-006.)
-- **No custom date range in statistics** — preset periods only (last 7 days, last month, this year). Custom range deferred to v2. (Decided in Socrates FR-001.)
-- **No NIP validation** — format validation not implemented in v1; staff is responsible for data accuracy. (Decided in Socrates FR-010.)
-
-## User Stories
-
-### US-01: Staff generates an invoice for a completed stay
-
-- **Given** a completed reservation/stay exists in the system AND the daily rate is configured
-- **When** staff opens the reservations module, searches for the completed stay, enters customer company billing data (name, NIP, address), and confirms
-- **Then** the system generates an invoice ready to view in the browser and print
-
-#### Acceptance Criteria
-- Invoice displays: parking company data (seller), customer company data (buyer), stay dates, number of days, daily rate, total amount
-- Staff can print directly from the browser view
-- Invoice can only be generated for completed reservations
-
-## Business Logic
-
-System oblicza należną kwotę na podstawie skonfigurowanej stawki dobowej i liczby pełnych dób wynikających z dat rezerwacji.
-
-**Inputs (user-facing):** data zameldowania i wymeldowania z rezerwacji (liczba pełnych dób), skonfigurowana stawka dobowa.
-
-**Output:** łączna kwota brutto wyświetlana na wygenerowanej fakturze.
-
-**User encounter:** kiedy staff inicjuje wystawienie faktury z poziomu zakończonej rezerwacji, system automatycznie oblicza i wyświetla kwotę; staff weryfikuje dane firmy nabywcy i potwierdza przed wydrukiem.
-
-## Non-Functional Requirements
-
-- Statistics queries return results within 3 seconds for any preset period, even when spanning a full year of data.
-- Existing operational views (reservations list, check-in/out) must not degrade in response time after this change ships.
-- Invoice browser layout must be print-legible: correct margins, readable font sizes, no clipped elements across all major desktop browsers.
-
-## Constraints & Preserved Behavior
-
-- **Historical data:** reservations created before pricing configuration exists have no price — displayed as 0 or '-' in revenue statistics. No backfill required.
-- **External API compatibility:** the `POST /reservations` endpoint contract must not change. Any new price-related fields added to the reservation model must be optional/nullable to preserve backward compatibility.
-- **Reservation operations:** create, edit, cancel, check-in, check-out flows must not change.
-- **Email notifications:** automated confirmation emails on reservation creation must continue working.
+**Smallest useful access model:** Two roles — `staff` (full access, unchanged) and `driver` (driver module only). No additional role granularity in v1.
 
 ## Success Criteria
 
 ### Primary
-- Staff can open the Statistics module, select a date range, and see all four data dimensions: occupancy, reservation/cancellation counts, revenue, and arrival/departure stats.
-- Staff can open the Invoicing module, search for a completed reservation/stay, view the invoice in the browser, and print it.
+
+Driver can complete a full operational cycle on mobile without using the staff panel:
+
+1. Log in on tablet/smartphone → land on driver module (not staff panel)
+2. See upcoming arrivals and departures list
+3. At customer arrival: confirm arrival, adjust parking duration if changed, record flight direction, passenger count, parking sector, and paid-at-arrival status
+4. After phone notification for airport pickup: view arrival card with surname, registration, passenger count, flight direction → drive to airport
+5. After returning customer: mark departure, add notes, collect payment or dopłata (e.g. extended stay vs. original return date)
+6. At any time: view current lot occupancy — list of vehicles on the parking lot
 
 ### Secondary
-- Export statistics data to CSV.
-- Sequential invoice numbering (e.g. FV/2026/001) — nice-to-have for v1.
+
+- Staff can continue using reservation creation, dashboard, and invoice module unchanged while drivers use the new module in parallel.
 
 ### Guardrails
-- Reservation creation, editing, and cancellation must work without change.
-- External `POST /reservations` API endpoint must remain backward compatible.
-- Existing page load times must not degrade — statistics queries must not slow down operational views.
-- Email notifications on reservation creation must continue working.
 
-### Timeline
-- Scoped v1: ~3–4 weeks after-hours work.
-- v2 deferred: PDF download, pricing by spot type/season.
+- Reservation creation flow for staff must not break.
+- Dashboard and invoice module must remain functional and consistent with driver-recorded payment data.
+- External reservation API and email notifications (if present) must continue working.
+- Driver role cannot access staff-only modules (invoices, statistics, full admin).
+- Mobile views must be usable on tablet and smartphone screen sizes.
 
+## Functional Requirements
+
+### Authentication & access
+
+- FR-001: Driver can log in and access only the driver module. Priority: must-have. Change: new
+  > Socrates: Counter-argument considered: "same login with different UI routing might suffice without a new role." Resolution: kept driver role — module-only access boundary (no invoices/stats/admin) requires RBAC, not just UI routing.
+- FR-002: Staff can continue using all existing modules unchanged. Priority: must-have. Change: preserved
+  > Socrates: No counter-argument; FR stands as written.
+
+### Arrivals
+
+- FR-003: Driver can view a list of upcoming arrivals. Priority: must-have. Change: new
+  > Socrates: Counter-argument considered: "staff already has an arrivals list — duplication." Resolution: kept — driver list is a mobile field-ops view for in-shift actions, not staff admin duplication.
+- FR-004: Driver can confirm customer arrival. Priority: must-have. Change: new
+  > Socrates: No counter-argument; FR stands as written.
+- FR-005: Driver can update parking duration at arrival if it changed. Priority: must-have. Change: modified
+  > Socrates: No counter-argument; FR stands as written.
+- FR-006: Driver can record flight direction at arrival. Priority: must-have. Change: new
+  > Socrates: No counter-argument; FR stands as written.
+- FR-007: Driver can record passenger count at arrival. Priority: must-have. Change: modified
+  > Socrates: No counter-argument; FR stands as written.
+- FR-008: Driver can record parking sector at arrival. Priority: must-have. Change: new
+  > Socrates: No counter-argument; FR stands as written.
+- FR-009: Driver can mark paid-at-arrival status on the reservation. Priority: must-have. Change: modified
+  > Socrates: No counter-argument; FR stands as written.
+
+### Departures & airport pickup
+
+- FR-010: Driver can view a list of upcoming departures. Priority: must-have. Change: new
+  > Socrates: No counter-argument; FR stands as written.
+- FR-011: Driver can view an arrival/departure card with surname, registration, passenger count, and flight direction for airport pickup. Priority: must-have. Change: new
+  > Socrates: No counter-argument; FR stands as written.
+- FR-012: Driver can mark departure complete after returning the customer. Priority: must-have. Change: modified
+  > Socrates: No counter-argument; FR stands as written.
+- FR-013: Driver can add notes on departure. Priority: must-have. Change: modified
+  > Socrates: No counter-argument; FR stands as written.
+- FR-014: Driver can record payment at departure. Priority: must-have. Change: modified
+  > Socrates: No counter-argument; FR stands as written.
+- FR-015: Driver can record dopłata when actual return differs from planned (extended stay). Priority: must-have. Change: modified
+  > Socrates: No counter-argument; FR stands as written.
+
+### Lot occupancy
+
+- FR-016: Driver can view current lot occupancy with a list of vehicles on the parking lot. Priority: must-have. Change: new
+  > Socrates: No counter-argument; FR stands as written.
+
+### Mobile UX
+
+- FR-017: Driver module views are optimized for tablet and smartphone use. Priority: must-have. Change: new
+  > Socrates: No counter-argument; FR stands as written.
+
+### Preserved staff capabilities
+
+- FR-018: Staff can create reservations. Priority: must-have. Change: preserved
+  > Socrates: Counter-argument considered: "driver should also create ad-hoc reservations in the field." Resolution: v1 preserves staff-only creation; ad-hoc driver reservations deferred — see Open Questions.
+- FR-019: Staff can use the dashboard. Priority: must-have. Change: preserved
+  > Socrates: No counter-argument; FR stands as written.
+- FR-020: Staff can generate invoices. Priority: must-have. Change: preserved
+  > Socrates: No counter-argument; FR stands as written.
+
+## User Stories
+
+### US-01: Driver confirms customer arrival at parking lot
+
+- **Given** a logged-in driver with an upcoming arrival reservation visible on the arrivals list
+- **When** the customer arrives on the parking lot and the driver opens the arrival card
+- **Then** the driver can confirm the arrival and update parking duration (if changed), flight direction, passenger count, parking sector, and paid-at-arrival status
+
+#### Acceptance Criteria
+
+- Confirmed arrival updates reservation state visible to staff in the existing panel
+- All fields editable on a single mobile-friendly arrival card
+- Paid-at-arrival flag is recorded and visible on the reservation for staff/invoice context
+- Driver cannot access staff-only modules after confirming arrival
+
+## Business Logic
+
+**One-sentence rule:** ParkTrack drives each airport parking reservation through an explicit operational workflow — expected → on lot → airport pickup → completed — with driver field actions updating the same reservation record that staff and invoicing rely on.
+
+**Supporting detail:**
+- **Inputs:** reservation details (customer, vehicle, planned dates), flight direction, passenger count, parking sector, payment events (at arrival, at departure, dopłata for extended stay), driver notes.
+- **Output:** reservation state transitions visible to both driver (mobile module) and staff (existing panel); payment flags flow through to invoice context without duplicate entry.
+- **User encounter:** Driver sees state-appropriate actions on mobile cards (confirm arrival while expected, pickup card after phone notification, departure + payment when customer returns). Staff sees the updated state in existing views.
+
+**Change classification:** Adds a new domain rule — driver field operations participate in the reservation workflow alongside staff. Existing staff-only transitions are extended, not replaced.
+
+## Non-Functional Requirements
+
+- Driver module remains fully usable on tablet and smartphone screen sizes without requiring zoom or horizontal pan for core operational tasks (arrival confirm, pickup card, departure, lot list).
+- Driver-recorded state and payment changes appear in staff views without manual re-entry (single source of truth).
+
+## Constraints & Preserved Behavior
+
+**Must preserve:**
+- Reservation creation flow for staff
+- Dashboard module
+- Invoice generation module
+- Same reservation and payment data store — no duplicate records for driver vs staff actions
+
+**Integration constraints:**
+- Driver and staff operate on the same reservation entities; changes by either role must be consistent for invoicing.
+
+**Backward compatibility:**
+- Existing staff users and workflows continue unchanged; driver module is additive.
+
+**Deferred (later phases):**
+- Shift management module (shift-scoped arrival/departure lists)
+- Ad-hoc reservation creation by driver in the field (raised in Socrates FR-018)
+- Automated flight delay monitoring
+
+## Non-Goals
+
+- **Shift management module in v1** — driver sees upcoming arrivals/departures without shift assignment/scoping; shift module is a later phase.
+
+## Open Questions
+
+- Should drivers be able to create ad-hoc reservations in the field? (Raised in Socrates FR-018; deferred from v1.)
+
+## Quality cross-check
+
+All required elements present at shape completion (2026-09-01):
+
+- Access Control: present — driver role with module-scoped access
+- Business Logic: present — workflow state rule (expected → on lot → pickup → completed)
+- Project artifacts: present — shape-notes.md with valid checkpoint
+- Timeline-cost ack: present — 3-week delivery_weeks within default target
+- Non-Goals: present — shift module deferred from v1
+- Preserved behavior: present — Constraints & Preserved Behavior section names staff flows and shared data store
