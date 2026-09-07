@@ -181,18 +181,18 @@ a manual verification item — the CI lint step passing green is the gate.
 
 #### Manual
 
-- [ ] 1.3 PR shows the `ci` workflow in the Checks tab on GitHub
-- [ ] 1.4 All three CI steps (tests, lint, build) show green in the Actions run log
+- [x] 1.3 PR shows the `ci` workflow in the Checks tab on GitHub — 6fd44e8
+- [x] 1.4 All three CI steps (tests, lint, build) show green in the Actions run log — 6fd44e8
 
 ### Phase 2: Pre-push test gate
 
 #### Automated
 
-- [x] 2.1 File exists: `test -f .husky/pre-push`
-- [x] 2.2 File is executable: `test -x .husky/pre-push`
-- [x] 2.3 Tests pass: `npm run test`
+- [x] 2.1 File exists: `test -f .husky/pre-push` — 50a88e8
+- [x] 2.2 File is executable: `test -x .husky/pre-push` — 50a88e8
+- [x] 2.3 Tests pass: `npm run test` — 50a88e8
 
 #### Manual
 
-- [ ] 2.4 `git push` shows test output before push completes
-- [ ] 2.5 Broken test blocks push; restored test allows push
+- [x] 2.4 `git push` shows test output before push completes — 50a88e8
+- [x] 2.5 Broken test blocks push; restored test allows push — 50a88e8

@@ -1,0 +1,23 @@
+{
+  "name": "@parktrack/code-reviewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local AI code-review agent (M5L2) — Vercel AI SDK + OpenRouter",
+  "scripts": {
+    "review": "tsx src/index.ts",
+    "review:sample": "tsx src/index.ts sample-1",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@openrouter/ai-sdk-provider": "^3.0.0",
+    "ai": "^7.0.93",
+    "dotenv": "^17.4.2",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}

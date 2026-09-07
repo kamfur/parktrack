@@ -1,10 +1,10 @@
 ---
 change_id: testing-quality-gates
 title: Testing quality gates
-status: implementing
+status: archived
 created: 2026-09-03
 updated: 2026-09-03
-archived_at: null
+archived_at: 2026-09-03T09:05:44Z
 ---
 
 ## Notes
