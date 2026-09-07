@@ -1,0 +1,114 @@
+name: "ParkTrack AI Code Review"
+description: "Run @parktrack/code-reviewer on a PR diff, comment, and label"
+author: "parktrack"
+
+inputs:
+  openrouter-api-key:
+    description: OpenRouter API key
+    required: true
+  github-token:
+    description: Token with pull-requests:write
+    required: true
+  pr-number:
+    description: Pull request number
+    required: true
+  pr-title:
+    description: Pull request title
+    required: true
+  pr-body:
+    description: Pull request body
+    required: false
+    default: ""
+  diff-path:
+    description: Path to file containing the git diff
+    required: true
+  fail-on-fail:
+    description: Fail the job when verdict is fail (merge gate)
+    required: false
+    default: "true"
+  model:
+    description: OpenRouter model id
+    required: false
+    default: "google/gemini-2.5-flash"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+        cache: npm
+        cache-dependency-path: packages/code-reviewer/package-lock.json
+
+    - name: Install reviewer deps
+      shell: bash
+      working-directory: packages/code-reviewer
+      run: npm ci
+
+    - name: Run AI review
+      id: review
+      shell: bash
+      working-directory: packages/code-reviewer
+      env:
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        OPENROUTER_MODEL: ${{ inputs.model }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        PR_BODY: ${{ inputs.pr-body }}
+        REVIEW_JSON_OUT: ${{ github.workspace }}/ai-review.json
+        REVIEW_MD_OUT: ${{ github.workspace }}/ai-review.md
+        REVIEW_FAIL_ON_FAIL: "0"
+      run: |
+        set -euo pipefail
+        npm run review < "${{ inputs.diff-path }}"
+        echo "verdict=$(node -e "console.log(JSON.parse(require('fs').readFileSync('${{ github.workspace }}/ai-review.json','utf8')).verdict)")" >> "$GITHUB_OUTPUT"
+
+    - name: Ensure labels exist
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        gh label create "ai-cr:passed" --color "0E8A16" --description "AI code review passed" --force 2>/dev/null || true
+        gh label create "ai-cr:failed" --color "D73A4A" --description "AI code review failed" --force 2>/dev/null || true
+        gh label create "ai-cr:review" --color "FBCA04" --description "Re-run AI code review" --force 2>/dev/null || true
+
+    - name: Comment on PR
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        gh pr comment "${{ inputs.pr-number }}" --body-file "${{ github.workspace }}/ai-review.md"
+
+    - name: Apply verdict labels
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        VERDICT: ${{ steps.review.outputs.verdict }}
+      run: |
+        if [ "$VERDICT" = "pass" ]; then
+          gh pr edit "${{ inputs.pr-number }}" --add-label "ai-cr:passed" --remove-label "ai-cr:failed" || true
+        else
+          gh pr edit "${{ inputs.pr-number }}" --add-label "ai-cr:failed" --remove-label "ai-cr:passed" || true
+        fi
+        # Consume retry label so a single labeled event doesn't loop forever
+        gh pr edit "${{ inputs.pr-number }}" --remove-label "ai-cr:review" || true
+
+    - name: Upload review artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-code-review
+        path: |
+          ai-review.json
+          ai-review.md
+
+    - name: Enforce merge gate
+      if: ${{ inputs.fail-on-fail == 'true' }}
+      shell: bash
+      env:
+        VERDICT: ${{ steps.review.outputs.verdict }}
+      run: |
+        if [ "$VERDICT" = "fail" ]; then
+          echo "::error::AI code review verdict is fail — see PR comment."
+          exit 1
+        fi
+        echo "AI code review passed."
