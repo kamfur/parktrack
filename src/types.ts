@@ -1,4 +1,8 @@
 import type { Tables, TablesInsert, TablesUpdate, Database } from "./db/database.types";
+import type { QuickReservationFormData, FullReservationFormData } from "./lib/schemas/reservation.schema";
+import type { AppRole } from "./lib/auth/resolve-app-role";
+
+export type { QuickReservationFormData, FullReservationFormData, AppRole };
 
 // ############################################################################
 //
@@ -43,20 +47,25 @@ export interface CreateExternalReservationResponseDto {
  * It selects a subset of fields from the database insert type that are
  * expected from the client, as other fields like `created_by` are set server-side.
  */
-export type CreateReservationCommand = Pick<
-  TablesInsert<"reservations">,
-  | "last_name"
-  | "planned_check_in"
-  | "planned_check_out"
-  | "source"
-  | "total_cost"
-  | "email"
-  | "first_name"
-  | "phone"
-  | "flight_direction"
-  | "license_plate"
-  | "notes"
->;
+export type CreateReservationCommand = Omit<
+  Pick<
+    TablesInsert<"reservations">,
+    | "last_name"
+    | "planned_check_in"
+    | "planned_check_out"
+    | "source"
+    | "email"
+    | "first_name"
+    | "phone"
+    | "flight_direction"
+    | "license_plate"
+    | "notes"
+  >,
+  never
+> & {
+  /** Optional — server calculates when omitted */
+  total_cost?: number;
+};
 
 /**
  * Command model for updating an existing reservation.
@@ -345,30 +354,9 @@ export interface ReservationCardViewModel {
 // ############################################################################
 //
 // NEW RESERVATION MODAL TYPES
+// (QuickReservationFormData / FullReservationFormData — re-exported at top from Zod schemas)
 //
 // ############################################################################
-
-/**
- * ViewModel dla formularza Quick Mode
- */
-export interface QuickReservationFormData {
-  lastName: string;
-  checkInDate: Date;
-  checkOutDate: Date;
-}
-
-/**
- * ViewModel dla formularza Full Mode
- * Rozszerza QuickReservationFormData o dodatkowe pola
- */
-export interface FullReservationFormData extends QuickReservationFormData {
-  firstName: string;
-  email: string;
-  phone: string;
-  licensePlate: string;
-  flightDirection: "departure" | "arrival" | null;
-  notes: string;
-}
 
 /**
  * Props dla komponentu NewReservationModal
@@ -733,6 +721,7 @@ export interface ActionFooterProps {
 export interface AuthUserDTO {
   id: string;
   email: string;
+  role: AppRole;
 }
 
 export interface LoginCommand {
