@@ -85,6 +85,17 @@ describe("isStaffOnlyPath", () => {
   it("allows driver surfaces", () => {
     expect(isStaffOnlyPath("/kierowca")).toBe(false);
     expect(isStaffOnlyPath("/api/driver/arrivals")).toBe(false);
+    expect(isStaffOnlyPath("/api/driver/reservations/abc/arrival")).toBe(false);
+  });
+
+  it("marks remaining staff APIs and pages", () => {
+    expect(isStaffOnlyPath("/api/settings")).toBe(true);
+    expect(isStaffOnlyPath("/api/availability")).toBe(true);
+    expect(isStaffOnlyPath("/api/calculate-cost")).toBe(true);
+    expect(isStaffOnlyPath("/api/rpc/get_todays_arrivals")).toBe(true);
+    expect(isStaffOnlyPath("/api/reservations/some-id")).toBe(true);
+    expect(isStaffOnlyPath("/faktury")).toBe(true);
+    expect(isStaffOnlyPath("/rezerwacje/abc")).toBe(true);
   });
 });
 
@@ -148,6 +159,24 @@ describe("authMiddleware", () => {
     const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
     const res = (await authMiddleware(makeCtx("/api/stats", user), next)) as Response;
     expect(res.status).toBe(403);
+  });
+
+  it("returns 403 for driver staff APIs (invoices, settings, reservations)", async () => {
+    const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
+    for (const path of ["/api/invoices", "/api/settings", "/api/reservations"]) {
+      const res = (await authMiddleware(makeCtx(path, user), next)) as Response;
+      expect(res.status, path).toBe(403);
+      expect(await res.json()).toEqual({ error: "Forbidden" });
+    }
+  });
+
+  it("redirects driver from /ustawienia and /faktury to /kierowca", async () => {
+    const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
+    for (const path of ["/ustawienia", "/faktury", "/rezerwacje"]) {
+      const res = (await authMiddleware(makeCtx(path, user), next)) as Response;
+      expect(res.status, path).toBe(302);
+      expect(res.headers.get("Location")).toBe(DRIVER_HOME);
+    }
   });
 
   it("allows driver GET /api/driver/arrivals", async () => {

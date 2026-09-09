@@ -23,6 +23,7 @@ Run one file: `npm run test -- src/pages/api/settings.test.ts`.
 - Prefix: `/api/driver/*` — arrivals, departures, occupancy, reservation arrival/departure PATCH.
 - Allowed roles: `driver` and `staff`. Staff-only APIs remain blocked for drivers in `authMiddleware`.
 - List window: overdue + calendar today (Warsaw) — not staff `get_todays_*`.
+- RLS defense-in-depth: migration `20260909140000_harden_rls_by_app_role.sql` — drivers cannot write invoices/settings; reservation UPDATEs constrained by status + column trigger.
 
 ## Tripwires
 

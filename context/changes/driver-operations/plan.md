@@ -342,7 +342,7 @@ List endpoints should stay cheap (indexed filters on `status` + planned timestam
 
 #### Automated
 
-- [x] 3.1 test + typecheck + lint pass with driver UI added
+- [x] 3.1 test + typecheck + lint pass with driver UI added — 623fc06
 
 #### Manual
 
@@ -353,8 +353,8 @@ List endpoints should stay cheap (indexed filters on `status` + planned timestam
 
 #### Automated
 
-- [ ] 4.1 New auth/list regression tests green
-- [ ] 4.2 test + typecheck + lint pass
+- [x] 4.1 New auth/list regression tests green
+- [x] 4.2 test + typecheck + lint pass
 
 #### Manual
 

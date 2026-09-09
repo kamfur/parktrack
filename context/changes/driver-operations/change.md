@@ -24,4 +24,5 @@ Plan decisions (2026-09-08):
 
 Phase 1 landed: 7264474 (2026-09-09)
 Phase 2 landed: 3a7dedc (2026-09-09)
+Phase 3 landed: 623fc06 (2026-09-09)
 

@@ -40,6 +40,7 @@ CI (`.github/workflows/ci.yml`): test → lint → build on PR/push to `main`.
 - Roles: `staff` (full access, unchanged) and `driver` (driver module only — no invoices, statistics, or full reservation admin). Role comes from Supabase Auth `app_metadata.role` (never `user_metadata`); missing role defaults to `staff`.
 - Drivers and staff share the same reservation/payment records — never duplicate entities for field ops.
 - Driver home path: `/kierowca`. Operating lists: overdue (any past day while still open) + calendar today — not staff `get_todays_*`.
+- RLS: JWT `app_metadata.role` — drivers SELECT reservations + operational UPDATE only; staff keep full table access; invoices/settings/payments are staff-only. Service role still bypasses RLS (external create, admin settings).
 - Driver-writable fields at arrival: confirm arrival, parking duration, flight direction, passenger count, sector, paid-at-arrival.
 - Driver-writable fields at departure: complete departure, notes, paid-at-departure, dopłata (`surcharge_amount`) when actual return differs from planned.
 - Shift management is out of scope for v1 — arrivals/departures lists are not shift-scoped yet.
