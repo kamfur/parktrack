@@ -328,21 +328,21 @@ List endpoints should stay cheap (indexed filters on `status` + planned timestam
 
 #### Automated
 
-- [x] 2.1 List window unit/integration tests (overdue + today; exclude tomorrow)
-- [x] 2.2 Schema tests for driver update fields
-- [x] 2.3 Auth middleware tests for driver vs staff
-- [x] 2.4 test + typecheck + lint pass
+- [x] 2.1 List window unit/integration tests (overdue + today; exclude tomorrow) — 3a7dedc
+- [x] 2.2 Schema tests for driver update fields — 3a7dedc
+- [x] 2.3 Auth middleware tests for driver vs staff — 3a7dedc
+- [x] 2.4 test + typecheck + lint pass — 3a7dedc
 
 #### Manual
 
-- [x] 2.5 Seeded list API verified as driver
-- [x] 2.6 Staff get_todays_* dashboard unchanged
+- [x] 2.5 Seeded list API verified as driver — 3a7dedc
+- [x] 2.6 Staff get_todays_* dashboard unchanged — 3a7dedc
 
 ### Phase 3: Mobile driver UI
 
 #### Automated
 
-- [ ] 3.1 test + typecheck + lint pass with driver UI added
+- [x] 3.1 test + typecheck + lint pass with driver UI added
 
 #### Manual
 

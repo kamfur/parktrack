@@ -23,4 +23,5 @@ Plan decisions (2026-09-08):
 - Driver home path: /kierowca
 
 Phase 1 landed: 7264474 (2026-09-09)
+Phase 2 landed: 3a7dedc (2026-09-09)
 
