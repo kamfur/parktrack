@@ -88,6 +88,12 @@ export const updateReservationSchema = z.object({
   status: z.enum(["pending", "confirmed", "in_progress", "completed", "cancelled"]).optional(),
   actual_check_in: z.string().datetime("Invalid actual check-in date format").optional(),
   actual_check_out: z.string().datetime("Invalid actual check-out date format").optional(),
+  passenger_count: z.number().int().min(0).max(99).nullable().optional(),
+  parking_sector: z.string().max(50).nullable().optional(),
+  paid_at_arrival: z.boolean().optional(),
+  paid_at_departure: z.boolean().optional(),
+  surcharge_amount: z.number().nonnegative().nullable().optional(),
+  is_paid: z.boolean().optional(),
 });
 
 export type UpdateReservationSchema = typeof updateReservationSchema;
@@ -140,6 +146,7 @@ export const quickReservationSchema = z
   );
 
 export type QuickReservationSchema = typeof quickReservationSchema;
+export type QuickReservationFormData = z.infer<typeof quickReservationSchema>;
 
 /**
  * Schemat walidacji dla Full Mode
@@ -195,3 +202,4 @@ export const fullReservationSchema = z
   );
 
 export type FullReservationSchema = typeof fullReservationSchema;
+export type FullReservationFormData = z.infer<typeof fullReservationSchema>;

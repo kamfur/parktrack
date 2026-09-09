@@ -316,27 +316,27 @@ List endpoints should stay cheap (indexed filters on `status` + planned timestam
 
 #### Automated
 
-- [x] 1.1 Migration applies and database types updated
-- [x] 1.2 Typecheck passes after role + schema wiring
-- [x] 1.3 Existing test suite still passes
+- [x] 1.1 Migration applies and database types updated — 7264474
+- [x] 1.2 Typecheck passes after role + schema wiring — 7264474
+- [x] 1.3 Existing test suite still passes — 7264474
 
 #### Manual
 
-- [x] 1.4 Driver role in app_metadata reflected on locals after login
+- [x] 1.4 Driver role in app_metadata reflected on locals after login — 7264474
 
 ### Phase 2: Driver APIs + route guards
 
 #### Automated
 
-- [ ] 2.1 List window unit/integration tests (overdue + today; exclude tomorrow)
-- [ ] 2.2 Schema tests for driver update fields
-- [ ] 2.3 Auth middleware tests for driver vs staff
-- [ ] 2.4 test + typecheck + lint pass
+- [x] 2.1 List window unit/integration tests (overdue + today; exclude tomorrow)
+- [x] 2.2 Schema tests for driver update fields
+- [x] 2.3 Auth middleware tests for driver vs staff
+- [x] 2.4 test + typecheck + lint pass
 
 #### Manual
 
-- [ ] 2.5 Seeded list API verified as driver
-- [ ] 2.6 Staff get_todays_* dashboard unchanged
+- [x] 2.5 Seeded list API verified as driver
+- [x] 2.6 Staff get_todays_* dashboard unchanged
 
 ### Phase 3: Mobile driver UI
 

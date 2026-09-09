@@ -3,7 +3,7 @@ change_id: driver-operations
 title: Mobile driver module for airport parking ops
 status: implementing
 created: 2026-09-08
-updated: 2026-09-08
+updated: 2026-09-09
 archived_at: null
 ---
 
@@ -21,4 +21,6 @@ Plan decisions (2026-09-08):
 - Airport pickup: UI only on in_progress (no new status)
 - Sector: free-text; role: app_metadata.role; staff dashboard cancel: separate change
 - Driver home path: /kierowca
+
+Phase 1 landed: 7264474 (2026-09-09)
 

@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isPublicPath, authMiddleware } from "@/middleware/auth";
-
-// ---------------------------------------------------------------------------
-// isPublicPath — auth protection policy contract
-// ---------------------------------------------------------------------------
+import { isPublicPath, isStaffOnlyPath, authMiddleware, DRIVER_HOME } from "@/middleware/auth";
 
 describe("isPublicPath", () => {
   describe("protected routes (must return false)", () => {
@@ -33,6 +29,10 @@ describe("isPublicPath", () => {
 
     it("protects /rezerwacje", () => {
       expect(isPublicPath("/rezerwacje")).toBe(false);
+    });
+
+    it("protects /kierowca", () => {
+      expect(isPublicPath("/kierowca")).toBe(false);
     });
   });
 
@@ -71,11 +71,24 @@ describe("isPublicPath", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// authMiddleware — handler branch logic
-// ---------------------------------------------------------------------------
+describe("isStaffOnlyPath", () => {
+  it("marks dashboard and staff modules", () => {
+    expect(isStaffOnlyPath("/")).toBe(true);
+    expect(isStaffOnlyPath("/ustawienia")).toBe(true);
+    expect(isStaffOnlyPath("/faktury/nowy")).toBe(true);
+    expect(isStaffOnlyPath("/rezerwacje")).toBe(true);
+    expect(isStaffOnlyPath("/api/stats")).toBe(true);
+    expect(isStaffOnlyPath("/api/invoices")).toBe(true);
+    expect(isStaffOnlyPath("/api/reservations")).toBe(true);
+  });
 
-function makeCtx(pathname: string, user?: { id: string; email: string }) {
+  it("allows driver surfaces", () => {
+    expect(isStaffOnlyPath("/kierowca")).toBe(false);
+    expect(isStaffOnlyPath("/api/driver/arrivals")).toBe(false);
+  });
+});
+
+function makeCtx(pathname: string, user?: { id: string; email: string; role: "staff" | "driver" }) {
   return {
     url: { pathname, search: "" },
     locals: { user },
@@ -104,17 +117,49 @@ describe("authMiddleware", () => {
     expect(res.headers.get("Location")).toMatch(/^\/login/);
   });
 
-  it("calls next() (200) for authenticated GET /faktury/nowy", async () => {
-    const user = { id: "user-1", email: "test@example.com" };
+  it("calls next() (200) for staff GET /faktury/nowy", async () => {
+    const user = { id: "user-1", email: "test@example.com", role: "staff" as const };
     const res = (await authMiddleware(makeCtx("/faktury/nowy", user), next)) as Response;
     expect(res.status).toBe(200);
   });
 
-  it("redirects authenticated user away from /login to /", async () => {
-    const user = { id: "user-1", email: "test@example.com" };
+  it("redirects staff away from /login to /", async () => {
+    const user = { id: "user-1", email: "test@example.com", role: "staff" as const };
     const res = (await authMiddleware(makeCtx("/login", user), next)) as Response;
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toBe("/");
+  });
+
+  it("redirects driver away from /login to /kierowca", async () => {
+    const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
+    const res = (await authMiddleware(makeCtx("/login", user), next)) as Response;
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe(DRIVER_HOME);
+  });
+
+  it("redirects driver from staff dashboard to /kierowca", async () => {
+    const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
+    const res = (await authMiddleware(makeCtx("/", user), next)) as Response;
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe(DRIVER_HOME);
+  });
+
+  it("returns 403 for driver GET /api/stats", async () => {
+    const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
+    const res = (await authMiddleware(makeCtx("/api/stats", user), next)) as Response;
+    expect(res.status).toBe(403);
+  });
+
+  it("allows driver GET /api/driver/arrivals", async () => {
+    const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
+    const res = (await authMiddleware(makeCtx("/api/driver/arrivals", user), next)) as Response;
+    expect(res.status).toBe(200);
+  });
+
+  it("allows driver GET /kierowca", async () => {
+    const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
+    const res = (await authMiddleware(makeCtx("/kierowca", user), next)) as Response;
+    expect(res.status).toBe(200);
   });
 
   it("calls next() (200) for unauthenticated GET /login (public page)", async () => {

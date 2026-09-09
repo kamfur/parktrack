@@ -1,0 +1,32 @@
+---
+export const prerender = false;
+
+const user = Astro.locals.user;
+const email = user?.email ?? "—";
+const role = user?.role ?? "—";
+---
+
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kierowca — ParkTrack</title>
+  </head>
+  <body class="min-h-screen bg-background p-4 text-foreground antialiased">
+    <main class="mx-auto max-w-lg">
+      <h1 class="text-2xl font-semibold">Moduł kierowcy</h1>
+      <p class="mt-2 text-sm opacity-80">
+        Zalogowany jako {email} ({role}). Pełne UI w Phase 3.
+      </p>
+      <ul class="mt-6 list-disc space-y-2 pl-5 text-sm">
+        <li>GET /api/driver/arrivals</li>
+        <li>GET /api/driver/departures</li>
+        <li>GET /api/driver/occupancy</li>
+      </ul>
+      <p class="mt-8">
+        <a class="underline" href="/login">Wyloguj / zaloguj ponownie</a>
+      </p>
+    </main>
+  </body>
+</html>
