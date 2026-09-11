@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutDashboard, CalendarDays, Settings, Menu, X, Car } from "lucide-react";
+import { LayoutDashboard, CalendarDays, Settings, Menu, X, Car, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
 import type { AuthUserDTO } from "@/types";
@@ -7,6 +7,7 @@ import type { AuthUserDTO } from "@/types";
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/rezerwacje", label: "Rezerwacje", icon: CalendarDays },
+  { href: "/kierowca", label: "Kierowca", icon: Truck },
   { href: "/ustawienia", label: "Ustawienia", icon: Settings },
 ];
 
