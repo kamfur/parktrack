@@ -16,13 +16,27 @@ function reservation(overrides: Partial<ReservationDto>): ReservationDto {
 }
 
 describe("buildMonthCounts", () => {
-  it("counts event days and planned-window occupancy in Warsaw", () => {
+  it("counts occupancy on both Warsaw days when a stay spans midnight, and arrival only on check-in day", () => {
     const rows = [reservation({})];
     const result = buildMonthCounts(rows, "2026-09-13T22:00:00Z", "2026-09-15T22:00:00Z");
 
     expect(result).toEqual([
       { date: "2026-09-14", arrivals: 1, departures: 0, occupancy: 1 },
       { date: "2026-09-15", arrivals: 0, departures: 1, occupancy: 1 },
+    ]);
+  });
+
+  it("keeps same-day stays on the check-in Warsaw day only", () => {
+    const rows = [
+      reservation({
+        planned_check_in: "2026-09-14T06:00:00+02:00",
+        planned_check_out: "2026-09-14T18:00:00+02:00",
+      }),
+    ];
+    const result = buildMonthCounts(rows, "2026-09-13T22:00:00Z", "2026-09-15T22:00:00Z");
+    expect(result).toEqual([
+      { date: "2026-09-14", arrivals: 1, departures: 1, occupancy: 1 },
+      { date: "2026-09-15", arrivals: 0, departures: 0, occupancy: 0 },
     ]);
   });
 

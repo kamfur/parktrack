@@ -9,7 +9,7 @@ import {
   type CalendarVisibility,
 } from "@/lib/calendar/view-model";
 import { warsawDateKey } from "@/lib/calendar/warsaw-time";
-import type { CalendarDriverDto, CalendarEventDto, DriverShiftDto } from "@/types";
+import type { CalendarDriverDto, CalendarEventDto, CalendarMonthDayDto, DriverShiftDto } from "@/types";
 
 async function readData<T>(response: Response, fallback: T): Promise<T> {
   if (!response.ok) {
@@ -26,6 +26,7 @@ export function useParkingCalendar() {
   const [visibility, setVisibility] = useState<CalendarVisibility>(DEFAULT_CALENDAR_VISIBILITY);
   const [events, setEvents] = useState<CalendarEventDto[]>([]);
   const [shifts, setShifts] = useState<DriverShiftDto[]>([]);
+  const [monthDays, setMonthDays] = useState<CalendarMonthDayDto[]>([]);
   const [drivers, setDrivers] = useState<CalendarDriverDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -36,10 +37,21 @@ export function useParkingCalendar() {
     try {
       setIsLoading(true);
       setError(null);
-      const params = new URLSearchParams({ from: range.from, to: range.to });
+      const params = new URLSearchParams({ from: range.from, to: range.to, view });
+
+      if (view === "month") {
+        const monthRes = await fetch(`/api/calendar/month?${params.toString()}`);
+        const nextDays = await readData<CalendarMonthDayDto[]>(monthRes, []);
+        if (!monthRes.ok && monthRes.status !== 503) throw new Error("Nie udało się pobrać podsumowania miesiąca");
+        setMonthDays(nextDays);
+        setEvents([]);
+        setShifts([]);
+        return;
+      }
+
       const [eventsRes, shiftsRes, driversRes] = await Promise.all([
-        fetch(`/api/calendar/events?${params.toString()}&view=${view}`),
-        fetch(`/api/shifts?${params.toString()}`),
+        fetch(`/api/calendar/events?${params.toString()}`),
+        fetch(`/api/shifts?${new URLSearchParams({ from: range.from, to: range.to }).toString()}`),
         fetch("/api/drivers"),
       ]);
 
@@ -55,6 +67,7 @@ export function useParkingCalendar() {
       setEvents(nextEvents);
       setShifts(nextShifts);
       setDrivers(nextDrivers);
+      setMonthDays([]);
     } catch (caught) {
       setError(caught instanceof Error ? caught : new Error("Nie udało się załadować kalendarza"));
     } finally {
@@ -81,8 +94,13 @@ export function useParkingCalendar() {
     goToday: () => setAnchorDate(warsawDateKey(new Date())),
     goPrev: () => setAnchorDate((current) => stepAnchorDate(view, current, -1)),
     goNext: () => setAnchorDate((current) => stepAnchorDate(view, current, 1)),
+    openDay: (dateKey: string) => {
+      setAnchorDate(dateKey);
+      setView("day");
+    },
     events: visibleEvents,
     shifts: visibleShifts,
+    monthDays,
     drivers,
     isLoading,
     error,

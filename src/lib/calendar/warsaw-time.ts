@@ -93,3 +93,15 @@ export function warsawTimeLabel(date: Date): string {
     hourCycle: "h23",
   }).format(date);
 }
+
+export function warsawMonthStart(dateKey: string): string {
+  return `${dateKey.slice(0, 7)}-01`;
+}
+
+export function addUtcMonths(dateKey: string, months: number): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const cursor = new Date(Date.UTC(year, month - 1 + months, 1));
+  const lastDay = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0)).getUTCDate();
+  const nextDay = Math.min(day, lastDay);
+  return `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}-${String(nextDay).padStart(2, "0")}`;
+}

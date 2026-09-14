@@ -1,14 +1,16 @@
 import type { CalendarEventDto, DriverShiftDto } from "../../types";
 import {
   addUtcDays,
+  addUtcMonths,
   warsawDateKey,
   warsawDayBounds,
   warsawHour,
   warsawHourBounds,
+  warsawMonthStart,
   warsawWeekStart,
 } from "./warsaw-time";
 
-export type CalendarViewMode = "day" | "week";
+export type CalendarViewMode = "day" | "week" | "month";
 
 export interface CalendarVisibility {
   arrivals: boolean;
@@ -34,17 +36,38 @@ export function visibleRange(view: CalendarViewMode, anchorDate: string): Calend
     return { from: bounds.start, to: bounds.end, dateKeys: [anchorDate] };
   }
 
-  const weekStart = warsawWeekStart(anchorDate);
-  const dateKeys = Array.from({ length: 7 }, (_, index) => addUtcDays(weekStart, index));
+  if (view === "week") {
+    const weekStart = warsawWeekStart(anchorDate);
+    const dateKeys = Array.from({ length: 7 }, (_, index) => addUtcDays(weekStart, index));
+    return {
+      from: warsawDayBounds(dateKeys[0]).start,
+      to: warsawDayBounds(addUtcDays(weekStart, 7)).start,
+      dateKeys,
+    };
+  }
+
+  const monthStart = warsawMonthStart(anchorDate);
+  const lastDay = addUtcDays(addUtcMonths(monthStart, 1), -1);
+  const gridStart = warsawWeekStart(monthStart);
+  const gridEnd = addUtcDays(warsawWeekStart(lastDay), 7);
+  const dateKeys: string[] = [];
+  for (let key = gridStart; key < gridEnd; key = addUtcDays(key, 1)) {
+    dateKeys.push(key);
+  }
   return {
-    from: warsawDayBounds(dateKeys[0]).start,
-    to: warsawDayBounds(addUtcDays(weekStart, 7)).start,
+    from: warsawDayBounds(gridStart).start,
+    to: warsawDayBounds(gridEnd).start,
     dateKeys,
   };
 }
 
 export function stepAnchorDate(view: CalendarViewMode, anchorDate: string, direction: -1 | 1): string {
+  if (view === "month") return addUtcMonths(anchorDate, direction);
   return addUtcDays(anchorDate, view === "day" ? direction : direction * 7);
+}
+
+export function isInAnchorMonth(dateKey: string, anchorDate: string): boolean {
+  return dateKey.slice(0, 7) === anchorDate.slice(0, 7);
 }
 
 export function filterVisibleEvents(events: CalendarEventDto[], visibility: CalendarVisibility): CalendarEventDto[] {
@@ -81,7 +104,15 @@ export function formatDayHeading(dateKey: string): string {
   }).format(new Date(`${dateKey}T12:00:00Z`));
 }
 
-export function formatRangeHeading(view: CalendarViewMode, dateKeys: string[]): string {
+export function formatRangeHeading(view: CalendarViewMode, dateKeys: string[], anchorDate = dateKeys[0]): string {
+  if (view === "month") {
+    return new Intl.DateTimeFormat("pl-PL", {
+      timeZone: "Europe/Warsaw",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(`${warsawMonthStart(anchorDate)}T12:00:00Z`));
+  }
+
   if (view === "day" || dateKeys.length === 1) {
     return new Intl.DateTimeFormat("pl-PL", {
       timeZone: "Europe/Warsaw",

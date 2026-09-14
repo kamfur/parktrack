@@ -320,8 +320,8 @@ Additive `driver_shifts` table; no backfill. Rollback = drop table + remove rout
 
 #### Automated
 
-- [x] 2.1 Component/hook tests for grouping events into Warsaw hours and applying visibility filters
-- [x] 2.2 Middleware tests still pass; npm run test, typecheck, lint pass
+- [x] 2.1 Component/hook tests for grouping events into Warsaw hours and applying visibility filters — 00df0e6
+- [x] 2.2 Middleware tests still pass; npm run test, typecheck, lint pass — 00df0e6
 
 #### Manual
 
@@ -333,8 +333,8 @@ Additive `driver_shifts` table; no backfill. Rollback = drop table + remove rout
 
 #### Automated
 
-- [ ] 3.1 Tests: reservation spanning midnight Warsaw increments occupancy on both days; arrival count only on check-in day
-- [ ] 3.2 npm run test, typecheck, lint pass
+- [x] 3.1 Tests: reservation spanning midnight Warsaw increments occupancy on both days; arrival count only on check-in day
+- [x] 3.2 npm run test, typecheck, lint pass
 
 #### Manual
 

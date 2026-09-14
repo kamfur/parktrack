@@ -56,12 +56,22 @@ describe("visibleRange", () => {
     expect(range.from).toBe("2026-09-14T00:00:00+02:00");
     expect(range.to).toBe("2026-09-21T00:00:00+02:00");
   });
+
+  it("pads the month grid from Monday before the 1st through Sunday after the last day", () => {
+    const range = visibleRange("month", "2026-09-16");
+    expect(range.dateKeys[0]).toBe("2026-08-31");
+    expect(range.dateKeys.at(-1)).toBe("2026-10-04");
+    expect(range.dateKeys).toHaveLength(35);
+    expect(range.from).toBe("2026-08-31T00:00:00+02:00");
+    expect(range.to).toBe("2026-10-05T00:00:00+02:00");
+  });
 });
 
 describe("stepAnchorDate", () => {
-  it("moves one day or one week", () => {
+  it("moves one day, week, or month", () => {
     expect(stepAnchorDate("day", "2026-09-14", 1)).toBe("2026-09-15");
     expect(stepAnchorDate("week", "2026-09-14", -1)).toBe("2026-09-07");
+    expect(stepAnchorDate("month", "2026-09-16", 1)).toBe("2026-10-16");
   });
 });
 

@@ -7,6 +7,7 @@ import { formatRangeHeading, type CalendarViewMode, type CalendarVisibility } fr
 interface CalendarToolbarProps {
   view: CalendarViewMode;
   dateKeys: string[];
+  anchorDate: string;
   visibility: CalendarVisibility;
   onViewChange: (view: CalendarViewMode) => void;
   onToggleLayer: (layer: keyof CalendarVisibility) => void;
@@ -18,6 +19,7 @@ interface CalendarToolbarProps {
 const VIEWS: { id: CalendarViewMode; label: string }[] = [
   { id: "day", label: "Dzień" },
   { id: "week", label: "Tydzień" },
+  { id: "month", label: "Miesiąc" },
 ];
 
 const LAYERS: { id: keyof CalendarVisibility; label: string; swatch: string }[] = [
@@ -29,6 +31,7 @@ const LAYERS: { id: keyof CalendarVisibility; label: string; swatch: string }[] 
 export function CalendarToolbar({
   view,
   dateKeys,
+  anchorDate,
   visibility,
   onViewChange,
   onToggleLayer,
@@ -48,7 +51,7 @@ export function CalendarToolbar({
         <Button variant="outline" size="icon" onClick={onNext} aria-label="Następny zakres">
           <ChevronRight />
         </Button>
-        <h2 className="ml-1 text-lg font-semibold capitalize">{formatRangeHeading(view, dateKeys)}</h2>
+        <h2 className="ml-1 text-lg font-semibold capitalize">{formatRangeHeading(view, dateKeys, anchorDate)}</h2>
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
@@ -67,7 +70,7 @@ export function CalendarToolbar({
         </div>
 
         <div className="flex flex-wrap items-center gap-3" role="group" aria-label="Widoczność warstw">
-          {LAYERS.map(({ id, label, swatch }) => (
+          {LAYERS.filter((layer) => view !== "month" || layer.id !== "shifts").map(({ id, label, swatch }) => (
             <Label key={id} htmlFor={`calendar-layer-${id}`} className="cursor-pointer font-normal">
               <Checkbox
                 id={`calendar-layer-${id}`}

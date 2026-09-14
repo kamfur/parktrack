@@ -1,5 +1,6 @@
 import { CalendarClock } from "lucide-react";
 import { CalendarGrid } from "./CalendarGrid";
+import { CalendarMonthGrid } from "./CalendarMonthGrid";
 import { CalendarToolbar } from "./CalendarToolbar";
 import { ErrorState } from "@/components/common/ErrorState";
 import { useParkingCalendar } from "@/hooks/useParkingCalendar";
@@ -17,13 +18,15 @@ export function CalendarView() {
     );
   }
 
-  const isEmpty = !calendar.isLoading && calendar.events.length === 0 && calendar.shifts.length === 0;
+  const isEmpty =
+    calendar.view !== "month" && !calendar.isLoading && calendar.events.length === 0 && calendar.shifts.length === 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <CalendarToolbar
         view={calendar.view}
         dateKeys={calendar.dateKeys}
+        anchorDate={calendar.anchorDate}
         visibility={calendar.visibility}
         onViewChange={calendar.setView}
         onToggleLayer={calendar.toggleLayer}
@@ -44,13 +47,24 @@ export function CalendarView() {
         </div>
       ) : null}
 
-      <CalendarGrid
-        dateKeys={calendar.dateKeys}
-        events={calendar.events}
-        shifts={calendar.shifts}
-        drivers={calendar.drivers}
-        isLoading={calendar.isLoading}
-      />
+      {calendar.view === "month" ? (
+        <CalendarMonthGrid
+          dateKeys={calendar.dateKeys}
+          anchorDate={calendar.anchorDate}
+          days={calendar.monthDays}
+          visibility={calendar.visibility}
+          isLoading={calendar.isLoading}
+          onSelectDay={calendar.openDay}
+        />
+      ) : (
+        <CalendarGrid
+          dateKeys={calendar.dateKeys}
+          events={calendar.events}
+          shifts={calendar.shifts}
+          drivers={calendar.drivers}
+          isLoading={calendar.isLoading}
+        />
+      )}
     </div>
   );
 }

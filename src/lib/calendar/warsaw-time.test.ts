@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { dateKeysInRange, warsawDateKey, warsawDayBounds, warsawHour, warsawWeekStart } from "./warsaw-time";
+import {
+  addUtcMonths,
+  dateKeysInRange,
+  warsawDateKey,
+  warsawDayBounds,
+  warsawHour,
+  warsawMonthStart,
+  warsawWeekStart,
+} from "./warsaw-time";
 
 describe("Warsaw calendar helpers", () => {
   it("maps instants around Warsaw midnight to the correct day", () => {
@@ -31,5 +39,11 @@ describe("Warsaw calendar helpers", () => {
     expect(warsawWeekStart("2026-09-14")).toBe("2026-09-14");
     expect(warsawWeekStart("2026-09-16")).toBe("2026-09-14");
     expect(warsawWeekStart("2026-09-20")).toBe("2026-09-14");
+  });
+
+  it("finds the first day of the Warsaw month and steps by month", () => {
+    expect(warsawMonthStart("2026-09-16")).toBe("2026-09-01");
+    expect(addUtcMonths("2026-09-16", 1)).toBe("2026-10-16");
+    expect(addUtcMonths("2026-01-31", 1)).toBe("2026-02-28");
   });
 });
