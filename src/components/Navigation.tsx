@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutDashboard, CalendarDays, Settings, Menu, X, Car, Truck } from "lucide-react";
+import { LayoutDashboard, CalendarDays, FileText, Settings, Menu, X, Car, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
 import type { AuthUserDTO } from "@/types";
@@ -7,9 +7,15 @@ import type { AuthUserDTO } from "@/types";
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/rezerwacje", label: "Rezerwacje", icon: CalendarDays },
+  { href: "/faktury", label: "Faktury", icon: FileText, staffOnly: true },
   { href: "/kierowca", label: "Kierowca", icon: Truck },
   { href: "/ustawienia", label: "Ustawienia", icon: Settings },
 ];
+
+/** Kierowcy nie mają dostępu do faktur — pozycja znika z menu. */
+function getNavItems(user: AuthUserDTO | null) {
+  return navItems.filter((item) => !item.staffOnly || user?.role !== "driver");
+}
 
 function isActive(itemHref: string, currentPath: string) {
   if (itemHref === "/") return currentPath === "/";
@@ -32,7 +38,7 @@ function SidebarContent({
         <span className="font-semibold text-sidebar-foreground">ParkTrack</span>
       </div>
       <nav className="flex flex-col gap-1 p-3 flex-1">
-        {navItems.map(({ href, label, icon: Icon }) => (
+        {getNavItems(user).map(({ href, label, icon: Icon }) => (
           <a
             key={href}
             href={href}
@@ -102,7 +108,7 @@ export function Navigation({ currentPath, user }: { currentPath: string; user: A
               </button>
             </div>
             <nav className="flex flex-col gap-1 p-3 flex-1">
-              {navItems.map(({ href, label, icon: Icon }) => (
+              {getNavItems(user).map(({ href, label, icon: Icon }) => (
                 <a
                   key={href}
                   href={href}

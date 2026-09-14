@@ -773,6 +773,43 @@ export interface InvoiceDto {
   created_by: string;
 }
 
+/**
+ * Dozwolone kolumny do sortowania listy faktur
+ */
+export type InvoiceSortableColumn = "created_at" | "invoice_number" | "buyer_name" | "total_amount";
+
+/**
+ * Parametry zapytania o listę faktur
+ */
+export interface InvoicesQueryParams {
+  /** Wyszukiwanie po numerze faktury lub nabywcy */
+  search: string;
+  /** Kolumna sortowania */
+  sortBy: InvoiceSortableColumn;
+  /** Kierunek sortowania */
+  sortOrder: "asc" | "desc";
+  /** Numer strony (1-based) */
+  page: number;
+  /** Liczba wyników na stronę */
+  limit: number;
+}
+
+/**
+ * Odpowiedź API z listą faktur
+ */
+export interface InvoicesListResponse {
+  /** Lista faktur */
+  data: InvoiceDto[];
+  /** Całkowita liczba wyników (przed paginacją) */
+  total: number;
+  /** Numer strony */
+  page: number;
+  /** Liczba wyników na stronę */
+  limit: number;
+  /** Całkowita liczba stron */
+  totalPages: number;
+}
+
 export interface CreateInvoiceCommand {
   reservation_id: string;
   buyer_name: string;

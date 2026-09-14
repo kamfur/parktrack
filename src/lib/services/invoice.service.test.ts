@@ -139,6 +139,55 @@ describe("InvoiceService", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // list(): wyszukiwanie, sortowanie, paginacja
+  // ---------------------------------------------------------------------------
+
+  describe("list()", () => {
+    function makeListSupabase(result: { data: object[] | null; count: number | null; error: object | null }) {
+      const builder = {
+        select: vi.fn().mockReturnThis(),
+        or: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue(result),
+      };
+
+      return { supabase: { from: vi.fn().mockReturnValue(builder) }, builder };
+    }
+
+    const BASE_PARAMS = { search: "", sortBy: "created_at", sortOrder: "desc", page: 1, limit: 25 } as const;
+
+    it("applies sorting and the page range, returning the total row count", async () => {
+      const { supabase, builder } = makeListSupabase({ data: [{ id: "inv-1" }], count: 42, error: null });
+
+      const service = new InvoiceService(supabase as unknown as SupabaseClient);
+      const result = await service.list({ ...BASE_PARAMS, sortBy: "total_amount", sortOrder: "asc", page: 3 });
+
+      expect(builder.order).toHaveBeenCalledWith("total_amount", { ascending: true });
+      expect(builder.range).toHaveBeenCalledWith(50, 74);
+      expect(builder.or).not.toHaveBeenCalled();
+      expect(result).toEqual({ data: [{ id: "inv-1" }], total: 42 });
+    });
+
+    it("strips PostgREST filter characters from the search term", async () => {
+      const { supabase, builder } = makeListSupabase({ data: [], count: 0, error: null });
+
+      const service = new InvoiceService(supabase as unknown as SupabaseClient);
+      await service.list({ ...BASE_PARAMS, search: "Kowalski, (sp. z o.o.)" });
+
+      expect(builder.or).toHaveBeenCalledWith(
+        "invoice_number.ilike.%Kowalski sp. z o.o.%,buyer_name.ilike.%Kowalski sp. z o.o.%"
+      );
+    });
+
+    it("throws when the query fails", async () => {
+      const { supabase } = makeListSupabase({ data: null, count: null, error: { message: "boom" } });
+
+      const service = new InvoiceService(supabase as unknown as SupabaseClient);
+      await expect(service.list(BASE_PARAMS)).rejects.toThrow(/boom/);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // Risk #4: constraint violation surfaces
   // ---------------------------------------------------------------------------
 

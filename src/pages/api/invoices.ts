@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { z } from "zod";
-import { createInvoiceSchema } from "../../lib/schemas/invoice.schema";
+import { createInvoiceSchema, invoicesListQuerySchema } from "../../lib/schemas/invoice.schema";
+import type { InvoicesListResponse } from "../../types";
 import {
   InvoiceService,
   ReservationNotFoundError,
@@ -15,8 +16,51 @@ const uuidSchema = z.string().uuid();
 export const GET: APIRoute = async ({ url, locals }) => {
   const reservationId = url.searchParams.get("reservation_id");
 
-  if (!reservationId || !uuidSchema.safeParse(reservationId).success) {
-    return new Response(JSON.stringify({ error: "reservation_id query param is required and must be a valid UUID" }), {
+  // Bez reservation_id zwracamy stronicowaną listę faktur
+  if (reservationId === null) {
+    const parsedQuery = invoicesListQuerySchema.safeParse(Object.fromEntries(url.searchParams));
+
+    if (!parsedQuery.success) {
+      return new Response(JSON.stringify({ error: "Validation failed", details: parsedQuery.error.flatten() }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const { search, sort_by, sort_order, page, limit } = parsedQuery.data;
+
+    try {
+      const service = new InvoiceService(locals.supabase);
+      const { data, total } = await service.list({
+        search,
+        sortBy: sort_by,
+        sortOrder: sort_order,
+        page,
+        limit,
+      });
+
+      const response: InvoicesListResponse = {
+        data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unexpected error" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
+  if (!uuidSchema.safeParse(reservationId).success) {
+    return new Response(JSON.stringify({ error: "reservation_id query param must be a valid UUID" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });

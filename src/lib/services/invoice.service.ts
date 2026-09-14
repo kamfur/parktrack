@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { InvoiceDto, CreateInvoiceCommand } from "../../types";
+import type { InvoiceDto, CreateInvoiceCommand, InvoicesQueryParams } from "../../types";
+
+/** Znaki rozdzielające filtry PostgREST — usuwane z frazy wyszukiwania. */
+const POSTGREST_FILTER_CHARS = /[,()]/g;
 
 export class ReservationNotFoundError extends Error {
   constructor(id: string) {
@@ -34,6 +37,25 @@ export class InvoiceService {
 
     if (error) throw new Error(`Failed to fetch invoice: ${error.message}`);
     return data as InvoiceDto | null;
+  }
+
+  async list(params: InvoicesQueryParams): Promise<{ data: InvoiceDto[]; total: number }> {
+    let query = this.supabase.from("invoices").select("*", { count: "exact" });
+
+    const search = params.search.replace(POSTGREST_FILTER_CHARS, "").trim();
+    if (search) {
+      query = query.or(`invoice_number.ilike.%${search}%,buyer_name.ilike.%${search}%`);
+    }
+
+    query = query.order(params.sortBy, { ascending: params.sortOrder === "asc" });
+
+    const offset = (params.page - 1) * params.limit;
+    query = query.range(offset, offset + params.limit - 1);
+
+    const { data, error, count } = await query;
+
+    if (error) throw new Error(`Failed to fetch invoices: ${error.message}`);
+    return { data: (data ?? []) as InvoiceDto[], total: count ?? 0 };
   }
 
   async getById(id: string): Promise<InvoiceDto | null> {
