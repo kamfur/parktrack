@@ -308,8 +308,8 @@ Additive `driver_shifts` table; no backfill. Rollback = drop table + remove rout
 #### Automated
 
 - [ ] 1.1 New migration applies on a clean local DB
-- [x] 1.2 Unit tests: Warsaw day bounds, occupancy overlap, event classification, shift ends_at > starts_at, Zod rejection of bad queries
-- [x] 1.3 npm run test, npm run typecheck, npm run lint pass
+- [x] 1.2 Unit tests: Warsaw day bounds, occupancy overlap, event classification, shift ends_at > starts_at, Zod rejection of bad queries — 4bc536a
+- [x] 1.3 npm run test, npm run typecheck, npm run lint pass — 4bc536a
 
 #### Manual
 
@@ -320,8 +320,8 @@ Additive `driver_shifts` table; no backfill. Rollback = drop table + remove rout
 
 #### Automated
 
-- [ ] 2.1 Component/hook tests for grouping events into Warsaw hours and applying visibility filters
-- [ ] 2.2 Middleware tests still pass; npm run test, typecheck, lint pass
+- [x] 2.1 Component/hook tests for grouping events into Warsaw hours and applying visibility filters
+- [x] 2.2 Middleware tests still pass; npm run test, typecheck, lint pass
 
 #### Manual
 

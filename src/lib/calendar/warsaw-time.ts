@@ -50,3 +50,46 @@ export function dateKeysInRange(from: string, to: string): string[] {
   }
   return keys;
 }
+
+const WEEKDAYS_MON0 = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+export function warsawHour(date: Date): number {
+  const hour =
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: WARSAW,
+      hour: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(date)
+      .find((part) => part.type === "hour")?.value ?? "0";
+  return Number(hour);
+}
+
+export function warsawHourBounds(dateKey: string, hour: number): { start: string; end: string } {
+  const startMs = Date.parse(warsawDayBounds(dateKey).start) + hour * 60 * 60 * 1000;
+  return {
+    start: new Date(startMs).toISOString(),
+    end: new Date(startMs + 60 * 60 * 1000).toISOString(),
+  };
+}
+
+export function warsawWeekdayMon0(dateKey: string): number {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: WARSAW,
+    weekday: "short",
+  }).format(new Date(`${dateKey}T12:00:00Z`));
+  return WEEKDAYS_MON0.indexOf(weekday as (typeof WEEKDAYS_MON0)[number]);
+}
+
+export function warsawWeekStart(dateKey: string): string {
+  return addUtcDays(dateKey, -warsawWeekdayMon0(dateKey));
+}
+
+export function warsawTimeLabel(date: Date): string {
+  return new Intl.DateTimeFormat("pl-PL", {
+    timeZone: WARSAW,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
+}

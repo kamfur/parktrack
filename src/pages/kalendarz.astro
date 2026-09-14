@@ -1,0 +1,14 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { CalendarView } from "../components/calendar/CalendarView";
+---
+
+<Layout title="Kalendarz - ParkTrack">
+  <main class="container mx-auto flex h-full min-h-0 flex-col p-6">
+    <div class="mb-4">
+      <h1 class="mb-2 text-4xl font-bold">Kalendarz</h1>
+      <p class="text-muted-foreground">Przyjazdy, wyjazdy i zmiany kierowców w podziale na godziny</p>
+    </div>
+    <CalendarView client:load />
+  </main>
+</Layout>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateKeysInRange, warsawDateKey, warsawDayBounds } from "./warsaw-time";
+import { dateKeysInRange, warsawDateKey, warsawDayBounds, warsawHour, warsawWeekStart } from "./warsaw-time";
 
 describe("Warsaw calendar helpers", () => {
   it("maps instants around Warsaw midnight to the correct day", () => {
@@ -20,5 +20,16 @@ describe("Warsaw calendar helpers", () => {
       "2026-09-15",
       "2026-09-16",
     ]);
+  });
+
+  it("reads the Warsaw hour from an instant", () => {
+    expect(warsawHour(new Date("2026-09-14T21:30:00Z"))).toBe(23);
+    expect(warsawHour(new Date("2026-09-13T22:00:00Z"))).toBe(0);
+  });
+
+  it("starts the week on Monday in Warsaw", () => {
+    expect(warsawWeekStart("2026-09-14")).toBe("2026-09-14");
+    expect(warsawWeekStart("2026-09-16")).toBe("2026-09-14");
+    expect(warsawWeekStart("2026-09-20")).toBe("2026-09-14");
   });
 });
