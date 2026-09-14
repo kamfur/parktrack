@@ -80,6 +80,10 @@ describe("isStaffOnlyPath", () => {
     expect(isStaffOnlyPath("/api/stats")).toBe(true);
     expect(isStaffOnlyPath("/api/invoices")).toBe(true);
     expect(isStaffOnlyPath("/api/reservations")).toBe(true);
+    expect(isStaffOnlyPath("/kalendarz")).toBe(true);
+    expect(isStaffOnlyPath("/api/calendar/events")).toBe(true);
+    expect(isStaffOnlyPath("/api/shifts")).toBe(true);
+    expect(isStaffOnlyPath("/api/drivers")).toBe(true);
   });
 
   it("allows driver surfaces", () => {
@@ -163,7 +167,14 @@ describe("authMiddleware", () => {
 
   it("returns 403 for driver staff APIs (invoices, settings, reservations)", async () => {
     const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
-    for (const path of ["/api/invoices", "/api/settings", "/api/reservations"]) {
+    for (const path of [
+      "/api/invoices",
+      "/api/settings",
+      "/api/reservations",
+      "/api/calendar/events",
+      "/api/shifts",
+      "/api/drivers",
+    ]) {
       const res = (await authMiddleware(makeCtx(path, user), next)) as Response;
       expect(res.status, path).toBe(403);
       expect(await res.json()).toEqual({ error: "Forbidden" });

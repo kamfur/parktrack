@@ -25,6 +25,14 @@ Run one file: `npm run test -- src/pages/api/settings.test.ts`.
 - List window: overdue + calendar today (Warsaw) — not staff `get_todays_*`.
 - RLS defense-in-depth: migration `20260909140000_harden_rls_by_app_role.sql` — drivers cannot write invoices/settings; reservation UPDATEs constrained by status + column trigger.
 
+## Staff calendar APIs
+
+- `/api/calendar/*`, `/api/shifts*`, and `/api/drivers` are staff-only in `authMiddleware`.
+- Calendar ranges and shift payloads are validated by `calendar.schema.ts`.
+- Calendar events use planned timestamps and statuses `confirmed` / `in_progress`; group dates in `Europe/Warsaw`.
+- `/api/drivers` uses the server-only admin client to list Auth users with `app_metadata.role=driver`.
+- Driver shifts allow overlaps. The driver module remains unscoped by shifts.
+
 ## Tripwires
 
 - Never skip auth assumption — protected routes must return 401/redirect (see `@context/foundation/test-plan.md` risk #5).

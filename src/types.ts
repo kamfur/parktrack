@@ -1,8 +1,16 @@
 import type { Tables, TablesInsert, TablesUpdate, Database } from "./db/database.types";
 import type { QuickReservationFormData, FullReservationFormData } from "./lib/schemas/reservation.schema";
 import type { AppRole } from "./lib/auth/resolve-app-role";
+import type { CalendarRangeQuery, DriverShiftWrite, ShiftRangeQuery } from "./lib/schemas/calendar.schema";
 
-export type { QuickReservationFormData, FullReservationFormData, AppRole };
+export type {
+  QuickReservationFormData,
+  FullReservationFormData,
+  AppRole,
+  CalendarRangeQuery,
+  DriverShiftWrite,
+  ShiftRangeQuery,
+};
 
 // ############################################################################
 //
@@ -27,6 +35,30 @@ export type Reservation = Tables<"reservations">;
  * It directly maps to the `Reservation` entity.
  */
 export type ReservationDto = Reservation;
+
+export type DriverShiftDto = Tables<"driver_shifts">;
+
+export interface CalendarEventDto {
+  kind: "arrival" | "departure";
+  at: string;
+  reservationId: string;
+  firstName: string | null;
+  lastName: string;
+  licensePlate: string | null;
+  status: "confirmed" | "in_progress";
+}
+
+export interface CalendarMonthDayDto {
+  date: string;
+  arrivals: number;
+  departures: number;
+  occupancy: number;
+}
+
+export interface CalendarDriverDto {
+  id: string;
+  email: string;
+}
 
 /**
  * DTO for the successful creation of a reservation via the external API.

@@ -38,6 +38,30 @@ export interface Database {
         };
         Relationships: [];
       };
+      driver_shifts: {
+        Row: {
+          created_at: string;
+          driver_user_id: string;
+          ends_at: string;
+          id: string;
+          starts_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          driver_user_id: string;
+          ends_at: string;
+          id?: string;
+          starts_at: string;
+        };
+        Update: {
+          created_at?: string;
+          driver_user_id?: string;
+          ends_at?: string;
+          id?: string;
+          starts_at?: string;
+        };
+        Relationships: [];
+      };
       payments: {
         Row: {
           amount: number;
