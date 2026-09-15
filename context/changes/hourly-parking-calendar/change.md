@@ -1,9 +1,9 @@
 ---
 change_id: hourly-parking-calendar
 title: Staff calendar: day/week/month arrivals, departures, and current shift
-status: implementing
+status: implemented
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-15
 archived_at: null
 ---
 

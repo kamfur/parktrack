@@ -313,8 +313,8 @@ Additive `driver_shifts` table; no backfill. Rollback = drop table + remove rout
 
 #### Manual
 
-- [x] 1.4 Staff can GET events for a known seed day and see arrivals/departures JSON
-- [x] 1.5 Driver token receives 403 on the same URLs
+- [x] 1.4 Staff can GET events for a known seed day and see arrivals/departures JSON — 4fbb741
+- [x] 1.5 Driver token receives 403 on the same URLs — 4fbb741
 
 ### Phase 2: Calendar shell — day and week
 
@@ -325,9 +325,9 @@ Additive `driver_shifts` table; no backfill. Rollback = drop table + remove rout
 
 #### Manual
 
-- [x] 2.3 Staff: day and week, prev/next, toggles hide/show layers, colors distinguishable
-- [x] 2.4 Driver visiting /kalendarz redirects to /kierowca
-- [x] 2.5 Dashboard / unchanged
+- [x] 2.3 Staff: day and week, prev/next, toggles hide/show layers, colors distinguishable — 4fbb741
+- [x] 2.4 Driver visiting /kalendarz redirects to /kierowca — 4fbb741
+- [x] 2.5 Dashboard / unchanged — 4fbb741
 
 ### Phase 3: Month view counts
 
@@ -338,21 +338,21 @@ Additive `driver_shifts` table; no backfill. Rollback = drop table + remove rout
 
 #### Manual
 
-- [x] 3.3 Month totals for a seed week match summing day-view events
-- [x] 3.4 Drill-down from a cell opens that day
+- [x] 3.3 Month totals for a seed week match summing day-view events — 4fbb741
+- [x] 3.4 Drill-down from a cell opens that day — 4fbb741
 
 ### Phase 4: Operations, shift assignment, e2e
 
 #### Automated
 
-- [x] 4.1 Unit tests: shift overlap allowed; driver list filters non-drivers
-- [x] 4.2 Check-in/out from details updates reservation status (unit or hook test)
-- [x] 4.3 npm run test, npm run typecheck, npm run lint pass
-- [x] 4.4 npm run test:e2e for the new driver-denied calendar cases when Playwright env is available
+- [x] 4.1 Unit tests: shift overlap allowed; driver list filters non-drivers — 4fbb741
+- [x] 4.2 Check-in/out from details updates reservation status (unit or hook test) — 4fbb741
+- [x] 4.3 npm run test, npm run typecheck, npm run lint pass — 4fbb741
+- [x] 4.4 npm run test:e2e for the new driver-denied calendar cases when Playwright env is available — 4fbb741
 
 #### Manual
 
-- [x] 4.5 Click arrival → details → check-in → chip/status updates after close
-- [x] 4.6 Assign two overlapping shifts → both visible
-- [x] 4.7 Driver cannot CRUD shifts
-- [x] 4.8 /kierowca behavior unchanged
+- [x] 4.5 Click arrival → details → check-in → chip/status updates after close — 4fbb741
+- [x] 4.6 Assign two overlapping shifts → both visible — 4fbb741
+- [x] 4.7 Driver cannot CRUD shifts — 4fbb741
+- [x] 4.8 /kierowca behavior unchanged — 4fbb741
