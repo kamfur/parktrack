@@ -105,3 +105,28 @@ export function addUtcMonths(dateKey: string, months: number): string {
   const nextDay = Math.min(day, lastDay);
   return `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}-${String(nextDay).padStart(2, "0")}`;
 }
+
+export function toWarsawDateTimeLocal(iso: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: WARSAW,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(new Date(iso))
+      .map((part) => [part.type, part.value])
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+export function fromWarsawDateTimeLocal(value: string): string {
+  const [dateKey, time] = value.split("T");
+  const [hour, minute] = (time ?? "00:00").split(":").map(Number);
+  return new Date(
+    Date.parse(warsawDayBounds(dateKey).start) + hour * 60 * 60 * 1000 + minute * 60 * 1000
+  ).toISOString();
+}

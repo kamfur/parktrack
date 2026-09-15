@@ -1,13 +1,19 @@
 import type { Tables, TablesInsert, TablesUpdate, Database } from "./db/database.types";
 import type { QuickReservationFormData, FullReservationFormData } from "./lib/schemas/reservation.schema";
 import type { AppRole } from "./lib/auth/resolve-app-role";
-import type { CalendarRangeQuery, DriverShiftWrite, ShiftRangeQuery } from "./lib/schemas/calendar.schema";
+import type {
+  CalendarRangeQuery,
+  DriverShiftFormData,
+  DriverShiftWrite,
+  ShiftRangeQuery,
+} from "./lib/schemas/calendar.schema";
 
 export type {
   QuickReservationFormData,
   FullReservationFormData,
   AppRole,
   CalendarRangeQuery,
+  DriverShiftFormData,
   DriverShiftWrite,
   ShiftRangeQuery,
 };

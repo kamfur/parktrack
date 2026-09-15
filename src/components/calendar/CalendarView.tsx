@@ -1,19 +1,25 @@
+import { useState } from "react";
+import { toast } from "sonner";
 import { CalendarClock } from "lucide-react";
 import { CalendarGrid } from "./CalendarGrid";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
 import { CalendarToolbar } from "./CalendarToolbar";
+import { ShiftDialog, type ShiftDialogState } from "./ShiftDialog";
 import { ErrorState } from "@/components/common/ErrorState";
+import { ReservationDetailsView } from "@/components/reservations/details";
 import { useParkingCalendar } from "@/hooks/useParkingCalendar";
 
 export function CalendarView() {
   const calendar = useParkingCalendar();
+  const [reservationId, setReservationId] = useState<string | null>(null);
+  const [shiftState, setShiftState] = useState<ShiftDialogState | null>(null);
 
   if (calendar.error && !calendar.isLoading) {
     return (
       <ErrorState
         title="Nie udało się załadować kalendarza"
         message="Wystąpił błąd podczas pobierania przyjazdów, wyjazdów lub zmian. Sprawdź połączenie i spróbuj ponownie."
-        onRetry={calendar.refetch}
+        onRetry={() => void calendar.refetch()}
       />
     );
   }
@@ -63,8 +69,49 @@ export function CalendarView() {
           shifts={calendar.shifts}
           drivers={calendar.drivers}
           isLoading={calendar.isLoading}
+          onEventClick={(event) => setReservationId(event.reservationId)}
+          onShiftClick={(shift) => setShiftState({ mode: "edit", shift })}
+          onSlotClick={(dateKey, hour) => setShiftState({ mode: "create", dateKey, hour })}
         />
       )}
+
+      {reservationId ? (
+        <ReservationDetailsView
+          reservationId={reservationId}
+          isOpen
+          onClose={() => setReservationId(null)}
+          onUpdate={() => {
+            void calendar.refetch(true);
+          }}
+        />
+      ) : null}
+
+      <ShiftDialog
+        state={shiftState}
+        drivers={calendar.drivers}
+        isProcessing={calendar.isMutating}
+        onOpenChange={(open) => {
+          if (!open) setShiftState(null);
+        }}
+        onSave={async (command, shiftId) => {
+          try {
+            await calendar.saveShift(command, shiftId);
+            setShiftState(null);
+            toast.success(shiftId ? "Zmiana zaktualizowana" : "Zmiana dodana");
+          } catch {
+            toast.error("Nie udało się zapisać zmiany");
+          }
+        }}
+        onDelete={async (shiftId) => {
+          try {
+            await calendar.deleteShift(shiftId);
+            setShiftState(null);
+            toast.success("Zmiana usunięta");
+          } catch {
+            toast.error("Nie udało się usunąć zmiany");
+          }
+        }}
+      />
     </div>
   );
 }

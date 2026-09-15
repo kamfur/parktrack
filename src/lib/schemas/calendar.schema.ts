@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { fromWarsawDateTimeLocal } from "../calendar/warsaw-time";
 
 const isoInstant = z.string().datetime({ offset: true });
 
@@ -41,6 +42,19 @@ export const driverShiftWriteSchema = z
 
 export const idSchema = z.string().uuid();
 
+export const driverShiftFormSchema = z
+  .object({
+    driver_user_id: z.string().uuid("Wybierz kierowcę"),
+    starts_at: z.string().min(1, "Podaj początek zmiany"),
+    ends_at: z.string().min(1, "Podaj koniec zmiany"),
+  })
+  .superRefine(({ starts_at, ends_at }, ctx) => {
+    if (Date.parse(fromWarsawDateTimeLocal(ends_at)) <= Date.parse(fromWarsawDateTimeLocal(starts_at))) {
+      ctx.addIssue({ code: "custom", path: ["ends_at"], message: "ends_at must be after starts_at" });
+    }
+  });
+
 export type CalendarRangeQuery = z.infer<typeof calendarRangeQuerySchema>;
 export type ShiftRangeQuery = z.infer<typeof shiftRangeQuerySchema>;
 export type DriverShiftWrite = z.infer<typeof driverShiftWriteSchema>;
+export type DriverShiftFormData = z.infer<typeof driverShiftFormSchema>;

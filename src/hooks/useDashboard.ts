@@ -1,13 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import type {
-  DashboardState,
-  DashboardMetrics,
-  ReservationDto,
-  CheckInCommand,
-  CheckOutCommand,
-  StatsPeriod,
-  StatsData,
-} from "@/types";
+import type { DashboardState, DashboardMetrics, ReservationDto, StatsPeriod, StatsData } from "@/types";
+import { createCheckInCommand, createCheckOutCommand } from "@/lib/reservations/operations";
 
 function calculateMetrics(
   arrivals: ReservationDto[],
@@ -101,10 +94,7 @@ export function useDashboard() {
   const handleCheckIn = async (reservationId: string) => {
     setState((prev) => ({ ...prev, isProcessing: true }));
     try {
-      const command: CheckInCommand = {
-        status: "in_progress",
-        actual_check_in: new Date().toISOString(),
-      };
+      const command = createCheckInCommand();
       const response = await fetch(`/api/reservations?id=eq.${reservationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -120,10 +110,7 @@ export function useDashboard() {
   const handleCheckOut = async (reservationId: string) => {
     setState((prev) => ({ ...prev, isProcessing: true }));
     try {
-      const command: CheckOutCommand = {
-        status: "completed",
-        actual_check_out: new Date().toISOString(),
-      };
+      const command = createCheckOutCommand();
       const response = await fetch(`/api/reservations?id=eq.${reservationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

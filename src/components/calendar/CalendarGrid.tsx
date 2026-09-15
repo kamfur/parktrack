@@ -18,13 +18,25 @@ interface CalendarGridProps {
   shifts: DriverShiftDto[];
   drivers: CalendarDriverDto[];
   isLoading: boolean;
+  onEventClick: (event: CalendarEventDto) => void;
+  onShiftClick: (shift: DriverShiftDto) => void;
+  onSlotClick: (dateKey: string, hour: number) => void;
 }
 
 function hourLabel(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
-export function CalendarGrid({ dateKeys, events, shifts, drivers, isLoading }: CalendarGridProps) {
+export function CalendarGrid({
+  dateKeys,
+  events,
+  shifts,
+  drivers,
+  isLoading,
+  onEventClick,
+  onShiftClick,
+  onSlotClick,
+}: CalendarGridProps) {
   const eventsByDay = useMemo(
     () => Object.fromEntries(dateKeys.map((dateKey) => [dateKey, groupEventsByHour(events, dateKey)])),
     [dateKeys, events]
@@ -71,6 +83,9 @@ export function CalendarGrid({ dateKeys, events, shifts, drivers, isLoading }: C
             driverLabels={driverLabels}
             isCurrentHour={hour === currentHour}
             currentDateKey={currentDateKey}
+            onEventClick={onEventClick}
+            onShiftClick={onShiftClick}
+            onSlotClick={onSlotClick}
           />
         ))}
       </div>
@@ -86,6 +101,9 @@ function HourRow({
   driverLabels,
   isCurrentHour,
   currentDateKey,
+  onEventClick,
+  onShiftClick,
+  onSlotClick,
 }: {
   hour: number;
   dateKeys: string[];
@@ -94,6 +112,9 @@ function HourRow({
   driverLabels: Record<string, string>;
   isCurrentHour: boolean;
   currentDateKey: string;
+  onEventClick: (event: CalendarEventDto) => void;
+  onShiftClick: (shift: DriverShiftDto) => void;
+  onSlotClick: (dateKey: string, hour: number) => void;
 }) {
   return (
     <>
@@ -112,19 +133,34 @@ function HourRow({
         return (
           <div
             key={`${dateKey}-${hour}`}
-            className={cn("min-h-14 space-y-1 border-b border-l px-1.5 py-1", isNow && "bg-accent/40")}
+            role="button"
+            tabIndex={0}
+            onClick={() => onSlotClick(dateKey, hour)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") onSlotClick(dateKey, hour);
+            }}
+            className={cn("min-h-14 space-y-1 border-b border-l px-1.5 py-1 text-left", isNow && "bg-accent/40")}
           >
             {cellShifts.map((shift) => (
-              <div
+              <button
                 key={shift.id}
-                className="truncate rounded border border-dashed border-sky-300 bg-sky-100 px-1.5 py-0.5 text-[11px] text-sky-900"
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onShiftClick(shift);
+                }}
+                className="block w-full truncate rounded border border-dashed border-sky-300 bg-sky-100 px-1.5 py-0.5 text-left text-[11px] text-sky-900"
                 title={`${driverLabels[shift.driver_user_id] ?? "Zmiana"} ${warsawTimeLabel(new Date(shift.starts_at))}–${warsawTimeLabel(new Date(shift.ends_at))}`}
               >
                 {driverLabels[shift.driver_user_id] ?? "Zmiana"}
-              </div>
+              </button>
             ))}
             {cellEvents.map((calendarEvent) => (
-              <EventChip key={`${calendarEvent.kind}-${calendarEvent.reservationId}`} event={calendarEvent} />
+              <EventChip
+                key={`${calendarEvent.kind}-${calendarEvent.reservationId}`}
+                event={calendarEvent}
+                onClick={onEventClick}
+              />
             ))}
           </div>
         );
@@ -133,12 +169,17 @@ function HourRow({
   );
 }
 
-function EventChip({ event }: { event: CalendarEventDto }) {
+function EventChip({ event, onClick }: { event: CalendarEventDto; onClick: (event: CalendarEventDto) => void }) {
   const isArrival = event.kind === "arrival";
   return (
-    <div
+    <button
+      type="button"
+      onClick={(click) => {
+        click.stopPropagation();
+        onClick(event);
+      }}
       className={cn(
-        "truncate rounded border px-1.5 py-0.5 text-[11px] leading-4",
+        "block w-full truncate rounded border px-1.5 py-0.5 text-left text-[11px] leading-4",
         isArrival
           ? "border-orange-200 bg-orange-100 text-orange-950"
           : "border-violet-200 bg-violet-100 text-violet-950"
@@ -147,6 +188,6 @@ function EventChip({ event }: { event: CalendarEventDto }) {
     >
       <span className="font-medium">{warsawTimeLabel(new Date(event.at))}</span> {eventDisplayName(event)}
       {event.licensePlate ? ` · ${event.licensePlate}` : ""}
-    </div>
+    </button>
   );
 }

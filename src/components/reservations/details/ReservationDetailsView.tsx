@@ -16,6 +16,7 @@ import { LoadingSkeleton } from "./LoadingSkeleton";
 import { ErrorState } from "./ErrorState";
 import { ReservationDetailsErrorBoundary } from "./ErrorBoundary";
 import { useReservationDetails } from "@/hooks/useReservationDetails";
+import { createCheckInCommand, createCheckOutCommand } from "@/lib/reservations/operations";
 
 /**
  * Główny kontener widoku szczegółów rezerwacji.
@@ -40,6 +41,8 @@ export function ReservationDetailsView({ reservationId, isOpen, onClose, onUpdat
     openCancelDialog,
     closeCancelDialog,
     cancelReservation,
+    performCheckIn,
+    performCheckOut,
     enterEditMode,
     isProcessing,
   } = useReservationDetails({ reservationId, enabled: isOpen });
@@ -136,11 +139,7 @@ export function ReservationDetailsView({ reservationId, isOpen, onClose, onUpdat
                 <ReservationDetailsCard
                   plannedCheckIn={reservation.planned_check_in}
                   plannedCheckOut={reservation.planned_check_out}
-                  flightDirection={
-                    reservation.flight_direction === "departure" || reservation.flight_direction === "arrival"
-                      ? reservation.flight_direction
-                      : null
-                  }
+                  flightDirection={reservation.flight_direction}
                 />
 
                 <FinancialSection
@@ -186,18 +185,28 @@ export function ReservationDetailsView({ reservationId, isOpen, onClose, onUpdat
               <CheckInModalPlaceholder
                 isOpen={showCheckInModal}
                 onClose={closeCheckInModal}
-                reservationId={reservationId}
-                onSuccess={() => {
-                  toast.success("Check-in wykonany pomyślnie");
+                isProcessing={isProcessing}
+                onConfirm={async () => {
+                  try {
+                    await performCheckIn(createCheckInCommand());
+                    toast.success("Check-in wykonany pomyślnie");
+                  } catch {
+                    toast.error("Nie udało się wykonać check-in. Spróbuj ponownie.");
+                  }
                 }}
               />
 
               <CheckOutModalPlaceholder
                 isOpen={showCheckOutModal}
                 onClose={closeCheckOutModal}
-                reservationId={reservationId}
-                onSuccess={() => {
-                  toast.success("Check-out wykonany pomyślnie");
+                isProcessing={isProcessing}
+                onConfirm={async () => {
+                  try {
+                    await performCheckOut(createCheckOutCommand());
+                    toast.success("Check-out wykonany pomyślnie");
+                  } catch {
+                    toast.error("Nie udało się wykonać check-out. Spróbuj ponownie.");
+                  }
                 }}
               />
 
