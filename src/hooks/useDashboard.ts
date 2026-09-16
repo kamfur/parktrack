@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import type { DashboardState, DashboardMetrics, ReservationDto, StatsPeriod, StatsData } from "@/types";
+import type {
+  DashboardState,
+  DashboardMetrics,
+  DepartureListItem,
+  ReservationDto,
+  StatsPeriod,
+  StatsData,
+} from "@/types";
 import { createCheckInCommand, createCheckOutCommand } from "@/lib/reservations/operations";
 
 function calculateMetrics(
@@ -42,7 +49,7 @@ export function useDashboard() {
       }
 
       const arrivals: ReservationDto[] = await arrivalsRes.json();
-      const departures: ReservationDto[] = await departuresRes.json();
+      const departures: DepartureListItem[] = await departuresRes.json();
 
       let totalSpots = 100;
       if (settingsRes.ok) {
@@ -123,6 +130,42 @@ export function useDashboard() {
     }
   };
 
+  const handleCancel = async (reservation: ReservationDto, reason?: string) => {
+    setState((prev) => ({ ...prev, isProcessing: true }));
+    try {
+      const body: { status: "cancelled"; notes?: string } = { status: "cancelled" };
+      if (reason) {
+        body.notes = reservation.notes
+          ? `${reservation.notes}\n\nPowód anulowania: ${reason}`
+          : `Powód anulowania: ${reason}`;
+      }
+      const response = await fetch(`/api/reservations?id=eq.${reservation.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error("Failed to cancel reservation");
+      await fetchDashboardData(period);
+    } finally {
+      setState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
+  const handleChangeReturnDate = async (reservationId: string, plannedCheckOut: string) => {
+    setState((prev) => ({ ...prev, isProcessing: true }));
+    try {
+      const response = await fetch(`/api/reservations?id=eq.${reservationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planned_check_out: plannedCheckOut }),
+      });
+      if (!response.ok) throw new Error("Failed to update return date");
+      await fetchDashboardData(period);
+    } finally {
+      setState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
 
@@ -148,5 +191,7 @@ export function useDashboard() {
     refetch: () => fetchDashboardData(period),
     handleCheckIn,
     handleCheckOut,
+    handleCancel,
+    handleChangeReturnDate,
   };
 }

@@ -19,6 +19,7 @@ function toHourDto(hours: ReturnType<typeof selectArrivalHours>): KtwArrivalHour
   return hours.map((hour) => ({
     scheduled_at: hour.scheduledAt,
     origin_label: hour.originLabel,
+    ...(hour.status ? { status: hour.status } : {}),
   }));
 }
 

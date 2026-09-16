@@ -278,30 +278,30 @@ No schema migration. Existing rows with a matchable free-text direction get hour
 
 #### Automated
 
-- [x] 2.1 Enricher tests with fake port (match, skip, fail-soft)
-- [x] 2.2 Adapter parse tests against committed fixture (no live HTTP)
-- [x] 2.3 Existing reservation/driver service tests still pass
-- [x] 2.4 `npm run test`
-- [x] 2.5 `npm run typecheck`
-- [x] 2.6 `npm run lint`
+- [x] 2.1 Enricher tests with fake port (match, skip, fail-soft) — 6315bae
+- [x] 2.2 Adapter parse tests against committed fixture (no live HTTP) — 6315bae
+- [x] 2.3 Existing reservation/driver service tests still pass — 6315bae
+- [x] 2.4 `npm run test` — 6315bae
+- [x] 2.5 `npm run typecheck` — 6315bae
+- [x] 2.6 `npm run lint` — 6315bae
 
 #### Manual
 
-- [x] 2.7 Staff and driver Wyjazdy show hours when the board is reachable
-- [x] 2.8 Invalid/blocked board URL: lists load, checkout works, hours omitted
+- [x] 2.7 Staff and driver Wyjazdy show hours when the board is reachable — 6315bae
+- [x] 2.8 Invalid/blocked board URL: lists load, checkout works, hours omitted — 6315bae
 
 ### Phase 3: Staff and driver UI
 
 #### Automated
 
-- [ ] 3.1 `npm run typecheck`
-- [ ] 3.2 `npm run lint`
-- [ ] 3.3 `npm run test`
-- [ ] 3.4 Existing e2e auth guards pass (`npm run test:e2e`)
+- [x] 3.1 `npm run typecheck`
+- [x] 3.2 `npm run lint`
+- [x] 3.3 `npm run test`
+- [x] 3.4 Existing e2e auth guards pass (`npm run test:e2e`)
 
 #### Manual
 
-- [ ] 3.5 Staff departure card: direction + candidate hours; empty direction unchanged; checkout works
-- [ ] 3.6 Driver Wyjazdy: hours beside direction; Wydanie unchanged
-- [ ] 3.7 Multiple hours in window all shown
-- [ ] 3.8 Board down: lists usable without hours
+- [x] 3.5 Staff departure card: direction + candidate hours; empty direction unchanged; checkout works
+- [x] 3.6 Driver Wyjazdy: hours beside direction; Wydanie unchanged
+- [x] 3.7 Multiple hours in window all shown
+- [x] 3.8 Board down: lists usable without hours

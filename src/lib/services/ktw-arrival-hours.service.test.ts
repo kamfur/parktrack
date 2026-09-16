@@ -16,7 +16,7 @@ const twoOrigins: KtwArrivalsPort = {
 };
 
 describe("enrichDepartures", () => {
-  it("attaches every in-window hour for a matching origin and omits hours on unmatched rows", async () => {
+  it("attaches in-window hours for a matching origin and omits hours on unmatched rows", async () => {
     const rows = [
       { id: "match", flight_direction: "Londyn, LO 392", planned_check_out: planned },
       { id: "skip", flight_direction: "Narnia", planned_check_out: planned },
@@ -48,6 +48,22 @@ describe("enrichDepartures", () => {
     expect(enriched).toHaveLength(2);
     expect(enriched.map((row) => row.id)).toEqual(["a", "b"]);
     expect(enriched.every((row) => row.ktw_arrival_hours === undefined)).toBe(true);
+  });
+
+  it("attaches a post-midnight arrival to a 23:00 planned return", async () => {
+    const port: KtwArrivalsPort = {
+      listArrivals: async () => [
+        { originLabel: "Madera", scheduledAt: "2026-09-16T22:10:00.000Z", status: "PRZYLOT 00:10" },
+      ],
+    };
+    const enriched = await enrichDepartures(
+      [{ id: "madera", flight_direction: "Madera", planned_check_out: "2026-09-16T21:00:00.000Z" }],
+      now,
+      port
+    );
+    expect(enriched[0]?.ktw_arrival_hours).toEqual([
+      { scheduled_at: "2026-09-16T22:10:00.000Z", origin_label: "Madera", status: "PRZYLOT 00:10" },
+    ]);
   });
 
   it("does not call the port for an empty list", async () => {

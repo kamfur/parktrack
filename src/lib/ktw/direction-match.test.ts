@@ -5,6 +5,7 @@ describe("matchDirectionKey", () => {
   it("maps a known city alias", () => {
     expect(matchDirectionKey("Londyn")).toBe("london");
     expect(matchDirectionKey("DORTMUND")).toBe("dortmund");
+    expect(matchDirectionKey("Madera")).toBe("madeira");
   });
 
   it("matches a substring with extra text", () => {
@@ -37,6 +38,7 @@ describe("originMatchesKey", () => {
     expect(originMatchesKey("London Luton", "london")).toBe(true);
     expect(originMatchesKey("Luton", "london")).toBe(true);
     expect(originMatchesKey("Dortmund", "dortmund")).toBe(true);
+    expect(originMatchesKey("Madera", "madeira")).toBe(true);
   });
 
   it("does not cross keys", () => {

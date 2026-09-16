@@ -30,6 +30,7 @@ export const DIRECTION_ALIASES: readonly { key: string; patterns: readonly strin
   { key: "naples", patterns: ["naples", "napoli", "nap"] },
   { key: "catania", patterns: ["catania", "cta"] },
   { key: "malta", patterns: ["malta", "mla"] },
+  { key: "madeira", patterns: ["madeira", "madera", "funchal", "fnc"] },
   { key: "larnaca", patterns: ["larnaca", "larnaka", "lca"] },
   { key: "heraklion", patterns: ["heraklion", "iraklion", "her"] },
   { key: "rhodes", patterns: ["rhodes", "rodos", "rho"] },

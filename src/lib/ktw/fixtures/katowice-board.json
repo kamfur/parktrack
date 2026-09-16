@@ -4,7 +4,8 @@
       "id": 1,
       "direction": 2,
       "scheduled_time": "10:00",
-      "airport": "Londyn - Luton"
+      "airport": "Londyn - Luton",
+      "status": "WYLĄDOWAŁ 10:12"
     },
     {
       "id": 2,

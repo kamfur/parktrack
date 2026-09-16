@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ReservationDto } from "@/types";
+import type { DepartureListItem, ReservationDto } from "@/types";
 
 type DriverTab = "arrivals" | "departures" | "occupancy";
 
 interface DriverOpsState {
   arrivals: ReservationDto[];
-  departures: ReservationDto[];
+  handledArrivals: ReservationDto[];
+  departures: DepartureListItem[];
+  handledDepartures: DepartureListItem[];
   occupancy: ReservationDto[];
   isLoading: boolean;
   error: string | null;
@@ -21,10 +23,22 @@ async function readList(res: Response): Promise<ReservationDto[]> {
   return payload.data ?? [];
 }
 
+async function readDriverList<T extends ReservationDto = ReservationDto>(
+  res: Response
+): Promise<{ pending: T[]; handled: T[] }> {
+  if (!res.ok) {
+    throw new Error(`Request failed (${res.status})`);
+  }
+  const payload = (await res.json()) as { data?: T[]; handled?: T[] };
+  return { pending: payload.data ?? [], handled: payload.handled ?? [] };
+}
+
 export function useDriverOps() {
   const [state, setState] = useState<DriverOpsState>({
     arrivals: [],
+    handledArrivals: [],
     departures: [],
+    handledDepartures: [],
     occupancy: [],
     isLoading: true,
     error: null,
@@ -32,8 +46,10 @@ export function useDriverOps() {
     tab: "arrivals",
   });
   const initialized = useRef(false);
+  const fetchGen = useRef(0);
 
   const refetch = useCallback(async () => {
+    const gen = ++fetchGen.current;
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
       const [arrivalsRes, departuresRes, occupancyRes] = await Promise.all([
@@ -41,20 +57,24 @@ export function useDriverOps() {
         fetch("/api/driver/departures"),
         fetch("/api/driver/occupancy"),
       ]);
-      const [arrivals, departures, occupancy] = await Promise.all([
-        readList(arrivalsRes),
-        readList(departuresRes),
+      const [arrivalsList, departuresList, occupancy] = await Promise.all([
+        readDriverList(arrivalsRes),
+        readDriverList<DepartureListItem>(departuresRes),
         readList(occupancyRes),
       ]);
+      if (gen !== fetchGen.current) return;
       setState((prev) => ({
         ...prev,
-        arrivals,
-        departures,
+        arrivals: arrivalsList.pending,
+        handledArrivals: arrivalsList.handled,
+        departures: departuresList.pending,
+        handledDepartures: departuresList.handled,
         occupancy,
         isLoading: false,
         error: null,
       }));
     } catch (error) {
+      if (gen !== fetchGen.current) return;
       setState((prev) => ({
         ...prev,
         isLoading: false,

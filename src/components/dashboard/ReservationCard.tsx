@@ -2,27 +2,39 @@ import { useState } from "react";
 import type { ReservationCardProps } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Phone, Car, Clock, Mail } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Phone, Car, Clock, Mail, Plane, PlaneLanding } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { flightDirectionLabel, isOverdue } from "@/lib/driver/display";
+import { formatKtwHourList } from "@/lib/ktw/format-hours";
+
+function formatWarsawDateTime(dateString: string): string {
+  return new Date(dateString).toLocaleString("pl-PL", {
+    timeZone: "Europe/Warsaw",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 /**
  * Kompaktowa karta wyświetlająca kluczowe informacje o rezerwacji.
- * Zawiera dane klienta, status rezerwacji oraz przycisk akcji (Check-in lub Check-out).
+ * Zawiera dane klienta, status rezerwacji oraz przyciski akcji.
  */
-export function ReservationCard({ reservation, actionType, onAction, isLoading = false }: ReservationCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
+export function ReservationCard({
+  reservation,
+  actionType,
+  onAction,
+  onCancel,
+  onChangeReturnDate,
+  isLoading = false,
+}: ReservationCardProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Mapowanie statusu na kolor border-left
-  const statusColorClasses = {
-    confirmed: "border-l-orange-500",
-    in_progress: "border-l-blue-500",
-    completed: "border-l-green-500",
-    cancelled: "border-l-red-500",
-    no_show: "border-l-gray-500",
-  };
+  const plannedAt = actionType === "check-in" ? reservation.planned_check_in : reservation.planned_check_out;
+  const overdue = isOverdue(plannedAt);
 
-  // Walidacja przycisków
   const isCheckInDisabled =
     actionType === "check-in" &&
     (reservation.status !== "confirmed" || reservation.actual_check_in !== null || isProcessing || isLoading);
@@ -36,18 +48,19 @@ export function ReservationCard({ reservation, actionType, onAction, isLoading =
       isLoading);
 
   const isButtonDisabled = actionType === "check-in" ? isCheckInDisabled : isCheckOutDisabled;
+  const canCancel =
+    Boolean(onCancel) &&
+    overdue &&
+    reservation.status !== "cancelled" &&
+    reservation.status !== "completed" &&
+    !isProcessing;
 
-  // Formatowanie godziny
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
-  };
+  const fullName = reservation.first_name
+    ? `${reservation.first_name} ${reservation.last_name}`
+    : reservation.last_name;
+  const directionLabel = actionType === "check-out" ? flightDirectionLabel(reservation.flight_direction) : null;
+  const ktwHoursLabel = actionType === "check-out" ? formatKtwHourList(reservation.ktw_arrival_hours) : null;
 
-  // Wybór odpowiedniej godziny
-  const displayTime =
-    actionType === "check-in" ? formatTime(reservation.planned_check_in) : formatTime(reservation.planned_check_out);
-
-  // Obsługa kliknięcia przycisku
   const handleAction = async () => {
     setIsProcessing(true);
     try {
@@ -57,27 +70,23 @@ export function ReservationCard({ reservation, actionType, onAction, isLoading =
     }
   };
 
-  // Pełne imię i nazwisko
-  const fullName = reservation.first_name
-    ? `${reservation.first_name} ${reservation.last_name}`
-    : reservation.last_name;
-
   return (
     <Card
-      className={cn("border-l-4 transition-shadow hover:shadow-md", statusColorClasses[reservation.status])}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className={cn(
+        "border-l-4",
+        overdue && "border-l-amber-500 bg-amber-50/50",
+        !overdue && actionType === "check-in" && "border-l-emerald-500",
+        !overdue && actionType === "check-out" && "border-l-rose-500"
+      )}
     >
       <CardContent className="p-4">
         <div className="space-y-3">
-          {/* Nazwa klienta */}
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-lg">{fullName}</h3>
+            {overdue ? <Badge variant="secondary">{actionType === "check-in" ? "Zaległe" : "Opóźniony"}</Badge> : null}
           </div>
 
-          {/* Informacje podstawowe */}
           <div className="space-y-2 text-sm text-muted-foreground">
-            {/* Telefon */}
             {reservation.phone && (
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
@@ -85,7 +94,6 @@ export function ReservationCard({ reservation, actionType, onAction, isLoading =
               </div>
             )}
 
-            {/* Numer rejestracyjny */}
             {reservation.license_plate && (
               <div className="flex items-center gap-2">
                 <Car className="h-4 w-4" />
@@ -93,49 +101,68 @@ export function ReservationCard({ reservation, actionType, onAction, isLoading =
               </div>
             )}
 
-            {/* Godzina */}
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              <span>{displayTime}</span>
+              <span>{formatWarsawDateTime(plannedAt)}</span>
             </div>
 
-            {/* Dodatkowe informacje przy hover */}
-            {isHovered && reservation.email && (
-              <div className="flex items-center gap-2 pt-2 border-t">
+            {directionLabel ? (
+              <div className="flex items-center gap-2">
+                <Plane className="h-4 w-4" aria-hidden />
+                <span>{directionLabel}</span>
+              </div>
+            ) : null}
+
+            {ktwHoursLabel ? (
+              <div className="flex items-center gap-2">
+                <PlaneLanding className="h-4 w-4" aria-hidden />
+                <span>{ktwHoursLabel}</span>
+              </div>
+            ) : null}
+
+            {reservation.email ? (
+              <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 <span className="text-xs">{reservation.email}</span>
               </div>
-            )}
+            ) : null}
 
-            {/* Notatki przy hover */}
-            {isHovered && reservation.notes && (
-              <div className="pt-2 border-t">
-                <p className="text-xs italic">{reservation.notes}</p>
-              </div>
-            )}
+            {reservation.notes ? <p className="text-xs italic">{reservation.notes}</p> : null}
           </div>
 
-          {/* Przycisk akcji */}
-          <Button
-            onClick={handleAction}
-            disabled={isButtonDisabled}
-            className="w-full"
-            variant={actionType === "check-in" ? "default" : "outline"}
-            aria-label={`${actionType === "check-in" ? "Zamelduj" : "Wymelduj"} ${fullName}`}
-          >
-            {isProcessing ? (
-              <span className="flex items-center gap-2">
-                <span className="animate-spin" aria-hidden="true">
-                  ⏳
-                </span>
-                Przetwarzanie...
-              </span>
-            ) : actionType === "check-in" ? (
-              "Check-in"
-            ) : (
-              "Check-out"
-            )}
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={handleAction}
+              disabled={isButtonDisabled}
+              className="w-full"
+              variant={actionType === "check-in" ? "default" : "outline"}
+              aria-label={`${actionType === "check-in" ? "Zamelduj" : "Wymelduj"} ${fullName}`}
+            >
+              {isProcessing ? "Przetwarzanie..." : actionType === "check-in" ? "Przyjęcie" : "Check-out"}
+            </Button>
+            {actionType === "check-in" && canCancel ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-destructive hover:text-destructive"
+                disabled={isLoading}
+                onClick={() => onCancel?.(reservation)}
+              >
+                Anuluj rezerwację
+              </Button>
+            ) : null}
+            {actionType === "check-out" && onChangeReturnDate ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                disabled={isLoading || isProcessing}
+                onClick={() => onChangeReturnDate(reservation)}
+              >
+                Zmień datę powrotu
+              </Button>
+            ) : null}
+          </div>
         </div>
       </CardContent>
     </Card>

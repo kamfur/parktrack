@@ -1,4 +1,4 @@
-import { fromWarsawDateTimeLocal, warsawDateKey } from "../calendar/warsaw-time";
+import { addUtcDays, fromWarsawDateTimeLocal, warsawDateKey } from "../calendar/warsaw-time";
 import { KtwArrivalsError, type KtwArrivalsPort } from "./ktw-arrivals.port";
 import type { KtwBoardRow } from "./select-arrival-hours";
 
@@ -19,6 +19,7 @@ interface BoardFlightRow {
   scheduledAt?: unknown;
   scheduled_at?: unknown;
   direction?: unknown;
+  status?: unknown;
 }
 
 function readEnvUrl(): string | undefined {
@@ -37,15 +38,24 @@ export function resolveKtwArrivalsUrl(): string {
   return isOfficialBoardPage(raw) ? DEFAULT_KTW_ARRIVALS_URL : raw;
 }
 
-export function arrivalsRequestUrl(base: string, now: Date): string {
+/** Official board only exposes yesterday / today / tomorrow — needed so 23:00 + 00:10 still match. */
+export function boardDateKeys(now: Date): string[] {
+  const today = warsawDateKey(now);
+  return [addUtcDays(today, -1), today, addUtcDays(today, 1)];
+}
+
+export function arrivalsRequestUrl(base: string, dateKey: string): string {
   const url = new URL(base);
   if (!url.searchParams.has("direction")) {
     url.searchParams.set("direction", String(ARRIVAL_DIRECTION));
   }
-  if (!url.searchParams.has("date")) {
-    url.searchParams.set("date", warsawDateKey(now));
-  }
+  url.searchParams.set("date", dateKey);
   return url.toString();
+}
+
+function dateKeysToFetch(base: string, now: Date): string[] {
+  const pinned = new URL(base).searchParams.get("date");
+  return pinned ? [pinned] : boardDateKeys(now);
 }
 
 function readOrigin(row: BoardFlightRow): string | null {
@@ -55,7 +65,7 @@ function readOrigin(row: BoardFlightRow): string | null {
   return null;
 }
 
-function scheduledToIso(value: unknown, now: Date): string | null {
+function scheduledToIso(value: unknown, dateKey: string): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -66,17 +76,18 @@ function scheduledToIso(value: unknown, now: Date): string | null {
   const clock = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   if (!clock) return null;
   const hour = clock[1].padStart(2, "0");
-  return fromWarsawDateTimeLocal(`${warsawDateKey(now)}T${hour}:${clock[2]}`);
+  return fromWarsawDateTimeLocal(`${dateKey}T${hour}:${clock[2]}`);
 }
 
-function mapBoardRow(row: BoardFlightRow, now: Date): KtwBoardRow | null {
+function mapBoardRow(row: BoardFlightRow, dateKey: string): KtwBoardRow | null {
   if (row.direction != null && Number(row.direction) !== ARRIVAL_DIRECTION) {
     return null;
   }
   const originLabel = readOrigin(row);
-  const scheduledAt = scheduledToIso(row.scheduled_time ?? row.scheduledAt ?? row.scheduled_at, now);
+  const scheduledAt = scheduledToIso(row.scheduled_time ?? row.scheduledAt ?? row.scheduled_at, dateKey);
   if (!originLabel || !scheduledAt) return null;
-  return { originLabel, scheduledAt };
+  const status = typeof row.status === "string" && row.status.trim() ? row.status.trim() : undefined;
+  return status ? { originLabel, scheduledAt, status } : { originLabel, scheduledAt };
 }
 
 function extractRawRows(payload: unknown): BoardFlightRow[] | null {
@@ -89,7 +100,8 @@ function extractRawRows(payload: unknown): BoardFlightRow[] | null {
   return null;
 }
 
-export function parseKatowiceBoardPayload(body: string, now: Date): KtwBoardRow[] {
+export function parseKatowiceBoardPayload(body: string, dateContext: Date | string): KtwBoardRow[] {
+  const dateKey = typeof dateContext === "string" ? dateContext : warsawDateKey(dateContext);
   const trimmed = body.trim();
   if (!trimmed) {
     throw new KtwArrivalsError("KTW board payload is empty");
@@ -99,7 +111,7 @@ export function parseKatowiceBoardPayload(body: string, now: Date): KtwBoardRow[
     const parsed: unknown = JSON.parse(trimmed);
     const rawRows = extractRawRows(parsed);
     if (rawRows) {
-      return rawRows.map((row) => mapBoardRow(row, now)).filter((row): row is KtwBoardRow => row != null);
+      return rawRows.map((row) => mapBoardRow(row, dateKey)).filter((row): row is KtwBoardRow => row != null);
     }
   } catch (error) {
     if (error instanceof KtwArrivalsError) throw error;
@@ -119,21 +131,34 @@ export function createKatowiceBoardAdapter(options?: {
 
   return {
     async listArrivals(now: Date): Promise<KtwBoardRow[]> {
+      const dateKeys = dateKeysToFetch(url, now);
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const response = await fetchImpl(arrivalsRequestUrl(url, now), {
-          method: "GET",
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new KtwArrivalsError(`KTW board HTTP ${response.status}`);
+        const settled = await Promise.all(
+          dateKeys.map(async (dateKey) => {
+            try {
+              const response = await fetchImpl(arrivalsRequestUrl(url, dateKey), {
+                method: "GET",
+                headers: { Accept: "application/json" },
+                signal: controller.signal,
+              });
+              if (!response.ok) {
+                throw new KtwArrivalsError(`KTW board HTTP ${response.status}`);
+              }
+              return parseKatowiceBoardPayload(await response.text(), dateKey);
+            } catch (error) {
+              return error instanceof KtwArrivalsError
+                ? error
+                : new KtwArrivalsError("KTW board fetch failed", { cause: error });
+            }
+          })
+        );
+        const rows = settled.filter((item): item is KtwBoardRow[] => Array.isArray(item)).flat();
+        if (settled.every((item) => item instanceof KtwArrivalsError)) {
+          throw settled[0] ?? new KtwArrivalsError("KTW board fetch failed");
         }
-        return parseKatowiceBoardPayload(await response.text(), now);
-      } catch (error) {
-        if (error instanceof KtwArrivalsError) throw error;
-        throw new KtwArrivalsError("KTW board fetch failed", { cause: error });
+        return rows;
       } finally {
         clearTimeout(timer);
       }

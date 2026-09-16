@@ -50,6 +50,8 @@ export type ReservationDto = Reservation;
 export interface KtwArrivalHourDto {
   scheduled_at: string;
   origin_label: string;
+  /** Official board status (current time or delay); omit when the board left it blank. */
+  status?: string;
 }
 
 /** Departure list row: reservation fields plus optional in-memory KTW hours (not a DB column). */
@@ -253,7 +255,7 @@ export interface MetricCardProps {
  */
 export interface ReservationCardProps {
   /** Obiekt rezerwacji do wyświetlenia */
-  reservation: ReservationDto;
+  reservation: DepartureListItem;
   /** Typ akcji dostępnej na karcie */
   actionType: "check-in" | "check-out";
   /** Callback wywoływany po kliknięciu przycisku akcji */
