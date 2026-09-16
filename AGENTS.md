@@ -39,12 +39,13 @@ CI (`.github/workflows/ci.yml`): test → lint → build on PR/push to `main`.
 - Driver UI is mobile-first (tablet/smartphone): large tap targets, single-card operational flows; no staff admin chrome.
 - Roles: `staff` (full access, unchanged) and `driver` (driver module only — no invoices, statistics, or full reservation admin). Role comes from Supabase Auth `app_metadata.role` (never `user_metadata`); missing role defaults to `staff`.
 - Drivers and staff share the same reservation/payment records — never duplicate entities for field ops.
-- Driver home path: `/kierowca`. Operating lists: overdue (any past day while still open) + calendar today — not staff `get_todays_*`.
+- Driver home path: `/kierowca`. Operating lists: overdue (any past day while still open) + calendar today. Handled arrivals/departures: Warsaw today **or** last 12 hours (union), by `actual_check_in` / `actual_check_out`.
+- Staff dashboard `/`: same operating window as driver lists — Warsaw today plus overdue unconfirmed arrivals and delayed in-progress returns. Staff can check-in or cancel from arrivals, and check-out or change the return date from departures.
 - Staff calendar: `/kalendarz` is staff-only. It shows planned arrivals/departures and timed driver shifts; staff create, edit, and delete overlapping shifts from that view. Driver lists at `/kierowca` remain unscoped by shift.
 - RLS: JWT `app_metadata.role` — drivers SELECT reservations + operational UPDATE only; staff keep full table access; invoices/settings/payments are staff-only. Service role still bypasses RLS (external create, admin settings).
 - Driver-writable fields at arrival: confirm arrival, parking duration, flight direction, passenger count, sector, paid-at-arrival.
 - Driver-writable fields at departure: complete departure, notes, paid-at-departure, dopłata (`surcharge_amount`) when actual return differs from planned.
-- Staff dashboard cancel is out of scope for this module (separate change).
+- KTW hours: staff and driver departure lists enrich after the existing query. If the public board is down or times out, omit `ktw_arrival_hours` and still return 200. Do not fail the departures endpoint to “fix” a missing board.
 
 ## Style & commits
 

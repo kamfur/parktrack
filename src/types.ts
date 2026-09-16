@@ -1,5 +1,9 @@
 import type { Tables, TablesInsert, TablesUpdate, Database } from "./db/database.types";
-import type { QuickReservationFormData, FullReservationFormData } from "./lib/schemas/reservation.schema";
+import type {
+  QuickReservationFormData,
+  FullReservationFormData,
+  ChangeReturnDateFormData,
+} from "./lib/schemas/reservation.schema";
 import type { AppRole } from "./lib/auth/resolve-app-role";
 import type {
   CalendarRangeQuery,
@@ -11,6 +15,7 @@ import type {
 export type {
   QuickReservationFormData,
   FullReservationFormData,
+  ChangeReturnDateFormData,
   AppRole,
   CalendarRangeQuery,
   DriverShiftFormData,
@@ -42,6 +47,16 @@ export type Reservation = Tables<"reservations">;
  */
 export type ReservationDto = Reservation;
 
+export interface KtwArrivalHourDto {
+  scheduled_at: string;
+  origin_label: string;
+}
+
+/** Departure list row: reservation fields plus optional in-memory KTW hours (not a DB column). */
+export interface DepartureListItem extends ReservationDto {
+  ktw_arrival_hours?: KtwArrivalHourDto[];
+}
+
 export type DriverShiftDto = Tables<"driver_shifts">;
 
 export interface CalendarEventDto {
@@ -51,7 +66,8 @@ export interface CalendarEventDto {
   firstName: string | null;
   lastName: string;
   licensePlate: string | null;
-  status: "confirmed" | "in_progress";
+  status: "confirmed" | "in_progress" | "completed";
+  handled: boolean;
 }
 
 export interface CalendarMonthDayDto {
@@ -166,10 +182,10 @@ export interface DashboardMetrics {
 export interface DashboardData {
   /** Metryki dashboardu */
   metrics: DashboardMetrics;
-  /** Lista rezerwacji z zaplanowanym check-in na dziś */
+  /** Przyjazdy na dziś (Warsaw) oraz zaległe, jeszcze nieprzyjęte */
   todaysArrivals: ReservationDto[];
-  /** Lista rezerwacji z zaplanowanym check-out na dziś */
-  todaysDepartures: ReservationDto[];
+  /** Wyjazdy na dziś (Warsaw) oraz opóźnione powroty bez check-out */
+  todaysDepartures: DepartureListItem[];
   /** Statystyki z endpointu /api/stats */
   stats: StatsData | null;
 }
@@ -242,6 +258,10 @@ export interface ReservationCardProps {
   actionType: "check-in" | "check-out";
   /** Callback wywoływany po kliknięciu przycisku akcji */
   onAction: (reservationId: string) => Promise<void>;
+  /** Anulowanie rezerwacji z listy przyjazdów */
+  onCancel?: (reservation: ReservationDto) => void;
+  /** Zmiana planowanej daty powrotu z listy wyjazdów */
+  onChangeReturnDate?: (reservation: ReservationDto) => void;
   /** Czy akcja jest w trakcie wykonywania */
   isLoading?: boolean;
 }
@@ -637,7 +657,7 @@ export interface ReservationDetailsViewModel {
   /** Liczba dni */
   days: number;
   /** Kierunek lotu */
-  flightDirection: "departure" | "arrival" | null;
+  flightDirection: string | null;
   /** Label kierunku lotu */
   flightDirectionLabel: string | null;
   /** Ikona kierunku lotu */
@@ -698,7 +718,7 @@ export interface PersonalInfoCardProps {
 export interface ReservationDetailsCardProps {
   plannedCheckIn: string;
   plannedCheckOut: string;
-  flightDirection: "departure" | "arrival" | null;
+  flightDirection: string | null;
 }
 
 /**

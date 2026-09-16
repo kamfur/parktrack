@@ -270,25 +270,25 @@ No schema migration. Existing rows with a matchable free-text direction get hour
 
 #### Automated
 
-- [x] 1.1 Unit tests for alias, substring, skip null/legacy/unmatched, ±3h window, multiple hours
-- [x] 1.2 `npm run test -- src/lib/ktw`
-- [x] 1.3 `npm run typecheck`
+- [x] 1.1 Unit tests for alias, substring, skip null/legacy/unmatched, ±3h window, multiple hours — d347cba
+- [x] 1.2 `npm run test -- src/lib/ktw` — d347cba
+- [x] 1.3 `npm run typecheck` — d347cba
 
 ### Phase 2: KTW board adapter and list enrichment
 
 #### Automated
 
-- [ ] 2.1 Enricher tests with fake port (match, skip, fail-soft)
-- [ ] 2.2 Adapter parse tests against committed fixture (no live HTTP)
-- [ ] 2.3 Existing reservation/driver service tests still pass
-- [ ] 2.4 `npm run test`
-- [ ] 2.5 `npm run typecheck`
-- [ ] 2.6 `npm run lint`
+- [x] 2.1 Enricher tests with fake port (match, skip, fail-soft)
+- [x] 2.2 Adapter parse tests against committed fixture (no live HTTP)
+- [x] 2.3 Existing reservation/driver service tests still pass
+- [x] 2.4 `npm run test`
+- [x] 2.5 `npm run typecheck`
+- [x] 2.6 `npm run lint`
 
 #### Manual
 
-- [ ] 2.7 Staff and driver Wyjazdy show hours when the board is reachable
-- [ ] 2.8 Invalid/blocked board URL: lists load, checkout works, hours omitted
+- [x] 2.7 Staff and driver Wyjazdy show hours when the board is reachable
+- [x] 2.8 Invalid/blocked board URL: lists load, checkout works, hours omitted
 
 ### Phase 3: Staff and driver UI
 

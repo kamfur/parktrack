@@ -1,13 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../db/database.types";
-import type { ReservationDto } from "../../types";
+import type { DepartureListItem, ReservationDto } from "../../types";
 import {
   driverArrivalUpdateSchema,
   driverDepartureUpdateSchema,
   type DriverArrivalUpdate,
   type DriverDepartureUpdate,
 } from "../schemas/driver.schema";
-import { startOfTomorrowWarsawIso } from "../driver/operating-window";
+import { handledWindowStartIso, startOfTomorrowWarsawIso } from "../driver/operating-window";
+import { enrichDepartures } from "./ktw-arrival-hours.service";
 
 export class DriverServiceError extends Error {
   constructor(
@@ -39,7 +40,8 @@ export class DriverService {
       .select(DRIVER_LIST_SELECT)
       .eq("status", "confirmed")
       .lt("planned_check_in", upper)
-      .order("planned_check_in", { ascending: true });
+      .order("planned_check_in", { ascending: true })
+      .limit(200);
 
     if (error) {
       throw new DriverServiceError(`Failed to fetch driver arrivals: ${error.message}`, 500);
@@ -48,20 +50,57 @@ export class DriverService {
     return (data ?? []) as ReservationDto[];
   }
 
-  async listDepartures(now: Date = new Date()): Promise<ReservationDto[]> {
+  async listDepartures(now: Date = new Date()): Promise<DepartureListItem[]> {
     const upper = startOfTomorrowWarsawIso(now);
     const { data, error } = await this.supabase
       .from("reservations")
       .select(DRIVER_LIST_SELECT)
       .eq("status", "in_progress")
       .lt("planned_check_out", upper)
-      .order("planned_check_out", { ascending: true });
+      .order("planned_check_out", { ascending: true })
+      .limit(200);
 
     if (error) {
       throw new DriverServiceError(`Failed to fetch driver departures: ${error.message}`, 500);
     }
 
+    return enrichDepartures((data ?? []) as ReservationDto[], now);
+  }
+
+  async listHandledArrivals(now: Date = new Date()): Promise<ReservationDto[]> {
+    const since = handledWindowStartIso(now);
+    const { data, error } = await this.supabase
+      .from("reservations")
+      .select(DRIVER_LIST_SELECT)
+      .not("actual_check_in", "is", null)
+      .gte("actual_check_in", since)
+      .in("status", ["in_progress", "completed"])
+      .order("actual_check_in", { ascending: false })
+      .limit(200);
+
+    if (error) {
+      throw new DriverServiceError(`Failed to fetch handled arrivals: ${error.message}`, 500);
+    }
+
     return (data ?? []) as ReservationDto[];
+  }
+
+  async listHandledDepartures(now: Date = new Date()): Promise<DepartureListItem[]> {
+    const since = handledWindowStartIso(now);
+    const { data, error } = await this.supabase
+      .from("reservations")
+      .select(DRIVER_LIST_SELECT)
+      .not("actual_check_out", "is", null)
+      .gte("actual_check_out", since)
+      .eq("status", "completed")
+      .order("actual_check_out", { ascending: false })
+      .limit(200);
+
+    if (error) {
+      throw new DriverServiceError(`Failed to fetch handled departures: ${error.message}`, 500);
+    }
+
+    return enrichDepartures((data ?? []) as ReservationDto[], now);
   }
 
   async listOccupancy(): Promise<ReservationDto[]> {
@@ -69,7 +108,8 @@ export class DriverService {
       .from("reservations")
       .select(DRIVER_LIST_SELECT)
       .eq("status", "in_progress")
-      .order("planned_check_out", { ascending: true });
+      .order("planned_check_out", { ascending: true })
+      .limit(200);
 
     if (error) {
       throw new DriverServiceError(`Failed to fetch occupancy: ${error.message}`, 500);

@@ -22,7 +22,8 @@ Run one file: `npm run test -- src/pages/api/settings.test.ts`.
 
 - Prefix: `/api/driver/*` — arrivals, departures, occupancy, reservation arrival/departure PATCH.
 - Allowed roles: `driver` and `staff`. Staff-only APIs remain blocked for drivers in `authMiddleware`.
-- List window: overdue + calendar today (Warsaw) — not staff `get_todays_*`.
+- List window: overdue + calendar today (Warsaw) for both `/api/driver/*` lists and staff dashboard `getTodaysArrivals` / `getTodaysDepartures`.
+- Handled window: `GET /api/driver/arrivals` and `/departures` also return `handled` — actual timestamp on Warsaw today **or** within the last 12 hours (union).
 - RLS defense-in-depth: migration `20260909140000_harden_rls_by_app_role.sql` — drivers cannot write invoices/settings; reservation UPDATEs constrained by status + column trigger.
 
 ## Staff calendar APIs
@@ -32,6 +33,12 @@ Run one file: `npm run test -- src/pages/api/settings.test.ts`.
 - Calendar events use planned timestamps and statuses `confirmed` / `in_progress`; group dates in `Europe/Warsaw`.
 - `/api/drivers` uses the server-only admin client to list Auth users with `app_metadata.role=driver`.
 - Driver shifts allow overlaps. The driver module remains unscoped by shifts.
+
+## KTW arrivals on return lists
+
+- Staff `POST /api/reservations/departures` and driver `GET /api/driver/departures` enrich after the existing query with optional `ktw_arrival_hours`.
+- Fail-soft: board timeout/parse/network errors omit hours; list membership and 200 stay. Do not fail these endpoints because the board is missing.
+- No new request input on those routes. If any appears later, Zod-validate it first.
 
 ## Tripwires
 

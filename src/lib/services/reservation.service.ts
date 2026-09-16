@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   CreateExternalReservationCommand,
   CreateReservationCommand,
+  DepartureListItem,
   ReservationDto,
   UpdateReservationCommand,
 } from "../../types";
@@ -11,6 +12,8 @@ import {
   updateReservationSchema,
 } from "../schemas/reservation.schema";
 import { createSupabaseAdminClient } from "../supabase-admin";
+import { startOfTomorrowWarsawIso } from "../driver/operating-window";
+import { enrichDepartures } from "./ktw-arrival-hours.service";
 
 export class ReservationService {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -229,37 +232,45 @@ export class ReservationService {
   }
 
   /**
-   * Retrieves all reservations where the planned check-in date is today.
-   * Used for displaying today's arrivals in the admin panel.
-   *
-   * @returns Array of reservations for today's arrivals, sorted by check-in time
-   * @throws Error if database operation fails
+   * Staff dashboard arrivals: Warsaw today plus any earlier confirmed arrivals
+   * that have not been checked in yet.
    */
-  async getTodaysArrivals(): Promise<ReservationDto[]> {
-    const { data, error } = await this.supabase.rpc("get_todays_arrivals");
+  async getTodaysArrivals(now: Date = new Date()): Promise<ReservationDto[]> {
+    const upper = startOfTomorrowWarsawIso(now);
+    const { data, error } = await this.supabase
+      .from("reservations")
+      .select("*")
+      .eq("status", "confirmed")
+      .lt("planned_check_in", upper)
+      .order("planned_check_in", { ascending: true })
+      .limit(200);
 
     if (error) {
       throw new Error(`Failed to fetch today's arrivals: ${error.message}`);
     }
 
-    return data || [];
+    return (data as ReservationDto[]) || [];
   }
 
   /**
-   * Retrieves all reservations where the planned check-out date is today.
-   * Used for displaying today's departures in the admin panel.
-   *
-   * @returns Array of reservations for today's departures, sorted by check-out time
-   * @throws Error if database operation fails
+   * Staff dashboard departures: Warsaw today plus delayed in-progress returns
+   * that have not been checked out yet.
    */
-  async getTodaysDepartures(): Promise<ReservationDto[]> {
-    const { data, error } = await this.supabase.rpc("get_todays_departures");
+  async getTodaysDepartures(now: Date = new Date()): Promise<DepartureListItem[]> {
+    const upper = startOfTomorrowWarsawIso(now);
+    const { data, error } = await this.supabase
+      .from("reservations")
+      .select("*")
+      .eq("status", "in_progress")
+      .lt("planned_check_out", upper)
+      .order("planned_check_out", { ascending: true })
+      .limit(200);
 
     if (error) {
       throw new Error(`Failed to fetch today's departures: ${error.message}`);
     }
 
-    return data || [];
+    return enrichDepartures((data as ReservationDto[]) || [], now);
   }
 
   /**
