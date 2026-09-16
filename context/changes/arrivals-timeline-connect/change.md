@@ -1,7 +1,7 @@
 ---
 change_id: arrivals-timeline-connect
 title: Arrivals timeline connect
-status: implementing
+status: implemented
 created: 2026-09-16
 updated: 2026-09-16
 archived_at: null

@@ -294,14 +294,14 @@ No schema migration. Existing rows with a matchable free-text direction get hour
 
 #### Automated
 
-- [x] 3.1 `npm run typecheck`
-- [x] 3.2 `npm run lint`
-- [x] 3.3 `npm run test`
-- [x] 3.4 Existing e2e auth guards pass (`npm run test:e2e`)
+- [x] 3.1 `npm run typecheck` — 2d75fea
+- [x] 3.2 `npm run lint` — 2d75fea
+- [x] 3.3 `npm run test` — 2d75fea
+- [x] 3.4 Existing e2e auth guards pass (`npm run test:e2e`) — 2d75fea
 
 #### Manual
 
-- [x] 3.5 Staff departure card: direction + candidate hours; empty direction unchanged; checkout works
-- [x] 3.6 Driver Wyjazdy: hours beside direction; Wydanie unchanged
-- [x] 3.7 Multiple hours in window all shown
-- [x] 3.8 Board down: lists usable without hours
+- [x] 3.5 Staff departure card: direction + candidate hours; empty direction unchanged; checkout works — 2d75fea
+- [x] 3.6 Driver Wyjazdy: hours beside direction; Wydanie unchanged — 2d75fea
+- [x] 3.7 Multiple hours in window all shown — 2d75fea
+- [x] 3.8 Board down: lists usable without hours — 2d75fea
