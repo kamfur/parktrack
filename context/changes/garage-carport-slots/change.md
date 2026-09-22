@@ -3,7 +3,7 @@ change_id: garage-carport-slots
 title: Garage & carport parking slots
 status: implementing
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-22
 archived_at: null
 ---
 

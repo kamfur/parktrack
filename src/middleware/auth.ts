@@ -22,6 +22,8 @@ const STAFF_ONLY_API_PREFIXES = [
   "/api/calendar/",
   "/api/shifts",
   "/api/drivers",
+  "/api/garage-spots",
+  "/api/garage-assignments",
 ];
 
 export const DRIVER_HOME = "/kierowca";

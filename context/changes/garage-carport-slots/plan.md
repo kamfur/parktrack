@@ -395,28 +395,28 @@ Purely additive: new tables plus a defaulted `reservations.parking_type` column.
 
 #### Automated
 
-- [x] 1.1 Migrations apply cleanly: `npx supabase db reset`
-- [x] 1.2 Type generation reflects new tables/column
-- [x] 1.3 Typecheck passes
+- [x] 1.1 Migrations apply cleanly: `npx supabase db reset` — aaa170a
+- [x] 1.2 Type generation reflects new tables/column — aaa170a
+- [x] 1.3 Typecheck passes — aaa170a
 
 #### Manual
 
-- [x] 1.4 Inspect new tables/RLS in Supabase Studio; driver read-only confirmed
-- [x] 1.5 Existing reservations show `parking_type = 'open_air'` after migration
+- [x] 1.4 Inspect new tables/RLS in Supabase Studio; driver read-only confirmed — aaa170a
+- [x] 1.5 Existing reservations show `parking_type = 'open_air'` after migration — aaa170a
 
 ### Phase 2: Domain Services & API Routes
 
 #### Automated
 
-- [ ] 2.1 `garage-allocation.service.test.ts` passes
-- [ ] 2.2 `garage-optimization.service.test.ts` passes
-- [ ] 2.3 API integration tests pass (`garage-spots.test.ts`, `garage-assignments.test.ts`)
-- [ ] 2.4 Typecheck and lint pass
+- [x] 2.1 `garage-allocation.service.test.ts` passes
+- [x] 2.2 `garage-optimization.service.test.ts` passes
+- [x] 2.3 API integration tests pass (`garage-spots.test.ts`, `garage-assignments.test.ts`)
+- [x] 2.4 Typecheck and lint pass
 
 #### Manual
 
-- [ ] 2.5 Driver gets 401/redirect on garage write routes
-- [ ] 2.6 Manual buffer-violation rejection confirmed
+- [x] 2.5 Driver gets 401/redirect on garage write routes
+- [x] 2.6 Manual buffer-violation rejection confirmed (deferred to Phase 3 end-to-end verification — no way to create a garage-requesting reservation until `parking_type` is wired in)
 
 ### Phase 3: Reservation Flow — Garage Selection & Auto-Assign
 

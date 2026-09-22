@@ -2,6 +2,7 @@ import type { Tables, TablesInsert, TablesUpdate, Database } from "./db/database
 import type {
   QuickReservationFormData,
   FullReservationFormData,
+  EditReservationFormData,
   ChangeReturnDateFormData,
 } from "./lib/schemas/reservation.schema";
 import type { AppRole } from "./lib/auth/resolve-app-role";
@@ -15,6 +16,7 @@ import type {
 export type {
   QuickReservationFormData,
   FullReservationFormData,
+  EditReservationFormData,
   ChangeReturnDateFormData,
   AppRole,
   CalendarRangeQuery,
@@ -60,6 +62,29 @@ export interface DepartureListItem extends ReservationDto {
 }
 
 export type DriverShiftDto = Tables<"driver_shifts">;
+
+/** A staff-configured garage/carport unit. Single/double is a capacity label, not a sub-spot hierarchy. */
+export type GarageSpotDto = Tables<"garage_spots">;
+
+/** A reservation-to-garage-spot assignment; `superseded_at: null` means it is the currently active one. */
+export type GarageAssignmentDto = Tables<"garage_assignments">;
+
+/** Descriptive (non-applied) downtime-reduction suggestion for a garage spot. */
+export interface GarageOptimizationSuggestionDto {
+  garageSpotId: string;
+  description: string;
+}
+
+/** One active garage assignment, denormalized for the occupancy view. */
+export interface GarageOccupancyEntryDto {
+  assignmentId: string;
+  garageSpotId: string;
+  garageSpotName: string;
+  reservationId: string;
+  lastName: string;
+  plannedCheckIn: string;
+  plannedCheckOut: string;
+}
 
 export interface CalendarEventDto {
   kind: "arrival" | "departure";
@@ -122,6 +147,21 @@ export type CreateReservationCommand = Omit<
   /** Optional — server calculates when omitted */
   total_cost?: number;
 };
+
+/**
+ * Command model for creating a garage/carport spot (configurator).
+ */
+export type CreateGarageSpotCommand = Pick<
+  TablesInsert<"garage_spots">,
+  "name" | "spot_type" | "capacity_label" | "price_per_day"
+> & {
+  is_available?: boolean;
+};
+
+/**
+ * Command model for updating a garage/carport spot (partial update).
+ */
+export type UpdateGarageSpotCommand = TablesUpdate<"garage_spots">;
 
 /**
  * Command model for updating an existing reservation.
@@ -258,8 +298,8 @@ export interface ReservationCardProps {
   reservation: DepartureListItem;
   /** Typ akcji dostępnej na karcie */
   actionType: "check-in" | "check-out";
-  /** Callback wywoływany po kliknięciu przycisku akcji */
-  onAction: (reservationId: string) => Promise<void>;
+  /** Callback otwierający formularz przyjęcia / wyjazdu */
+  onAction: (reservation: ReservationDto) => void;
   /** Anulowanie rezerwacji z listy przyjazdów */
   onCancel?: (reservation: ReservationDto) => void;
   /** Zmiana planowanej daty powrotu z listy wyjazdów */
@@ -469,6 +509,17 @@ export interface FullReservationFormProps {
 }
 
 /**
+ * Props dla EditReservationForm
+ */
+export interface EditReservationFormProps {
+  reservation: ReservationDto;
+  editRules: ConditionalEditRules;
+  onSubmit: (data: EditReservationFormData) => Promise<void>;
+  onCancel: () => void;
+  isSubmitting: boolean;
+}
+
+/**
  * Props dla CostPreview
  */
 export interface CostPreviewProps {
@@ -562,6 +613,8 @@ export interface ReservationDetailsViewProps {
   onClose: () => void;
   /** Callback po aktualizacji rezerwacji */
   onUpdate?: (reservation: ReservationDto) => void;
+  /** Otwórz od razu w trybie edycji (np. z listy rezerwacji) */
+  initialEditMode?: boolean;
 }
 
 /**
