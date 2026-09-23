@@ -141,6 +141,7 @@ export type CreateReservationCommand = Omit<
     | "flight_direction"
     | "license_plate"
     | "notes"
+    | "parking_type"
   >,
   never
 > & {
@@ -717,6 +718,10 @@ export interface ReservationDetailsViewModel {
   flightDirectionLabel: string | null;
   /** Ikona kierunku lotu */
   flightDirectionIcon: string | null;
+  /** Nazwa przydzielonego miejsca garażowego (null dla zwykłych miejsc parkingowych) */
+  garageSpotLabel: string | null;
+  /** Ikona oznaczająca przydział garażowy */
+  garageSpotIcon: string | null;
   /** Dane finansowe */
   financial: FinancialInfoViewModel;
   /** Notatki */

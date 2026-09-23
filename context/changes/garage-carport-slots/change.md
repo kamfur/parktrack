@@ -19,3 +19,7 @@ Planning decisions (2026-09-21):
 - Occupancy/swap view is a simple list (today + upcoming per spot), not a full resource-grid calendar.
 - "Suggest optimization" computes a real idle-gap heuristic (not purely descriptive/no-op).
 - No data migration/seeding — staff populates garages via the new configurator after deploy. Resolves PRD Open Question #4.
+
+Phase 1 note (2026-09-22): migrations verified via remote push to the linked Supabase project (local Docker wasn't running).
+
+Phase 2 note (2026-09-22): a pre-existing repo-wide lint/format debt (~551 issues, mostly CRLF/prettier mismatches in unrelated files) was confirmed NOT to include any garage-* files this change added or touched.

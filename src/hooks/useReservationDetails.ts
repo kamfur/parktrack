@@ -5,14 +5,14 @@ import type {
   ConditionalEditRules,
   TimelineEvent,
   FinancialInfoViewModel,
-  CheckInCommand,
-  CheckOutCommand,
   InvoiceDto,
+  GarageOccupancyEntryDto,
 } from "@/types";
 
 interface UseReservationDetailsParams {
   reservationId: string;
   enabled: boolean;
+  initialEditMode?: boolean;
 }
 
 interface UseReservationDetailsResult {
@@ -50,9 +50,9 @@ interface UseReservationDetailsResult {
   openCancelDialog: () => void;
   closeCancelDialog: () => void;
 
-  // Operations
-  performCheckIn: (data: CheckInCommand) => Promise<void>;
-  performCheckOut: (data: CheckOutCommand) => Promise<void>;
+  // Operations (same payload/endpoints as driver module)
+  performCheckIn: (body: Record<string, unknown>) => Promise<void>;
+  performCheckOut: (body: Record<string, unknown>) => Promise<void>;
   cancelReservation: (reason?: string) => Promise<void>;
 
   // Processing state
@@ -66,14 +66,16 @@ interface UseReservationDetailsResult {
 export function useReservationDetails({
   reservationId,
   enabled,
+  initialEditMode = false,
 }: UseReservationDetailsParams): UseReservationDetailsResult {
   // State
   const [reservation, setReservation] = useState<ReservationDto | null>(null);
+  const [garageSpotName, setGarageSpotName] = useState<string | null>(null);
   const [existingInvoice, setExistingInvoice] = useState<InvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(initialEditMode);
   const [isDirty, setIsDirty] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -83,61 +85,81 @@ export function useReservationDetails({
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Fetch reservation data
-  const fetchReservation = useCallback(async () => {
-    if (!enabled || !reservationId) return;
+  const fetchReservation = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!enabled || !reservationId) return;
 
-    setIsLoading(true);
-    setError(null);
+      if (!options?.silent) {
+        setIsLoading(true);
+      }
+      setError(null);
 
-    try {
-      const [reservationRes, invoiceRes] = await Promise.all([
-        fetch(`/api/reservations?id=eq.${reservationId}`),
-        fetch(`/api/invoices?reservation_id=${reservationId}`),
-      ]);
+      try {
+        const [reservationRes, invoiceRes] = await Promise.all([
+          fetch(`/api/reservations?id=eq.${reservationId}`),
+          fetch(`/api/invoices?reservation_id=${reservationId}`),
+        ]);
 
-      if (!reservationRes.ok) {
-        if (reservationRes.status === 404) {
+        if (!reservationRes.ok) {
+          if (reservationRes.status === 404) {
+            throw new Error("Reservation not found");
+          }
+          throw new Error("Failed to fetch reservation");
+        }
+
+        const data = await reservationRes.json();
+
+        if (!data) {
           throw new Error("Reservation not found");
         }
-        throw new Error("Failed to fetch reservation");
+
+        // API returns single object
+        setReservation(data);
+
+        if (data.parking_type === "garage") {
+          try {
+            const garageRes = await fetch(`/api/garage-assignments`);
+            const entries: GarageOccupancyEntryDto[] = garageRes.ok ? await garageRes.json() : [];
+            const match = entries.find((entry) => entry.reservationId === reservationId);
+            setGarageSpotName(match?.garageSpotName ?? null);
+          } catch {
+            setGarageSpotName(null);
+          }
+        } else {
+          setGarageSpotName(null);
+        }
+
+        if (invoiceRes.ok) {
+          setExistingInvoice(await invoiceRes.json());
+        } else {
+          setExistingInvoice(null);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error("Unknown error"));
+      } finally {
+        if (!options?.silent) {
+          setIsLoading(false);
+        }
       }
-
-      const data = await reservationRes.json();
-
-      if (!data) {
-        throw new Error("Reservation not found");
-      }
-
-      // API returns single object
-      setReservation(data);
-
-      if (invoiceRes.ok) {
-        setExistingInvoice(await invoiceRes.json());
-      } else {
-        setExistingInvoice(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [reservationId, enabled]);
+    },
+    [reservationId, enabled]
+  );
 
   // Initial fetch
   useEffect(() => {
     fetchReservation();
   }, [fetchReservation]);
 
-  // Polling mechanism - refresh every 30 seconds
+  // Polling mechanism - refresh every 30 seconds, but not while editing
   useEffect(() => {
-    if (!enabled || !reservationId) return;
+    if (!enabled || !reservationId || isEditMode) return;
 
     const intervalId = setInterval(() => {
-      fetchReservation();
+      fetchReservation({ silent: true });
     }, 30000); // 30 seconds
 
     return () => clearInterval(intervalId);
-  }, [enabled, reservationId, fetchReservation]);
+  }, [enabled, reservationId, fetchReservation, isEditMode]);
 
   // Update reservation
   const updateReservation = useCallback(
@@ -177,6 +199,16 @@ export function useReservationDetails({
     [updateReservation]
   );
 
+  // Drop edit mode when the reservation cannot be edited (completed / cancelled)
+  useEffect(() => {
+    if (!reservation || !isEditMode) return;
+    const canEdit = reservation.status === "confirmed" || reservation.status === "in_progress";
+    if (!canEdit) {
+      setIsEditMode(false);
+      setIsDirty(false);
+    }
+  }, [reservation, isEditMode]);
+
   // Edit mode actions
   const enterEditMode = useCallback(() => {
     setIsEditMode(true);
@@ -199,31 +231,53 @@ export function useReservationDetails({
   const openCancelDialog = useCallback(() => setShowCancelDialog(true), []);
   const closeCancelDialog = useCallback(() => setShowCancelDialog(false), []);
 
-  // Operations
+  // Operations — same arrival/departure endpoints and field capture as driver ops
   const performCheckIn = useCallback(
-    async (data: CheckInCommand) => {
+    async (body: Record<string, unknown>) => {
+      if (!reservationId) return;
       setIsProcessing(true);
       try {
-        await updateReservation(data);
+        const response = await fetch(`/api/driver/reservations/${reservationId}/arrival`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(payload?.error ?? `Błąd potwierdzenia (${response.status})`);
+        }
+        const updated = (await response.json()) as ReservationDto;
+        setReservation(updated);
         closeCheckInModal();
       } finally {
         setIsProcessing(false);
       }
     },
-    [updateReservation, closeCheckInModal]
+    [reservationId, closeCheckInModal]
   );
 
   const performCheckOut = useCallback(
-    async (data: CheckOutCommand) => {
+    async (body: Record<string, unknown>) => {
+      if (!reservationId) return;
       setIsProcessing(true);
       try {
-        await updateReservation(data);
+        const response = await fetch(`/api/driver/reservations/${reservationId}/departure`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(payload?.error ?? `Błąd wyjazdu (${response.status})`);
+        }
+        const updated = (await response.json()) as ReservationDto;
+        setReservation(updated);
         closeCheckOutModal();
       } finally {
         setIsProcessing(false);
       }
     },
-    [updateReservation, closeCheckOutModal]
+    [reservationId, closeCheckOutModal]
   );
 
   const cancelReservation = useCallback(
@@ -251,7 +305,9 @@ export function useReservationDetails({
   );
 
   // Build ViewModel
-  const viewModel: ReservationDetailsViewModel | null = reservation ? buildViewModel(reservation) : null;
+  const viewModel: ReservationDetailsViewModel | null = reservation
+    ? buildViewModel(reservation, garageSpotName)
+    : null;
 
   // Get edit rules
   const editRules = reservation ? getEditRules(reservation.status) : getDefaultEditRules();
@@ -287,9 +343,13 @@ export function useReservationDetails({
 }
 
 /**
- * Builds ReservationDetailsViewModel from ReservationDto
+ * Builds ReservationDetailsViewModel from ReservationDto. Exported for direct
+ * unit testing without needing React hook-testing infrastructure.
  */
-function buildViewModel(reservation: ReservationDto): ReservationDetailsViewModel {
+export function buildViewModel(
+  reservation: ReservationDto,
+  garageSpotName: string | null
+): ReservationDetailsViewModel {
   const fullName = reservation.first_name
     ? `${reservation.first_name} ${reservation.last_name}`
     : reservation.last_name;
@@ -317,7 +377,9 @@ function buildViewModel(reservation: ReservationDto): ReservationDetailsViewMode
     days: calculateDays(reservation.planned_check_in, reservation.planned_check_out),
     flightDirection: reservation.flight_direction,
     flightDirectionLabel: getFlightDirectionLabel(reservation.flight_direction),
-    flightDirectionIcon: getFlightDirectionIcon(reservation.flight_direction),
+    flightDirectionIcon: reservation.flight_direction ? "✈️" : null,
+    garageSpotLabel: garageSpotName,
+    garageSpotIcon: garageSpotName ? "🅿️" : null,
     financial,
     notes: reservation.notes,
     timeline,
@@ -329,14 +391,16 @@ function buildViewModel(reservation: ReservationDto): ReservationDetailsViewMode
  * Builds FinancialInfoViewModel
  */
 function buildFinancialViewModel(reservation: ReservationDto): FinancialInfoViewModel {
+  const paymentMethod: FinancialInfoViewModel["paymentMethod"] = null;
+
   return {
     totalCost: reservation.total_cost,
     formattedCost: formatCurrency(reservation.total_cost),
     isPaid: reservation.is_paid,
     paymentStatusLabel: reservation.is_paid ? "Opłacone" : "Nieopłacone",
     paymentStatusColor: reservation.is_paid ? "success" : "warning",
-    paymentMethod: reservation.payment_method,
-    paymentMethodLabel: getPaymentMethodLabel(reservation.payment_method),
+    paymentMethod,
+    paymentMethodLabel: getPaymentMethodLabel(paymentMethod),
     source: reservation.source,
     sourceLabel: getSourceLabel(reservation.source),
   };
@@ -533,15 +597,10 @@ function getStatusColor(status: string): string {
 }
 
 function getFlightDirectionLabel(direction: string | null): string | null {
+  if (!direction) return null;
   if (direction === "departure") return "Wylot";
   if (direction === "arrival") return "Przylot";
-  return null;
-}
-
-function getFlightDirectionIcon(direction: string | null): string | null {
-  if (direction === "departure") return "✈️";
-  if (direction === "arrival") return "🛬";
-  return null;
+  return direction;
 }
 
 function getPaymentMethodLabel(method: string | null): string | null {

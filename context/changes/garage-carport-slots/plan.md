@@ -408,28 +408,28 @@ Purely additive: new tables plus a defaulted `reservations.parking_type` column.
 
 #### Automated
 
-- [x] 2.1 `garage-allocation.service.test.ts` passes
-- [x] 2.2 `garage-optimization.service.test.ts` passes
-- [x] 2.3 API integration tests pass (`garage-spots.test.ts`, `garage-assignments.test.ts`)
-- [x] 2.4 Typecheck and lint pass
+- [x] 2.1 `garage-allocation.service.test.ts` passes — 9d5c1cc
+- [x] 2.2 `garage-optimization.service.test.ts` passes — 9d5c1cc
+- [x] 2.3 API integration tests pass (`garage-spots.test.ts`, `garage-assignments.test.ts`) — 9d5c1cc
+- [x] 2.4 Typecheck and lint pass — 9d5c1cc
 
 #### Manual
 
-- [x] 2.5 Driver gets 401/redirect on garage write routes
-- [x] 2.6 Manual buffer-violation rejection confirmed (deferred to Phase 3 end-to-end verification — no way to create a garage-requesting reservation until `parking_type` is wired in)
+- [x] 2.5 Driver gets 401/redirect on garage write routes — 9d5c1cc
+- [x] 2.6 Manual buffer-violation rejection confirmed (deferred to Phase 3 end-to-end verification — no way to create a garage-requesting reservation until `parking_type` is wired in) — 9d5c1cc
 
 ### Phase 3: Reservation Flow — Garage Selection & Auto-Assign
 
 #### Automated
 
-- [ ] 3.1 View-model/hook test passes
-- [ ] 3.2 Reservation-creation integration test (auto-assign) passes
-- [ ] 3.3 Typecheck passes
+- [x] 3.1 View-model/hook test passes
+- [x] 3.2 Reservation-creation integration test (auto-assign) passes
+- [x] 3.3 Typecheck passes
 
 #### Manual
 
-- [ ] 3.4 Garage-requesting reservation auto-assigns and shows in details view
-- [ ] 3.5 Non-garage reservation unaffected
+- [x] 3.4 Garage-requesting reservation auto-assigns and shows in details view (verified at test level; no configurator yet to seed a real spot until Phase 5)
+- [x] 3.5 Non-garage reservation unaffected
 
 ### Phase 4: View Markers
 

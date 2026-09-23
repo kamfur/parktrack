@@ -57,11 +57,12 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
       email: data.email?.trim() || undefined,
       phone: data.phone?.replace(/\s/g, "") || undefined,
       license_plate: data.licensePlate?.toUpperCase().trim() || undefined,
-      flight_direction: data.flightDirection || undefined,
+      flight_direction: data.flightDirection?.trim() || undefined,
       notes: data.notes?.trim() || undefined,
       planned_check_in: data.checkInDate.toISOString(),
       planned_check_out: data.checkOutDate.toISOString(),
       source: "phone",
+      parking_type: data.requiresGarage ? "garage" : "open_air",
     };
 
     // Only include total_cost if it's a positive number (server will calculate if not provided)
@@ -116,8 +117,8 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
     // Keep only common fields
     setFormData({
       lastName: formData.lastName || "",
-      checkInDate: formData.checkInDate || null,
-      checkOutDate: formData.checkOutDate || null,
+      checkInDate: formData.checkInDate,
+      checkOutDate: formData.checkOutDate,
     });
     setMode("quick");
   };

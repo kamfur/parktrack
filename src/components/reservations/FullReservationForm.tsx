@@ -7,10 +7,11 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DateTimePicker } from "@/components/shared/DateTimePicker";
 import { CostPreview } from "./CostPreview";
 import { AvailabilityIndicator } from "./AvailabilityIndicator";
+import { FlightDirectionInput } from "./FlightDirectionInput";
 import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
 import { Loader2 } from "lucide-react";
 
@@ -39,8 +40,9 @@ export function FullReservationForm({
       licensePlate: initialData?.licensePlate || "",
       checkInDate: initialData?.checkInDate || today,
       checkOutDate: initialData?.checkOutDate || tomorrow,
-      flightDirection: initialData?.flightDirection || null,
+      flightDirection: initialData?.flightDirection || "",
       notes: initialData?.notes || "",
+      requiresGarage: initialData?.requiresGarage ?? false,
     },
   });
 
@@ -265,6 +267,19 @@ export function FullReservationForm({
               </FormItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name="requiresGarage"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                <FormControl>
+                  <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
+                </FormControl>
+                <FormLabel className="font-normal">Wymaga garażu/wiaty</FormLabel>
+              </FormItem>
+            )}
+          />
         </div>
 
         {/* Flight Section */}
@@ -277,17 +292,14 @@ export function FullReservationForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Kierunek lotu</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || undefined}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Wybierz kierunek" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="departure">Wylot</SelectItem>
-                    <SelectItem value="arrival">Przylot</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FlightDirectionInput
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  placeholder="np. Londyn, LO 392"
+                  maxLength={100}
+                />
                 <FormMessage />
               </FormItem>
             )}

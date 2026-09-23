@@ -13,7 +13,16 @@ import {
 } from "../schemas/reservation.schema";
 import { createSupabaseAdminClient } from "../supabase-admin";
 import { startOfTomorrowWarsawIso } from "../driver/operating-window";
+import { uniqueFlightDirections } from "../reservations/flight-directions";
 import { enrichDepartures } from "./ktw-arrival-hours.service";
+import { GarageAllocationService } from "./garage-allocation.service";
+
+export class NoGarageAvailableError extends Error {
+  constructor(message = "No garage/carport spot is available within the required buffer") {
+    super(message);
+    this.name = "NoGarageAvailableError";
+  }
+}
 
 export class ReservationService {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -191,6 +200,18 @@ export class ReservationService {
       throw new Error(`Failed to create reservation: ${error.message}`);
     }
 
+    if (validatedData.parking_type === "garage") {
+      const allocationService = new GarageAllocationService(adminClient);
+      const spot = await allocationService.findAvailableSpot(
+        reservation.planned_check_in,
+        reservation.planned_check_out
+      );
+      if (!spot) {
+        throw new NoGarageAvailableError();
+      }
+      await allocationService.assign(reservation.id, spot.id, "system");
+    }
+
     return reservation;
   }
 
@@ -271,6 +292,25 @@ export class ReservationService {
     }
 
     return enrichDepartures((data as ReservationDto[]) || [], now);
+  }
+
+  /**
+   * Distinct free-text flight directions already stored on reservations.
+   * Used as suggestions while still allowing a new value to be typed.
+   */
+  async listFlightDirections(): Promise<string[]> {
+    const { data, error } = await this.supabase
+      .from("reservations")
+      .select("flight_direction")
+      .not("flight_direction", "is", null)
+      .neq("flight_direction", "")
+      .limit(5000);
+
+    if (error) {
+      throw new Error(`Failed to fetch flight directions: ${error.message}`);
+    }
+
+    return uniqueFlightDirections((data ?? []).map((row) => row.flight_direction));
   }
 
   /**

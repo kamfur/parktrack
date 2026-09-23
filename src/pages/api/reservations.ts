@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
-import { ReservationService } from "../../lib/services/reservation.service";
+import { NoGarageAvailableError, ReservationService } from "../../lib/services/reservation.service";
+import { GarageBufferViolationError } from "../../lib/services/garage-allocation.service";
 import type { CreateReservationCommand, UpdateReservationCommand, ReservationsListResponse } from "../../types";
 import { createReservationSchema, updateReservationSchema } from "../../lib/schemas/reservation.schema";
 import type { Database } from "../../db/database.types";
@@ -218,6 +219,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
   } catch (error) {
     console.error("Error creating reservation:", error);
+
+    // No garage/carport spot available within the buffer, or a manual swap would violate it
+    if (error instanceof NoGarageAvailableError || error instanceof GarageBufferViolationError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     // Handle database constraint violations (e.g., overbooking)
     if (

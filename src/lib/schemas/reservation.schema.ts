@@ -47,7 +47,8 @@ export const createReservationSchema = z
     phone: z.string().optional(),
     license_plate: z.string().optional(),
     notes: z.string().optional(),
-    flight_direction: z.enum(["departure", "arrival"]).optional(),
+    flight_direction: z.string().max(100, "Flight direction must be at most 100 characters").optional(),
+    parking_type: z.enum(["open_air", "garage"]).default("open_air"),
   })
   .refine(
     (data) => {
@@ -84,7 +85,7 @@ export const updateReservationSchema = z.object({
   phone: z.string().optional(),
   license_plate: z.string().optional(),
   notes: z.string().optional(),
-  flight_direction: z.enum(["departure", "arrival"]).optional(),
+  flight_direction: z.string().max(100, "Flight direction must be at most 100 characters").optional().nullable(),
   status: z.enum(["pending", "confirmed", "in_progress", "completed", "cancelled"]).optional(),
   actual_check_in: z.string().datetime("Invalid actual check-in date format").optional(),
   actual_check_out: z.string().datetime("Invalid actual check-out date format").optional(),
@@ -94,9 +95,16 @@ export const updateReservationSchema = z.object({
   paid_at_departure: z.boolean().optional(),
   surcharge_amount: z.number().nonnegative().nullable().optional(),
   is_paid: z.boolean().optional(),
+  parking_type: z.enum(["open_air", "garage"]).optional(),
 });
 
 export type UpdateReservationSchema = typeof updateReservationSchema;
+
+export const changeReturnDateFormSchema = z.object({
+  planned_check_out: z.string().min(1, "Podaj datę i godzinę powrotu"),
+});
+
+export type ChangeReturnDateFormData = z.infer<typeof changeReturnDateFormSchema>;
 
 /**
  * Bazowe pola formularza (używane w Quick i Full Mode)
@@ -167,7 +175,13 @@ export const fullReservationSchema = z
       .or(z.literal("")),
     phone: z
       .string()
-      .regex(/^\d{9}$/, "Numer telefonu musi zawierać 9 cyfr")
+      .refine(
+        (value) => {
+          const digits = value.replace(/\D/g, "");
+          return digits.length === 0 || digits.length === 9;
+        },
+        { message: "Numer telefonu musi zawierać 9 cyfr" }
+      )
       .optional()
       .or(z.literal("")),
     licensePlate: z
@@ -175,8 +189,13 @@ export const fullReservationSchema = z
       .regex(/^[A-Z]{2}\s?[A-Z0-9]{4,5}$/, "Nieprawidłowy format numeru rejestracyjnego")
       .optional()
       .or(z.literal("")),
-    flightDirection: z.enum(["departure", "arrival"]).nullable().optional(),
+    flightDirection: z
+      .string()
+      .max(100, "Kierunek lotu może zawierać maksymalnie 100 znaków")
+      .optional()
+      .or(z.literal("")),
     notes: z.string().max(1000, "Notatki mogą zawierać maksymalnie 1000 znaków").optional(),
+    requiresGarage: z.boolean().optional(),
   })
   .refine(
     (data) => {
@@ -203,3 +222,48 @@ export const fullReservationSchema = z
 
 export type FullReservationSchema = typeof fullReservationSchema;
 export type FullReservationFormData = z.infer<typeof fullReservationSchema>;
+
+/**
+ * Schemat walidacji edycji istniejącej rezerwacji.
+ * Bez reguły „data przyjazdu nie może być w przeszłości” — rezerwacje często
+ * mają daty wsteczne, a personel musi móc poprawić pozostałe pola.
+ */
+export const editReservationSchema = z
+  .object({
+    lastName: baseReservationFields.lastName,
+    firstName: z
+      .string()
+      .max(100, "Imię może zawierać maksymalnie 100 znaków")
+      .regex(/^[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ\s]*$/, "Imię może zawierać tylko litery i spacje")
+      .optional()
+      .or(z.literal("")),
+    email: z
+      .string()
+      .email("Nieprawidłowy format email")
+      .max(255, "Email może zawierać maksymalnie 255 znaków")
+      .optional()
+      .or(z.literal("")),
+    phone: z.string().max(20, "Numer telefonu jest zbyt długi").optional().or(z.literal("")),
+    licensePlate: z.string().max(15, "Numer rejestracyjny jest zbyt długi").optional().or(z.literal("")),
+    checkInDate: baseReservationFields.checkInDate,
+    checkOutDate: baseReservationFields.checkOutDate,
+    flightDirection: z
+      .string()
+      .max(100, "Kierunek lotu może zawierać maksymalnie 100 znaków")
+      .optional()
+      .or(z.literal("")),
+    notes: z.string().max(1000, "Notatki mogą zawierać maksymalnie 1000 znaków").optional().or(z.literal("")),
+  })
+  .refine(
+    (data) => {
+      if (!data.checkInDate || !data.checkOutDate) return false;
+      return data.checkOutDate > data.checkInDate;
+    },
+    {
+      message: "Data wyjazdu musi być późniejsza niż data przyjazdu",
+      path: ["checkOutDate"],
+    }
+  );
+
+export type EditReservationSchema = typeof editReservationSchema;
+export type EditReservationFormData = z.infer<typeof editReservationSchema>;
