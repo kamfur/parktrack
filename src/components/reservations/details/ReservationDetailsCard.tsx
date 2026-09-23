@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, PlaneTakeoff, PlaneLanding } from "lucide-react";
+import { Calendar, Plane, Warehouse } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ReservationDetailsCardProps } from "@/types";
@@ -13,6 +13,7 @@ export function ReservationDetailsCard({
   plannedCheckIn,
   plannedCheckOut,
   flightDirection,
+  garageSpotLabel,
 }: ReservationDetailsCardProps) {
   const formatDate = (dateString: string): string => {
     try {
@@ -53,12 +54,12 @@ export function ReservationDetailsCard({
   };
 
   const getFlightDirectionLabel = (): string | null => {
+    if (!flightDirection) return null;
     if (flightDirection === "departure") return "Wylot";
     if (flightDirection === "arrival") return "Przylot";
-    return null;
+    return flightDirection;
   };
 
-  const FlightIcon = flightDirection === "departure" ? PlaneTakeoff : PlaneLanding;
   const days = calculateDays();
 
   return (
@@ -95,8 +96,18 @@ export function ReservationDetailsCard({
         {flightDirection && (
           <div className="pt-2">
             <Badge variant="outline" className="gap-2">
-              <FlightIcon className="h-4 w-4" />
+              <Plane className="h-4 w-4" />
               {getFlightDirectionLabel()}
+            </Badge>
+          </div>
+        )}
+
+        {/* Garage / carport assignment */}
+        {garageSpotLabel && (
+          <div className="pt-2">
+            <Badge variant="outline" className="gap-2">
+              <Warehouse className="h-4 w-4" />
+              {garageSpotLabel}
             </Badge>
           </div>
         )}

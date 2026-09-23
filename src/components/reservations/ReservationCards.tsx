@@ -1,4 +1,4 @@
-import { MoreVertical, Eye, Edit, XCircle, Phone, Calendar, DollarSign } from "lucide-react";
+import { MoreVertical, Eye, Edit, XCircle, Phone, Calendar, DollarSign, Warehouse } from "lucide-react";
 import type { ReservationDto } from "../../types";
 import {
   formatPhone,
@@ -116,7 +116,15 @@ export function ReservationCards({ reservations, isLoading, onCardClick, onActio
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1 flex-1 min-w-0">
                   <h3 className="font-semibold text-base leading-none truncate">{fullName}</h3>
-                  <Badge className={cn(getStatusBadgeClasses(reservation.status), "w-fit")}>{statusLabel}</Badge>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Badge className={cn(getStatusBadgeClasses(reservation.status), "w-fit")}>{statusLabel}</Badge>
+                    {reservation.parking_type === "garage" ? (
+                      <Badge variant="outline" className="w-fit gap-1">
+                        <Warehouse className="h-3 w-3" aria-hidden />
+                        Garaż
+                      </Badge>
+                    ) : null}
+                  </div>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -130,10 +138,12 @@ export function ReservationCards({ reservations, isLoading, onCardClick, onActio
                       <Eye className="mr-2 h-4 w-4" />
                       Szczegóły
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => handleAction("edit", reservation, e)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edytuj
-                    </DropdownMenuItem>
+                    {(reservation.status === "confirmed" || reservation.status === "in_progress") && (
+                      <DropdownMenuItem onClick={(e) => handleAction("edit", reservation, e)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edytuj
+                      </DropdownMenuItem>
+                    )}
                     {reservation.status !== "cancelled" && reservation.status !== "completed" && (
                       <>
                         <DropdownMenuSeparator />

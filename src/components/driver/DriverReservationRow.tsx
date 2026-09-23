@@ -7,11 +7,12 @@ import {
   driverDisplayName,
   flightDirectionLabel,
   formatDriverTime,
+  garageSpotLabel,
   isNearCheckout,
   isOverdue,
 } from "@/lib/driver/display";
 import { formatKtwHourList } from "@/lib/ktw/format-hours";
-import { Car, Clock, PlaneLanding, Users } from "lucide-react";
+import { Car, Clock, PlaneLanding, Users, Warehouse } from "lucide-react";
 
 interface DriverReservationRowProps {
   reservation: DepartureListItem;
@@ -38,6 +39,7 @@ export function DriverReservationRow({
   const nearCheckout = !handled && mode === "departure" && isNearCheckout(reservation.planned_check_out);
   const direction = flightDirectionLabel(reservation.flight_direction);
   const ktwHoursLabel = mode === "departure" ? formatKtwHourList(reservation.ktw_arrival_hours) : null;
+  const garageLabel = garageSpotLabel(reservation.parking_type, reservation.garage_spot_name);
 
   return (
     <Card
@@ -89,6 +91,12 @@ export function DriverReservationRow({
               <div className="flex items-center gap-2">
                 <PlaneLanding className="h-4 w-4 shrink-0" aria-hidden />
                 <span>{ktwHoursLabel}</span>
+              </div>
+            ) : null}
+            {garageLabel ? (
+              <div className="flex items-center gap-2">
+                <Warehouse className="h-4 w-4 shrink-0" aria-hidden />
+                <span>{garageLabel}</span>
               </div>
             ) : null}
           </div>

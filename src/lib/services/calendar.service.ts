@@ -13,11 +13,23 @@ export class CalendarServiceError extends Error {
   }
 }
 
-const EVENT_SELECT = "id, first_name, last_name, license_plate, planned_check_in, planned_check_out, status";
+const EVENT_SELECT =
+  "id, first_name, last_name, license_plate, planned_check_in, planned_check_out, status, actual_check_in, actual_check_out, parking_type";
+
+const CALENDAR_EVENT_STATUSES = ["confirmed", "in_progress", "completed"] as const;
 
 type CalendarReservation = Pick<
   ReservationDto,
-  "id" | "first_name" | "last_name" | "license_plate" | "planned_check_in" | "planned_check_out" | "status"
+  | "id"
+  | "first_name"
+  | "last_name"
+  | "license_plate"
+  | "planned_check_in"
+  | "planned_check_out"
+  | "status"
+  | "actual_check_in"
+  | "actual_check_out"
+  | "parking_type"
 >;
 
 export function toCalendarEvent(row: CalendarReservation, kind: CalendarEventDto["kind"]): CalendarEventDto {
@@ -29,6 +41,8 @@ export function toCalendarEvent(row: CalendarReservation, kind: CalendarEventDto
     lastName: row.last_name,
     licensePlate: row.license_plate,
     status: row.status as CalendarEventDto["status"],
+    handled: kind === "arrival" ? row.actual_check_in != null : row.actual_check_out != null,
+    parkingType: row.parking_type as CalendarEventDto["parkingType"],
   };
 }
 
@@ -54,14 +68,14 @@ export class CalendarService {
       this.supabase
         .from("reservations")
         .select(EVENT_SELECT)
-        .in("status", ["confirmed", "in_progress"])
+        .in("status", [...CALENDAR_EVENT_STATUSES])
         .gte("planned_check_in", from)
         .lt("planned_check_in", to)
         .order("planned_check_in", { ascending: true }),
       this.supabase
         .from("reservations")
         .select(EVENT_SELECT)
-        .in("status", ["confirmed", "in_progress"])
+        .in("status", [...CALENDAR_EVENT_STATUSES])
         .gte("planned_check_out", from)
         .lt("planned_check_out", to)
         .order("planned_check_out", { ascending: true }),

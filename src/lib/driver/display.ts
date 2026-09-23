@@ -32,7 +32,17 @@ export function driverDisplayName(r: ReservationDto): string {
 }
 
 export function flightDirectionLabel(direction: ReservationDto["flight_direction"]): string | null {
+  if (!direction) return null;
   if (direction === "departure") return "Wylot";
   if (direction === "arrival") return "Przylot";
-  return null;
+  return direction;
+}
+
+/** Garage/carport badge label; null for regular (open_air) reservations or a missing spot name. */
+export function garageSpotLabel(
+  parkingType: ReservationDto["parking_type"] | null | undefined,
+  garageSpotName: string | null | undefined
+): string | null {
+  if (parkingType !== "garage" || !garageSpotName) return null;
+  return `Garaż: ${garageSpotName}`;
 }

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 import {
   DEFAULT_CALENDAR_VISIBILITY,
   filterVisibleEvents,
@@ -16,6 +18,7 @@ import type {
   DriverShiftDto,
   DriverShiftWrite,
 } from "@/types";
+import { fetchGarageSpotNameMap } from "@/lib/garage/spot-names";
 
 async function readData<T>(response: Response, fallback: T): Promise<T> {
   if (!response.ok) {
@@ -26,7 +29,7 @@ async function readData<T>(response: Response, fallback: T): Promise<T> {
   return body.data ?? fallback;
 }
 
-export function useParkingCalendar() {
+export function useParkingCalendar(options: { pauseRefresh?: boolean } = {}) {
   const [view, setView] = useState<CalendarViewMode>("day");
   const [anchorDate, setAnchorDate] = useState(() => warsawDateKey(new Date()));
   const [visibility, setVisibility] = useState<CalendarVisibility>(DEFAULT_CALENDAR_VISIBILITY);
@@ -59,10 +62,11 @@ export function useParkingCalendar() {
           return;
         }
 
-        const [eventsRes, shiftsRes, driversRes] = await Promise.all([
+        const [eventsRes, shiftsRes, driversRes, garageSpotNames] = await Promise.all([
           fetch(`/api/calendar/events?${params.toString()}`),
           fetch(`/api/shifts?${new URLSearchParams({ from: range.from, to: range.to }).toString()}`),
           fetch("/api/drivers"),
+          fetchGarageSpotNameMap("/api/garage-assignments"),
         ]);
 
         const [nextEvents, nextShifts, nextDrivers] = await Promise.all([
@@ -74,7 +78,13 @@ export function useParkingCalendar() {
         if (!eventsRes.ok && eventsRes.status !== 503) throw new Error("Nie udało się pobrać wydarzeń kalendarza");
         if (!shiftsRes.ok && shiftsRes.status !== 503) throw new Error("Nie udało się pobrać zmian kierowców");
 
-        setEvents(nextEvents);
+        setEvents(
+          nextEvents.map((event) =>
+            event.parkingType === "garage"
+              ? { ...event, garageSpotName: garageSpotNames[event.reservationId] ?? null }
+              : event
+          )
+        );
         setShifts(nextShifts);
         setDrivers(nextDrivers);
         setMonthDays([]);
@@ -92,6 +102,16 @@ export function useParkingCalendar() {
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (options.pauseRefresh) return;
+
+    const intervalId = window.setInterval(() => {
+      void fetchData(true);
+    }, REFRESH_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [fetchData, options.pauseRefresh]);
 
   const visibleEvents = useMemo(() => filterVisibleEvents(events, visibility), [events, visibility]);
   const visibleShifts = useMemo(() => filterVisibleShifts(shifts, visibility), [shifts, visibility]);

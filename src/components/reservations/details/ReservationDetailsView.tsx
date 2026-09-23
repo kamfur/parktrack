@@ -1,7 +1,7 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import type { ReservationDetailsViewProps } from "@/types";
+import type { EditReservationFormData, ReservationDetailsViewProps } from "@/types";
 import { DetailHeader } from "./DetailHeader";
 import { PersonalInfoCard } from "./PersonalInfoCard";
 import { ReservationDetailsCard } from "./ReservationDetailsCard";
@@ -9,20 +9,26 @@ import { FinancialSection } from "./FinancialSection";
 import { NotesSection } from "./NotesSection";
 import { TimelineSection } from "./TimelineSection";
 import { ActionFooter } from "./ActionFooter";
-import { CheckInModalPlaceholder } from "./CheckInModalPlaceholder";
-import { CheckOutModalPlaceholder } from "./CheckOutModalPlaceholder";
 import { CancelDialogPlaceholder } from "./CancelDialogPlaceholder";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { ErrorState } from "./ErrorState";
 import { ReservationDetailsErrorBoundary } from "./ErrorBoundary";
+import { EditReservationForm } from "@/components/reservations/EditReservationForm";
+import { DriverArrivalDialog } from "@/components/driver/DriverArrivalDialog";
+import { DriverDepartureDialog } from "@/components/driver/DriverDepartureDialog";
 import { useReservationDetails } from "@/hooks/useReservationDetails";
-import { createCheckInCommand, createCheckOutCommand } from "@/lib/reservations/operations";
 
 /**
  * Główny kontener widoku szczegółów rezerwacji.
  * Wyświetla pełne informacje o rezerwacji z możliwością edycji i akcjami.
  */
-export function ReservationDetailsView({ reservationId, isOpen, onClose, onUpdate }: ReservationDetailsViewProps) {
+export function ReservationDetailsView({
+  reservationId,
+  isOpen,
+  onClose,
+  onUpdate,
+  initialEditMode = false,
+}: ReservationDetailsViewProps) {
   const {
     reservation,
     viewModel,
@@ -30,7 +36,11 @@ export function ReservationDetailsView({ reservationId, isOpen, onClose, onUpdat
     isLoading,
     error,
     isDirty,
+    isEditMode,
+    isUpdating,
+    editRules,
     updateNotes,
+    updateReservation,
     showCheckInModal,
     showCheckOutModal,
     showCancelDialog,
@@ -44,19 +54,88 @@ export function ReservationDetailsView({ reservationId, isOpen, onClose, onUpdat
     performCheckIn,
     performCheckOut,
     enterEditMode,
+    exitEditMode,
     isProcessing,
-  } = useReservationDetails({ reservationId, enabled: isOpen });
+  } = useReservationDetails({ reservationId, enabled: isOpen, initialEditMode });
 
-  // Handle successful updates
+  const lastNotifiedUpdateRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (reservation && onUpdate) {
-      onUpdate(reservation);
+    lastNotifiedUpdateRef.current = null;
+  }, [reservationId]);
+
+  // Notify parent only after a real change — never on the initial fetch.
+  // An unstable onUpdate (inline callback) would otherwise refetch the calendar in a loop.
+  useEffect(() => {
+    if (!reservation || !onUpdate) return;
+
+    const stamp = reservation.updated_at ?? reservation.id;
+    if (lastNotifiedUpdateRef.current === null) {
+      lastNotifiedUpdateRef.current = stamp;
+      return;
     }
+    if (lastNotifiedUpdateRef.current === stamp) return;
+
+    lastNotifiedUpdateRef.current = stamp;
+    onUpdate(reservation);
   }, [reservation, onUpdate]);
+
+  const handleEditSubmit = async (data: EditReservationFormData) => {
+    if (!reservation) return;
+
+    const datesChanged =
+      data.checkInDate.toISOString() !== new Date(reservation.planned_check_in).toISOString() ||
+      data.checkOutDate.toISOString() !== new Date(reservation.planned_check_out).toISOString();
+
+    const payload: Parameters<typeof updateReservation>[0] = {
+      last_name: data.lastName.trim(),
+      first_name: data.firstName?.trim() || "",
+      email: data.email?.trim() || "",
+      phone: data.phone?.replace(/\s/g, "") || "",
+      license_plate: data.licensePlate?.trim() || "",
+      flight_direction: data.flightDirection?.trim() || "",
+      notes: data.notes?.trim() || "",
+    };
+
+    if (editRules.canEditCheckIn) {
+      payload.planned_check_in = data.checkInDate.toISOString();
+    }
+    if (editRules.canEditCheckOut) {
+      payload.planned_check_out = data.checkOutDate.toISOString();
+    }
+
+    if (datesChanged && (editRules.canEditCheckIn || editRules.canEditCheckOut)) {
+      try {
+        const params = new URLSearchParams({
+          check_in: data.checkInDate.toISOString(),
+          check_out: data.checkOutDate.toISOString(),
+        });
+        const costRes = await fetch(`/api/calculate-cost?${params.toString()}`);
+        if (costRes.ok) {
+          const costData = (await costRes.json()) as { totalCost?: number };
+          if (typeof costData.totalCost === "number" && costData.totalCost > 0) {
+            payload.total_cost = costData.totalCost;
+          }
+        }
+      } catch {
+        // Keep existing cost if recalculation fails
+      }
+    }
+
+    try {
+      await updateReservation(payload);
+      exitEditMode();
+      toast.success("Rezerwacja została zaktualizowana");
+    } catch (err) {
+      toast.error("Nie udało się zapisać zmian");
+      // eslint-disable-next-line no-console
+      console.error("Update reservation error:", err);
+    }
+  };
 
   // Handle close with dirty state check
   const handleClose = useCallback(() => {
-    if (isDirty) {
+    if (isEditMode || isDirty) {
       const confirmed = window.confirm("Masz niezapisane zmiany. Czy na pewno chcesz zamknąć?");
       if (!confirmed) return;
     }
@@ -68,7 +147,7 @@ export function ReservationDetailsView({ reservationId, isOpen, onClose, onUpdat
       // Fallback: navigate back
       window.history.back();
     }
-  }, [isDirty, onClose]);
+  }, [isDirty, isEditMode, onClose]);
 
   // Handle Escape key
   useEffect(() => {
@@ -130,83 +209,96 @@ export function ReservationDetailsView({ reservationId, isOpen, onClose, onUpdat
               />
 
               <div className="flex-1 overflow-y-auto space-y-4 sm:space-y-6 px-4 sm:px-6 py-4">
-                <PersonalInfoCard
-                  email={reservation.email}
-                  phone={reservation.phone}
-                  licensePlate={reservation.license_plate}
-                />
+                {isEditMode ? (
+                  <EditReservationForm
+                    reservation={reservation}
+                    editRules={editRules}
+                    onSubmit={handleEditSubmit}
+                    onCancel={exitEditMode}
+                    isSubmitting={isUpdating || isProcessing}
+                  />
+                ) : (
+                  <>
+                    <PersonalInfoCard
+                      email={reservation.email}
+                      phone={reservation.phone}
+                      licensePlate={reservation.license_plate}
+                    />
 
-                <ReservationDetailsCard
-                  plannedCheckIn={reservation.planned_check_in}
-                  plannedCheckOut={reservation.planned_check_out}
-                  flightDirection={reservation.flight_direction}
-                />
+                    <ReservationDetailsCard
+                      plannedCheckIn={reservation.planned_check_in}
+                      plannedCheckOut={reservation.planned_check_out}
+                      flightDirection={reservation.flight_direction}
+                      garageSpotLabel={viewModel.garageSpotLabel}
+                    />
 
-                <FinancialSection
-                  totalCost={reservation.total_cost}
-                  isPaid={reservation.is_paid}
-                  paymentMethod={
-                    "payment_method" in reservation &&
-                    (reservation.payment_method === "cash" ||
-                      reservation.payment_method === "card" ||
-                      reservation.payment_method === "transfer")
-                      ? (reservation.payment_method as "cash" | "card" | "transfer")
-                      : null
-                  }
-                  source={reservation.source}
-                />
+                    <FinancialSection
+                      totalCost={reservation.total_cost}
+                      isPaid={reservation.is_paid}
+                      paymentMethod={
+                        "payment_method" in reservation &&
+                        (reservation.payment_method === "cash" ||
+                          reservation.payment_method === "card" ||
+                          reservation.payment_method === "transfer")
+                          ? (reservation.payment_method as "cash" | "card" | "transfer")
+                          : null
+                      }
+                      source={reservation.source}
+                    />
 
-                <NotesSection
-                  reservationId={reservationId}
-                  initialNotes={reservation.notes}
-                  isEditable={viewModel.availableActions.canEdit}
-                  onSave={updateNotes}
-                />
+                    <NotesSection
+                      reservationId={reservationId}
+                      initialNotes={reservation.notes}
+                      isEditable={viewModel.availableActions.canEdit}
+                      onSave={updateNotes}
+                    />
 
-                <TimelineSection events={viewModel.timeline} />
+                    <TimelineSection events={viewModel.timeline} />
+                  </>
+                )}
               </div>
 
-              <ActionFooter
-                reservationId={reservationId}
-                status={reservation.status}
-                onCheckIn={openCheckInModal}
-                onCheckOut={openCheckOutModal}
-                onEdit={enterEditMode}
-                onCancel={openCancelDialog}
-                isProcessing={isProcessing}
-                existingInvoiceId={existingInvoice?.id ?? null}
-              />
+              {!isEditMode && (
+                <ActionFooter
+                  reservationId={reservationId}
+                  status={reservation.status}
+                  onCheckIn={openCheckInModal}
+                  onCheckOut={openCheckOutModal}
+                  onEdit={enterEditMode}
+                  onCancel={openCancelDialog}
+                  isProcessing={isProcessing}
+                  existingInvoiceId={existingInvoice?.id ?? null}
+                />
+              )}
             </>
           )}
 
-          {/* Modals */}
+          {/* Modals — same arrival/departure forms as driver module */}
           {reservation && (
             <>
-              <CheckInModalPlaceholder
-                isOpen={showCheckInModal}
-                onClose={closeCheckInModal}
+              <DriverArrivalDialog
+                reservation={showCheckInModal ? reservation : null}
+                open={showCheckInModal}
+                onOpenChange={(open) => {
+                  if (!open) closeCheckInModal();
+                }}
                 isProcessing={isProcessing}
-                onConfirm={async () => {
-                  try {
-                    await performCheckIn(createCheckInCommand());
-                    toast.success("Check-in wykonany pomyślnie");
-                  } catch {
-                    toast.error("Nie udało się wykonać check-in. Spróbuj ponownie.");
-                  }
+                onSubmit={async (_id, body) => {
+                  await performCheckIn(body);
+                  toast.success("Przyjazd potwierdzony");
                 }}
               />
 
-              <CheckOutModalPlaceholder
-                isOpen={showCheckOutModal}
-                onClose={closeCheckOutModal}
+              <DriverDepartureDialog
+                reservation={showCheckOutModal ? reservation : null}
+                open={showCheckOutModal}
+                onOpenChange={(open) => {
+                  if (!open) closeCheckOutModal();
+                }}
                 isProcessing={isProcessing}
-                onConfirm={async () => {
-                  try {
-                    await performCheckOut(createCheckOutCommand());
-                    toast.success("Check-out wykonany pomyślnie");
-                  } catch {
-                    toast.error("Nie udało się wykonać check-out. Spróbuj ponownie.");
-                  }
+                onSubmit={async (_id, body) => {
+                  await performCheckOut(body);
+                  toast.success("Wyjazd zakończony");
                 }}
               />
 

@@ -59,6 +59,8 @@ export interface KtwArrivalHourDto {
 /** Departure list row: reservation fields plus optional in-memory KTW hours (not a DB column). */
 export interface DepartureListItem extends ReservationDto {
   ktw_arrival_hours?: KtwArrivalHourDto[];
+  /** Assigned garage/carport spot name, resolved client-side for garage reservations (not a DB column). */
+  garage_spot_name?: string | null;
 }
 
 export type DriverShiftDto = Tables<"driver_shifts">;
@@ -95,6 +97,9 @@ export interface CalendarEventDto {
   licensePlate: string | null;
   status: "confirmed" | "in_progress" | "completed";
   handled: boolean;
+  parkingType: "open_air" | "garage";
+  /** Assigned garage/carport spot name, resolved client-side (not part of the API response). */
+  garageSpotName?: string | null;
 }
 
 export interface CalendarMonthDayDto {
@@ -779,6 +784,7 @@ export interface ReservationDetailsCardProps {
   plannedCheckIn: string;
   plannedCheckOut: string;
   flightDirection: string | null;
+  garageSpotLabel?: string | null;
 }
 
 /**

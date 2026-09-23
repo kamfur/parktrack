@@ -4,7 +4,9 @@ import {
   filterVisibleEvents,
   filterVisibleShifts,
   groupEventsByHour,
+  layoutShiftsForDay,
   shiftsOverlappingHour,
+  shiftSpanForDay,
   stepAnchorDate,
   visibleRange,
 } from "./view-model";
@@ -18,6 +20,8 @@ function event(overrides: Partial<CalendarEventDto>): CalendarEventDto {
     lastName: "Kowalski",
     licensePlate: "KR 123",
     status: "confirmed",
+    handled: false,
+    parkingType: "open_air",
     ...overrides,
   };
 }
@@ -116,5 +120,52 @@ describe("shiftsOverlappingHour", () => {
     expect(shiftsOverlappingHour(rows, "2026-09-14", 6)).toHaveLength(1);
     expect(shiftsOverlappingHour(rows, "2026-09-14", 13)).toHaveLength(1);
     expect(shiftsOverlappingHour(rows, "2026-09-14", 14)).toHaveLength(0);
+  });
+});
+
+describe("shiftSpanForDay", () => {
+  it("returns the whole Warsaw-hour span for a shift on that day", () => {
+    expect(shiftSpanForDay(shift({}), "2026-09-14")).toEqual({ startHour: 6, endHour: 14 });
+  });
+
+  it("clips an overnight shift to each calendar day", () => {
+    const overnight = shift({
+      starts_at: "2026-09-14T22:00:00+02:00",
+      ends_at: "2026-09-15T06:00:00+02:00",
+    });
+    expect(shiftSpanForDay(overnight, "2026-09-14")).toEqual({ startHour: 22, endHour: 24 });
+    expect(shiftSpanForDay(overnight, "2026-09-15")).toEqual({ startHour: 0, endHour: 6 });
+    expect(shiftSpanForDay(overnight, "2026-09-16")).toBeNull();
+  });
+});
+
+describe("layoutShiftsForDay", () => {
+  it("places overlapping shifts in adjacent lanes", () => {
+    const rows = layoutShiftsForDay(
+      [
+        shift({ id: "a", starts_at: "2026-09-14T06:00:00+02:00", ends_at: "2026-09-14T14:00:00+02:00" }),
+        shift({ id: "b", starts_at: "2026-09-14T10:00:00+02:00", ends_at: "2026-09-14T18:00:00+02:00" }),
+      ],
+      "2026-09-14"
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows.map((item) => [item.shift.id, item.lane, item.laneCount])).toEqual([
+      ["a", 0, 2],
+      ["b", 1, 2],
+    ]);
+  });
+
+  it("reuses a lane when shifts do not overlap", () => {
+    const rows = layoutShiftsForDay(
+      [
+        shift({ id: "morning", starts_at: "2026-09-14T06:00:00+02:00", ends_at: "2026-09-14T10:00:00+02:00" }),
+        shift({ id: "evening", starts_at: "2026-09-14T12:00:00+02:00", ends_at: "2026-09-14T18:00:00+02:00" }),
+      ],
+      "2026-09-14"
+    );
+    expect(rows.map((item) => [item.shift.id, item.lane, item.laneCount])).toEqual([
+      ["morning", 0, 1],
+      ["evening", 0, 1],
+    ]);
   });
 });

@@ -7,7 +7,13 @@ import type {
   StatsPeriod,
   StatsData,
 } from "@/types";
-import { createCheckInCommand, createCheckOutCommand } from "@/lib/reservations/operations";
+import { fetchGarageSpotNameMap, type GarageSpotNameMap } from "@/lib/garage/spot-names";
+
+function withGarageSpotName(items: DepartureListItem[], spotNames: GarageSpotNameMap): DepartureListItem[] {
+  return items.map((item) =>
+    item.parking_type === "garage" ? { ...item, garage_spot_name: spotNames[item.id] ?? null } : item
+  );
+}
 
 function calculateMetrics(
   arrivals: ReservationDto[],
@@ -37,19 +43,20 @@ export function useDashboard() {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      const [arrivalsRes, departuresRes, settingsRes, statsRes] = await Promise.all([
+      const [arrivalsRes, departuresRes, settingsRes, statsRes, garageSpotNames] = await Promise.all([
         fetch("/api/rpc/get_todays_arrivals", { method: "POST" }),
         fetch("/api/reservations/departures", { method: "POST" }),
         fetch("/api/settings?key=eq.total_parking_spots"),
         fetch(`/api/stats?period=${activePeriod}`),
+        fetchGarageSpotNameMap("/api/garage-assignments"),
       ]);
 
       if (!arrivalsRes.ok || !departuresRes.ok) {
         throw new Error("Failed to fetch dashboard data");
       }
 
-      const arrivals: ReservationDto[] = await arrivalsRes.json();
-      const departures: DepartureListItem[] = await departuresRes.json();
+      const arrivals = withGarageSpotName(await arrivalsRes.json(), garageSpotNames);
+      const departures = withGarageSpotName(await departuresRes.json(), garageSpotNames);
 
       let totalSpots = 100;
       if (settingsRes.ok) {
@@ -98,32 +105,36 @@ export function useDashboard() {
     }
   };
 
-  const handleCheckIn = async (reservationId: string) => {
+  const handleCheckIn = async (reservationId: string, body: Record<string, unknown>) => {
     setState((prev) => ({ ...prev, isProcessing: true }));
     try {
-      const command = createCheckInCommand();
-      const response = await fetch(`/api/reservations?id=eq.${reservationId}`, {
+      const response = await fetch(`/api/driver/reservations/${reservationId}/arrival`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(command),
+        body: JSON.stringify(body),
       });
-      if (!response.ok) throw new Error("Failed to check-in");
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Failed to check-in");
+      }
       await fetchDashboardData(period);
     } finally {
       setState((prev) => ({ ...prev, isProcessing: false }));
     }
   };
 
-  const handleCheckOut = async (reservationId: string) => {
+  const handleCheckOut = async (reservationId: string, body: Record<string, unknown>) => {
     setState((prev) => ({ ...prev, isProcessing: true }));
     try {
-      const command = createCheckOutCommand();
-      const response = await fetch(`/api/reservations?id=eq.${reservationId}`, {
+      const response = await fetch(`/api/driver/reservations/${reservationId}/departure`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(command),
+        body: JSON.stringify(body),
       });
-      if (!response.ok) throw new Error("Failed to check-out");
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Failed to check-out");
+      }
       await fetchDashboardData(period);
     } finally {
       setState((prev) => ({ ...prev, isProcessing: false }));

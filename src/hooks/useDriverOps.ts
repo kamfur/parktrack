@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DepartureListItem, ReservationDto } from "@/types";
+import { fetchGarageSpotNameMap, type GarageSpotNameMap } from "@/lib/garage/spot-names";
+
+function withGarageSpotName<T extends ReservationDto>(items: T[], spotNames: GarageSpotNameMap): T[] {
+  return items.map((item) =>
+    item.parking_type === "garage" ? { ...item, garage_spot_name: spotNames[item.id] ?? null } : item
+  );
+}
 
 type DriverTab = "arrivals" | "departures" | "occupancy";
 
@@ -52,10 +59,11 @@ export function useDriverOps() {
     const gen = ++fetchGen.current;
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      const [arrivalsRes, departuresRes, occupancyRes] = await Promise.all([
+      const [arrivalsRes, departuresRes, occupancyRes, garageSpotNames] = await Promise.all([
         fetch("/api/driver/arrivals"),
         fetch("/api/driver/departures"),
         fetch("/api/driver/occupancy"),
+        fetchGarageSpotNameMap("/api/driver/garage-assignments"),
       ]);
       const [arrivalsList, departuresList, occupancy] = await Promise.all([
         readDriverList(arrivalsRes),
@@ -65,11 +73,11 @@ export function useDriverOps() {
       if (gen !== fetchGen.current) return;
       setState((prev) => ({
         ...prev,
-        arrivals: arrivalsList.pending,
-        handledArrivals: arrivalsList.handled,
-        departures: departuresList.pending,
-        handledDepartures: departuresList.handled,
-        occupancy,
+        arrivals: withGarageSpotName(arrivalsList.pending, garageSpotNames),
+        handledArrivals: withGarageSpotName(arrivalsList.handled, garageSpotNames),
+        departures: withGarageSpotName(departuresList.pending, garageSpotNames),
+        handledDepartures: withGarageSpotName(departuresList.handled, garageSpotNames),
+        occupancy: withGarageSpotName(occupancy, garageSpotNames),
         isLoading: false,
         error: null,
       }));

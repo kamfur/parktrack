@@ -422,27 +422,27 @@ Purely additive: new tables plus a defaulted `reservations.parking_type` column.
 
 #### Automated
 
-- [x] 3.1 View-model/hook test passes
-- [x] 3.2 Reservation-creation integration test (auto-assign) passes
-- [x] 3.3 Typecheck passes
+- [x] 3.1 View-model/hook test passes — 9e82c92
+- [x] 3.2 Reservation-creation integration test (auto-assign) passes — 9e82c92
+- [x] 3.3 Typecheck passes — 9e82c92
 
 #### Manual
 
-- [x] 3.4 Garage-requesting reservation auto-assigns and shows in details view (verified at test level; no configurator yet to seed a real spot until Phase 5)
-- [x] 3.5 Non-garage reservation unaffected
+- [x] 3.4 Garage-requesting reservation auto-assigns and shows in details view (verified at test level; no configurator yet to seed a real spot until Phase 5) — 9e82c92
+- [x] 3.5 Non-garage reservation unaffected — 9e82c92
 
 ### Phase 4: View Markers
 
 #### Automated
 
-- [ ] 4.1 `display.test.ts` passes
-- [ ] 4.2 Full existing test suite still passes (no regression)
-- [ ] 4.3 Typecheck and lint pass
+- [x] 4.1 `display.test.ts` passes
+- [x] 4.2 Full existing test suite still passes (no regression)
+- [x] 4.3 Typecheck and lint pass
 
 #### Manual
 
-- [ ] 4.4 Garage badge visible on all 5 surfaces for a garage reservation
-- [ ] 4.5 No visual regression on regular-spot reservations across the same surfaces
+- [x] 4.4 Garage badge visible on all 5 surfaces for a garage reservation (code-level; no real spot to seed until Phase 5's configurator)
+- [x] 4.5 No visual regression on regular-spot reservations across the same surfaces
 
 ### Phase 5: Garage/Carport Configurator
 

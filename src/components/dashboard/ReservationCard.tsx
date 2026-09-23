@@ -1,11 +1,10 @@
-import { useState } from "react";
 import type { ReservationCardProps } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Car, Clock, Mail, Plane, PlaneLanding } from "lucide-react";
+import { Phone, Car, Clock, Mail, Plane, PlaneLanding, Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { flightDirectionLabel, isOverdue } from "@/lib/driver/display";
+import { flightDirectionLabel, garageSpotLabel, isOverdue } from "@/lib/driver/display";
 import { formatKtwHourList } from "@/lib/ktw/format-hours";
 
 function formatWarsawDateTime(dateString: string): string {
@@ -30,21 +29,18 @@ export function ReservationCard({
   onChangeReturnDate,
   isLoading = false,
 }: ReservationCardProps) {
-  const [isProcessing, setIsProcessing] = useState(false);
-
   const plannedAt = actionType === "check-in" ? reservation.planned_check_in : reservation.planned_check_out;
   const overdue = isOverdue(plannedAt);
 
   const isCheckInDisabled =
     actionType === "check-in" &&
-    (reservation.status !== "confirmed" || reservation.actual_check_in !== null || isProcessing || isLoading);
+    (reservation.status !== "confirmed" || reservation.actual_check_in !== null || isLoading);
 
   const isCheckOutDisabled =
     actionType === "check-out" &&
     (reservation.status !== "in_progress" ||
       reservation.actual_check_in === null ||
       reservation.actual_check_out !== null ||
-      isProcessing ||
       isLoading);
 
   const isButtonDisabled = actionType === "check-in" ? isCheckInDisabled : isCheckOutDisabled;
@@ -53,22 +49,14 @@ export function ReservationCard({
     overdue &&
     reservation.status !== "cancelled" &&
     reservation.status !== "completed" &&
-    !isProcessing;
+    !isLoading;
 
   const fullName = reservation.first_name
     ? `${reservation.first_name} ${reservation.last_name}`
     : reservation.last_name;
   const directionLabel = actionType === "check-out" ? flightDirectionLabel(reservation.flight_direction) : null;
   const ktwHoursLabel = actionType === "check-out" ? formatKtwHourList(reservation.ktw_arrival_hours) : null;
-
-  const handleAction = async () => {
-    setIsProcessing(true);
-    try {
-      await onAction(reservation.id);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  const garageLabel = garageSpotLabel(reservation.parking_type, reservation.garage_spot_name);
 
   return (
     <Card
@@ -120,6 +108,13 @@ export function ReservationCard({
               </div>
             ) : null}
 
+            {garageLabel ? (
+              <div className="flex items-center gap-2">
+                <Warehouse className="h-4 w-4" aria-hidden />
+                <span>{garageLabel}</span>
+              </div>
+            ) : null}
+
             {reservation.email ? (
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
@@ -132,13 +127,13 @@ export function ReservationCard({
 
           <div className="flex flex-col gap-2">
             <Button
-              onClick={handleAction}
+              onClick={() => onAction(reservation)}
               disabled={isButtonDisabled}
               className="w-full"
               variant={actionType === "check-in" ? "default" : "outline"}
               aria-label={`${actionType === "check-in" ? "Zamelduj" : "Wymelduj"} ${fullName}`}
             >
-              {isProcessing ? "Przetwarzanie..." : actionType === "check-in" ? "Przyjęcie" : "Check-out"}
+              {actionType === "check-in" ? "Przyjęcie" : "Check-out"}
             </Button>
             {actionType === "check-in" && canCancel ? (
               <Button
@@ -156,7 +151,7 @@ export function ReservationCard({
                 type="button"
                 variant="ghost"
                 className="w-full"
-                disabled={isLoading || isProcessing}
+                disabled={isLoading}
                 onClick={() => onChangeReturnDate(reservation)}
               >
                 Zmień datę powrotu
