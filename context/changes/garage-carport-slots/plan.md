@@ -460,10 +460,10 @@ Purely additive: new tables plus a defaulted `reservations.parking_type` column.
 
 #### Automated
 
-- [x] 6.1 Typecheck and lint pass
-- [x] 6.2 Full test suite passes
+- [x] 6.1 Typecheck and lint pass — 620da31
+- [x] 6.2 Full test suite passes — 620da31
 
 #### Manual
 
-- [x] 6.3 Staff can view occupancy, swap an assignment (buffer enforced), and get an optimization suggestion (verified live end-to-end: created a real garage reservation, confirmed auto-assign, viewed occupancy, performed a real swap, confirmed the optimization endpoint returns cleanly with no active assignments)
-- [x] 6.4 Driver cannot reach the page (same STAFF_ONLY_PAGE_PREFIXES mechanism as /garage-spots)
+- [x] 6.3 Staff can view occupancy, swap an assignment (buffer enforced), and get an optimization suggestion (verified live end-to-end: created a real garage reservation, confirmed auto-assign, viewed the month grid, performed a real swap by clicking a red cell, confirmed month navigation, confirmed the optimization endpoint returns cleanly with no active assignments) — 620da31
+- [x] 6.4 Driver cannot reach the page (same STAFF_ONLY_PAGE_PREFIXES mechanism as /garage-spots) — 620da31
