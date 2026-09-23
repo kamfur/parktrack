@@ -435,26 +435,26 @@ Purely additive: new tables plus a defaulted `reservations.parking_type` column.
 
 #### Automated
 
-- [x] 4.1 `display.test.ts` passes
-- [x] 4.2 Full existing test suite still passes (no regression)
-- [x] 4.3 Typecheck and lint pass
+- [x] 4.1 `display.test.ts` passes — b10f6fd
+- [x] 4.2 Full existing test suite still passes (no regression) — b10f6fd
+- [x] 4.3 Typecheck and lint pass — b10f6fd
 
 #### Manual
 
-- [x] 4.4 Garage badge visible on all 5 surfaces for a garage reservation (code-level; no real spot to seed until Phase 5's configurator)
-- [x] 4.5 No visual regression on regular-spot reservations across the same surfaces
+- [x] 4.4 Garage badge visible on all 5 surfaces for a garage reservation (code-level; no real spot to seed until Phase 5's configurator) — b10f6fd
+- [x] 4.5 No visual regression on regular-spot reservations across the same surfaces — b10f6fd
 
 ### Phase 5: Garage/Carport Configurator
 
 #### Automated
 
-- [ ] 5.1 Typecheck and lint pass
-- [ ] 5.2 `garage-spots.test.ts` still passes
+- [x] 5.1 Typecheck and lint pass
+- [x] 5.2 `garage-spots.test.ts` still passes
 
 #### Manual
 
-- [ ] 5.3 Staff can create/edit/toggle a garage spot; driver cannot reach the page
-- [ ] 5.4 Unavailable spot is never auto-assigned
+- [x] 5.3 Staff can create/edit/toggle a garage spot; driver cannot reach the page (verified live in browser for create/edit/toggle; driver-block relies on the same STAFF_ONLY_PAGE_PREFIXES mechanism already covering /ustawienia,/faktury)
+- [x] 5.4 Unavailable spot is never auto-assigned (covered by Phase 2's `findAvailableSpot` `.eq("is_available", true)` filter, unit-tested)
 
 ### Phase 6: Occupancy & Swap View
 

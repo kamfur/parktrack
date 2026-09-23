@@ -4,6 +4,8 @@ title: Garage & carport parking slots
 status: implementing
 created: 2026-09-21
 updated: 2026-09-23
+
+Phase 5 note (2026-09-23): configurator verified live in a real browser session (login done by user, clicks by agent) — create/edit/toggle all confirmed working end to end. Left a "Garaż testowy" row in the real linked Supabase project as a side effect (no delete endpoint yet); user may clean it up via Studio if desired.
 archived_at: null
 ---
 

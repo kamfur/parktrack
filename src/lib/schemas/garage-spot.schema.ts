@@ -18,6 +18,11 @@ export const createGarageSpotSchema = z.object({
 
 export type CreateGarageSpotSchema = typeof createGarageSpotSchema;
 
+/** Configurator dialog form (create + edit) — availability is toggled separately from the list row. */
+export const garageSpotFormSchema = createGarageSpotSchema.omit({ is_available: true });
+
+export type GarageSpotFormData = z.infer<typeof garageSpotFormSchema>;
+
 /**
  * Schema for updating a garage/carport spot. All fields optional (partial update).
  * Maps to UpdateGarageSpotCommand.

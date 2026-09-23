@@ -1,0 +1,10 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { GarageSpotConfigurator } from "../components/garage/GarageSpotConfigurator";
+---
+
+<Layout title="Miejsca garażowe - ParkTrack">
+  <div class="p-6">
+    <GarageSpotConfigurator client:load />
+  </div>
+</Layout>

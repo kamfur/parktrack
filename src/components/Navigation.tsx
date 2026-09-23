@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { LayoutDashboard, CalendarClock, CalendarDays, FileText, Settings, Menu, X, Car, Truck } from "lucide-react";
+import {
+  LayoutDashboard,
+  CalendarClock,
+  CalendarDays,
+  FileText,
+  Settings,
+  Menu,
+  X,
+  Car,
+  Truck,
+  Warehouse,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
 import type { AuthUserDTO } from "@/types";
@@ -9,6 +20,7 @@ const navItems = [
   { href: "/kalendarz", label: "Kalendarz", icon: CalendarClock, staffOnly: true },
   { href: "/rezerwacje", label: "Rezerwacje", icon: CalendarDays },
   { href: "/faktury", label: "Faktury", icon: FileText, staffOnly: true },
+  { href: "/garage-spots", label: "Garaże", icon: Warehouse, staffOnly: true },
   { href: "/kierowca", label: "Kierowca", icon: Truck },
   { href: "/ustawienia", label: "Ustawienia", icon: Settings },
 ];
