@@ -10,6 +10,7 @@ import {
   Car,
   Truck,
   Warehouse,
+  LayoutGrid,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/rezerwacje", label: "Rezerwacje", icon: CalendarDays },
   { href: "/faktury", label: "Faktury", icon: FileText, staffOnly: true },
   { href: "/garage-spots", label: "Garaże", icon: Warehouse, staffOnly: true },
+  { href: "/garage-occupancy", label: "Obłożenie garaży", icon: LayoutGrid, staffOnly: true },
   { href: "/kierowca", label: "Kierowca", icon: Truck },
   { href: "/ustawienia", label: "Ustawienia", icon: Settings },
 ];

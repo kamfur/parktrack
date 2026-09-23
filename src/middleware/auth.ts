@@ -8,7 +8,14 @@ const PUBLIC_API_PREFIXES = ["/api/auth/", "/api/health", "/api/reservations/ext
 const PUBLIC_ASSET_PREFIXES = ["/_astro/", "/favicon", "/sitemap"];
 
 /** Staff-only page prefixes. Drivers are redirected to /kierowca. Exact `/` is handled separately. */
-const STAFF_ONLY_PAGE_PREFIXES = ["/ustawienia", "/faktury", "/rezerwacje", "/kalendarz", "/garage-spots"];
+const STAFF_ONLY_PAGE_PREFIXES = [
+  "/ustawienia",
+  "/faktury",
+  "/rezerwacje",
+  "/kalendarz",
+  "/garage-spots",
+  "/garage-occupancy",
+];
 
 /** Staff-only API prefixes. Drivers receive 403. */
 const STAFF_ONLY_API_PREFIXES = [

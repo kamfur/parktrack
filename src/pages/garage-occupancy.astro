@@ -1,0 +1,10 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { GarageOccupancyView } from "../components/garage/GarageOccupancyView";
+---
+
+<Layout title="Obłożenie garaży - ParkTrack">
+  <div class="p-6">
+    <GarageOccupancyView client:load />
+  </div>
+</Layout>

@@ -313,7 +313,7 @@ A staff-only UI to create, edit, and toggle availability of garage/carport spots
 
 ### Overview
 
-A staff-only list view of upcoming garage assignments per spot, with a manual swap action and a "suggest optimization" button.
+**Revised mid-implementation** (user request, after live-testing the original simple-list design): a staff-only month-grid view — rows are garage/carport spots, columns are days of the month — with red cells (reservation last name) for occupied days and green cells for available days, a manual swap action per occupied cell, and a "suggest optimization" button. This supersedes the original "simple list, not a full resource-grid calendar" scope decision recorded in `change.md` for this phase specifically (the rest of the plan's scope decisions still stand).
 
 ### Changes Required:
 
@@ -321,17 +321,17 @@ A staff-only list view of upcoming garage assignments per spot, with a manual sw
 
 **File**: `src/pages/garage-occupancy.astro`
 
-**Intent**: Staff-only page listing each garage/carport spot with its upcoming assignments.
+**Intent**: Staff-only page hosting the occupancy grid.
 
 **Contract**: Astro page + React island, staff-only.
 
-#### 2. Occupancy list component
+#### 2. Occupancy grid components
 
-**File**: `src/components/garage/GarageOccupancyView.tsx`, `src/components/garage/GarageSwapDialog.tsx`
+**File**: `src/components/garage/GarageOccupancyView.tsx`, `src/components/garage/GarageOccupancyGrid.tsx`, `src/components/garage/GarageSwapDialog.tsx`
 
-**Intent**: Render each spot as a section with its ordered upcoming assignments (reservation name, planned check-in/out); a swap action per assignment opens a dialog to reassign to a different available spot; an "suggest optimization" button calls the optimization endpoint and renders the returned descriptions.
+**Intent**: Render a month grid (rows = garage/carport spots, columns = days in the displayed month) with month prev/next navigation; each day cell is red + reservation last name when occupied, green when available; clicking an occupied cell opens a dialog to reassign to a different available spot; a "suggest optimization" button calls the optimization endpoint and renders the returned descriptions.
 
-**Contract**: `useGarageOccupancy()` hook fetching `GET /api/garage-assignments`; swap dialog calls `PATCH /api/garage-assignments`; optimization button calls `GET /api/garage-assignments/optimize` and renders the description list — no auto-apply action exists.
+**Contract**: `useGarageOccupancy()` hook fetching `GET /api/garage-assignments` (unscoped by date — the grid itself computes per-day overlap client-side via `warsawDayBounds`); swap dialog calls `PATCH /api/garage-assignments`; optimization button calls `GET /api/garage-assignments/optimize` and renders the description list — no auto-apply action exists.
 
 ### Success Criteria:
 
@@ -448,22 +448,22 @@ Purely additive: new tables plus a defaulted `reservations.parking_type` column.
 
 #### Automated
 
-- [x] 5.1 Typecheck and lint pass
-- [x] 5.2 `garage-spots.test.ts` still passes
+- [x] 5.1 Typecheck and lint pass — 35817f7
+- [x] 5.2 `garage-spots.test.ts` still passes — 35817f7
 
 #### Manual
 
-- [x] 5.3 Staff can create/edit/toggle a garage spot; driver cannot reach the page (verified live in browser for create/edit/toggle; driver-block relies on the same STAFF_ONLY_PAGE_PREFIXES mechanism already covering /ustawienia,/faktury)
-- [x] 5.4 Unavailable spot is never auto-assigned (covered by Phase 2's `findAvailableSpot` `.eq("is_available", true)` filter, unit-tested)
+- [x] 5.3 Staff can create/edit/toggle a garage spot; driver cannot reach the page (verified live in browser for create/edit/toggle; driver-block relies on the same STAFF_ONLY_PAGE_PREFIXES mechanism already covering /ustawienia,/faktury) — 35817f7
+- [x] 5.4 Unavailable spot is never auto-assigned (covered by Phase 2's `findAvailableSpot` `.eq("is_available", true)` filter, unit-tested) — 35817f7
 
 ### Phase 6: Occupancy & Swap View
 
 #### Automated
 
-- [ ] 6.1 Typecheck and lint pass
-- [ ] 6.2 Full test suite passes
+- [x] 6.1 Typecheck and lint pass
+- [x] 6.2 Full test suite passes
 
 #### Manual
 
-- [ ] 6.3 Staff can view occupancy, swap an assignment (buffer enforced), and get an optimization suggestion
-- [ ] 6.4 Driver cannot reach the page
+- [x] 6.3 Staff can view occupancy, swap an assignment (buffer enforced), and get an optimization suggestion (verified live end-to-end: created a real garage reservation, confirmed auto-assign, viewed occupancy, performed a real swap, confirmed the optimization endpoint returns cleanly with no active assignments)
+- [x] 6.4 Driver cannot reach the page (same STAFF_ONLY_PAGE_PREFIXES mechanism as /garage-spots)

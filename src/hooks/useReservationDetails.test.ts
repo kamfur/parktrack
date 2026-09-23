@@ -33,9 +33,9 @@ describe("buildViewModel — garage assignment fields", () => {
     expect(vm.garageSpotIcon).toBeNull();
   });
 
-  it("surfaces the assigned garage spot name and an icon for a garage reservation", () => {
+  it("surfaces a formatted garage spot label and an icon for a garage reservation", () => {
     const vm = buildViewModel(reservation({ parking_type: "garage" }), "Garaż 1");
-    expect(vm.garageSpotLabel).toBe("Garaż 1");
+    expect(vm.garageSpotLabel).toBe("Garaż: Garaż 1");
     expect(vm.garageSpotIcon).not.toBeNull();
   });
 });

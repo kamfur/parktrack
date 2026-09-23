@@ -8,6 +8,7 @@ import type {
   InvoiceDto,
   GarageOccupancyEntryDto,
 } from "@/types";
+import { garageSpotLabel } from "@/lib/driver/display";
 
 interface UseReservationDetailsParams {
   reservationId: string;
@@ -378,7 +379,7 @@ export function buildViewModel(
     flightDirection: reservation.flight_direction,
     flightDirectionLabel: getFlightDirectionLabel(reservation.flight_direction),
     flightDirectionIcon: reservation.flight_direction ? "✈️" : null,
-    garageSpotLabel: garageSpotName,
+    garageSpotLabel: garageSpotLabel(reservation.parking_type, garageSpotName),
     garageSpotIcon: garageSpotName ? "🅿️" : null,
     financial,
     notes: reservation.notes,
