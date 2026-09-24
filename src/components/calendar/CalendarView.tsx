@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CalendarClock } from "lucide-react";
 import { CalendarGrid } from "./CalendarGrid";
@@ -10,9 +10,21 @@ import { ReservationDetailsView } from "@/components/reservations/details";
 import { useParkingCalendar } from "@/hooks/useParkingCalendar";
 
 export function CalendarView() {
-  const calendar = useParkingCalendar();
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [shiftState, setShiftState] = useState<ShiftDialogState | null>(null);
+  const isDialogOpen = reservationId !== null || shiftState !== null;
+  const calendar = useParkingCalendar({ pauseRefresh: isDialogOpen });
+  const pendingRefreshRef = useRef(false);
+
+  const handleReservationUpdated = useCallback(() => {
+    pendingRefreshRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (isDialogOpen || !pendingRefreshRef.current) return;
+    pendingRefreshRef.current = false;
+    void calendar.refetch(true);
+  }, [isDialogOpen, calendar.refetch]);
 
   if (calendar.error && !calendar.isLoading) {
     return (
@@ -39,6 +51,8 @@ export function CalendarView() {
         onPrev={calendar.goPrev}
         onNext={calendar.goNext}
         onToday={calendar.goToday}
+        onNewReservation={() => window.dispatchEvent(new CustomEvent("openNewReservationModal"))}
+        onAddShift={() => setShiftState({ mode: "create", dateKey: calendar.anchorDate })}
       />
 
       {isEmpty ? (
@@ -71,7 +85,6 @@ export function CalendarView() {
           isLoading={calendar.isLoading}
           onEventClick={(event) => setReservationId(event.reservationId)}
           onShiftClick={(shift) => setShiftState({ mode: "edit", shift })}
-          onSlotClick={(dateKey, hour) => setShiftState({ mode: "create", dateKey, hour })}
         />
       )}
 
@@ -80,9 +93,7 @@ export function CalendarView() {
           reservationId={reservationId}
           isOpen
           onClose={() => setReservationId(null)}
-          onUpdate={() => {
-            void calendar.refetch(true);
-          }}
+          onUpdate={handleReservationUpdated}
         />
       ) : null}
 

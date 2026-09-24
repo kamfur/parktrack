@@ -201,15 +201,21 @@ export class ReservationService {
     }
 
     if (validatedData.parking_type === "garage") {
-      const allocationService = new GarageAllocationService(adminClient);
-      const spot = await allocationService.findAvailableSpot(
-        reservation.planned_check_in,
-        reservation.planned_check_out
-      );
-      if (!spot) {
-        throw new NoGarageAvailableError();
+      try {
+        const allocationService = new GarageAllocationService(adminClient);
+        const spot = await allocationService.findAvailableSpot(
+          reservation.planned_check_in,
+          reservation.planned_check_out
+        );
+        if (!spot) {
+          throw new NoGarageAvailableError();
+        }
+        await allocationService.assign(reservation.id, spot.id, "system");
+      } catch (allocationError) {
+        // Roll back the reservation — a garage request that can't be fulfilled must not leave an orphaned row.
+        await adminClient.from("reservations").delete().eq("id", reservation.id);
+        throw allocationError;
       }
-      await allocationService.assign(reservation.id, spot.id, "system");
     }
 
     return reservation;
@@ -227,6 +233,25 @@ export class ReservationService {
   async updateReservation(id: string, command: UpdateReservationCommand): Promise<ReservationDto> {
     // Validate input data
     const validatedData = await updateReservationSchema.parseAsync(command);
+
+    // If planned dates are changing, re-validate the 10h garage buffer before writing —
+    // an edit must not be able to silently break the invariant `assign`/`swap` enforce.
+    if (validatedData.planned_check_in || validatedData.planned_check_out) {
+      const { data: current, error: currentError } = await this.supabase
+        .from("reservations")
+        .select("planned_check_in, planned_check_out")
+        .eq("id", id)
+        .single();
+
+      if (currentError || !current) {
+        throw new Error(`Reservation with ID ${id} not found`);
+      }
+
+      const nextCheckIn = validatedData.planned_check_in ?? current.planned_check_in;
+      const nextCheckOut = validatedData.planned_check_out ?? current.planned_check_out;
+      const allocationService = new GarageAllocationService(this.supabase);
+      await allocationService.revalidateAssignment(id, nextCheckIn, nextCheckOut);
+    }
 
     // Prepare update data with audit fields
     const updateData = {

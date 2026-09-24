@@ -300,6 +300,14 @@ export const PATCH: APIRoute = async ({ request, locals, url }) => {
   } catch (error) {
     console.error("Error updating reservation:", error);
 
+    // Editing planned dates would violate the assigned garage's 10h buffer
+    if (error instanceof GarageBufferViolationError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // Handle reservation not found
     if (error instanceof Error && error.message.includes("not found")) {
       return new Response(JSON.stringify({ error: error.message }), {

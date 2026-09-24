@@ -1,9 +1,11 @@
 /**
  * Operating-window helpers for driver arrival/departure lists.
- * Window rule (v1): calendar date in Europe/Warsaw ≤ today (overdue any past day + all of today).
+ * Pending lists: calendar date in Europe/Warsaw ≤ today (overdue any past day + all of today).
+ * Handled lists: actual timestamp on Warsaw today OR within the last 12 hours (union).
  */
 
 const WARSAW = "Europe/Warsaw";
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
 /** YYYY-MM-DD in Europe/Warsaw */
 export function warsawDateKey(date: Date): string {
@@ -23,19 +25,34 @@ export function isOnOrBeforeWarsawToday(plannedIso: string, now: Date = new Date
   return warsawDateKey(new Date(plannedIso)) <= warsawDateKey(now);
 }
 
+/** Inclusive lower bound: midnight Europe/Warsaw for the current calendar day, as UTC ISO. */
+export function startOfWarsawTodayIso(now: Date = new Date()): string {
+  const todayKey = warsawDateKey(now);
+  const [y, m, d] = todayKey.split("-").map(Number);
+  // Construct noon UTC on that calendar day, then find Warsaw offset and compute local midnight
+  const probe = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const offsetMs = warsawOffsetMs(probe);
+  const startOfTodayUtcMs = Date.UTC(y, m - 1, d, 0, 0, 0) - offsetMs;
+  return new Date(startOfTodayUtcMs).toISOString();
+}
+
 /**
  * Exclusive upper bound: start of tomorrow in Europe/Warsaw, as UTC ISO string.
  * Filter: planned_* < this value ≡ date(planned) ≤ current_date (Warsaw).
  */
 export function startOfTomorrowWarsawIso(now: Date = new Date()): string {
-  const todayKey = warsawDateKey(now);
-  const [y, m, d] = todayKey.split("-").map(Number);
-  // Construct noon UTC on that calendar day, then find Warsaw offset and compute local midnight+1d
-  const probe = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-  const offsetMs = warsawOffsetMs(probe);
-  const startOfTodayUtcMs = Date.UTC(y, m - 1, d, 0, 0, 0) - offsetMs;
-  const startOfTomorrowUtcMs = startOfTodayUtcMs + 24 * 60 * 60 * 1000;
-  return new Date(startOfTomorrowUtcMs).toISOString();
+  const startOfTodayUtcMs = Date.parse(startOfWarsawTodayIso(now));
+  return new Date(startOfTodayUtcMs + 24 * 60 * 60 * 1000).toISOString();
+}
+
+/**
+ * Inclusive lower bound for handled arrivals/departures.
+ * Union of Warsaw calendar today and a rolling 12h lookback (covers overnight shifts).
+ */
+export function handledWindowStartIso(now: Date = new Date()): string {
+  const startOfTodayMs = Date.parse(startOfWarsawTodayIso(now));
+  const twelveHoursAgoMs = now.getTime() - TWELVE_HOURS_MS;
+  return new Date(Math.min(startOfTodayMs, twelveHoursAgoMs)).toISOString();
 }
 
 function warsawOffsetMs(date: Date): number {

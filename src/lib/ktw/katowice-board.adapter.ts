@@ -9,6 +9,9 @@ export const OFFICIAL_KTW_BOARD_PAGE = "https://www.katowice-airport.com/pl/dla-
 
 export const KTW_ARRIVALS_TIMEOUT_MS = 3000;
 
+/** Official days are small; cap so a huge payload cannot fan out across 200 reservations. */
+export const MAX_PARSED_BOARD_ROWS = 500;
+
 const ARRIVAL_DIRECTION = 2;
 
 interface BoardFlightRow {
@@ -33,9 +36,30 @@ function isOfficialBoardPage(url: string): boolean {
   return url.includes("tablica-lotow-online") || url.includes("flight-board-online");
 }
 
+function isAllowedKtwHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === "katowice-airport.com" || host.endsWith(".katowice-airport.com");
+}
+
+/** Reject non-https / non-KTW hosts so a poisoned env cannot SSRF. */
+export function assertAllowedKtwArrivalsUrl(raw: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new KtwArrivalsError("KTW board URL is invalid");
+  }
+  if (parsed.protocol !== "https:") {
+    throw new KtwArrivalsError("KTW board URL must be https");
+  }
+  if (!isAllowedKtwHost(parsed.hostname)) {
+    throw new KtwArrivalsError("KTW board URL host is not allowed");
+  }
+  return isOfficialBoardPage(raw) ? DEFAULT_KTW_ARRIVALS_URL : parsed.toString();
+}
+
 export function resolveKtwArrivalsUrl(): string {
-  const raw = readEnvUrl() ?? DEFAULT_KTW_ARRIVALS_URL;
-  return isOfficialBoardPage(raw) ? DEFAULT_KTW_ARRIVALS_URL : raw;
+  return assertAllowedKtwArrivalsUrl(readEnvUrl() ?? DEFAULT_KTW_ARRIVALS_URL);
 }
 
 /** Official board only exposes yesterday / today / tomorrow — needed so 23:00 + 00:10 still match. */
@@ -111,7 +135,10 @@ export function parseKatowiceBoardPayload(body: string, dateContext: Date | stri
     const parsed: unknown = JSON.parse(trimmed);
     const rawRows = extractRawRows(parsed);
     if (rawRows) {
-      return rawRows.map((row) => mapBoardRow(row, dateKey)).filter((row): row is KtwBoardRow => row != null);
+      return rawRows
+        .map((row) => mapBoardRow(row, dateKey))
+        .filter((row): row is KtwBoardRow => row != null)
+        .slice(0, MAX_PARSED_BOARD_ROWS);
     }
   } catch (error) {
     if (error instanceof KtwArrivalsError) throw error;
@@ -141,6 +168,7 @@ export function createKatowiceBoardAdapter(options?: {
               const response = await fetchImpl(arrivalsRequestUrl(url, dateKey), {
                 method: "GET",
                 headers: { Accept: "application/json" },
+                redirect: "error",
                 signal: controller.signal,
               });
               if (!response.ok) {

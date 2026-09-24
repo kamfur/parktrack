@@ -27,6 +27,7 @@ export function respectsBuffer(candidate: ReservationWindow, existing: Reservati
 }
 
 interface ActiveAssignmentRow {
+  reservation_id: string;
   reservations: { planned_check_in: string; planned_check_out: string } | null;
 }
 
@@ -45,12 +46,21 @@ interface ActiveOccupancyRow {
 export class GarageAllocationService {
   constructor(private readonly supabase: SupabaseClient) {}
 
-  private async activeWindowsForSpot(garageSpotId: string): Promise<ReservationWindow[]> {
-    const { data, error } = await this.supabase
+  private async activeWindowsForSpot(
+    garageSpotId: string,
+    excludeReservationId?: string
+  ): Promise<ReservationWindow[]> {
+    let query = this.supabase
       .from("garage_assignments")
-      .select("reservations!inner(planned_check_in, planned_check_out)")
+      .select("reservation_id, reservations!inner(planned_check_in, planned_check_out)")
       .eq("garage_spot_id", garageSpotId)
       .is("superseded_at", null);
+
+    if (excludeReservationId) {
+      query = query.neq("reservation_id", excludeReservationId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw new Error(`Failed to fetch active garage assignments: ${error.message}`);
@@ -70,20 +80,6 @@ export class GarageAllocationService {
   private async isSpotAvailableForWindow(garageSpotId: string, candidate: ReservationWindow): Promise<boolean> {
     const existingWindows = await this.activeWindowsForSpot(garageSpotId);
     return existingWindows.every((existing) => respectsBuffer(candidate, existing));
-  }
-
-  private async fetchReservationWindow(reservationId: string): Promise<ReservationWindow> {
-    const { data, error } = await this.supabase
-      .from("reservations")
-      .select("planned_check_in, planned_check_out")
-      .eq("id", reservationId)
-      .single();
-
-    if (error || !data) {
-      throw new Error(`Reservation ${reservationId} not found`);
-    }
-
-    return { checkIn: new Date(data.planned_check_in), checkOut: new Date(data.planned_check_out) };
   }
 
   /**
@@ -116,31 +112,59 @@ export class GarageAllocationService {
   }
 
   /**
-   * Inserts a new active assignment after re-validating the buffer (defends
-   * against a race between the caller's check and this write).
+   * Inserts a new active assignment. The buffer check and insert happen
+   * atomically inside the `assign_garage_spot` DB function, serialized per
+   * `garageSpotId` by a Postgres advisory lock — closes the check-then-act
+   * race a JS-side check-then-insert would otherwise have.
    */
   async assign(
     reservationId: string,
     garageSpotId: string,
     assignedBy: "system" | "staff"
   ): Promise<GarageAssignmentDto> {
-    const candidate = await this.fetchReservationWindow(reservationId);
-
-    if (!(await this.isSpotAvailableForWindow(garageSpotId, candidate))) {
-      throw new GarageBufferViolationError();
-    }
-
-    const { data, error } = await this.supabase
-      .from("garage_assignments")
-      .insert({ reservation_id: reservationId, garage_spot_id: garageSpotId, assigned_by: assignedBy })
-      .select()
-      .single();
+    const { data, error } = await this.supabase.rpc("assign_garage_spot", {
+      p_reservation_id: reservationId,
+      p_garage_spot_id: garageSpotId,
+      p_assigned_by: assignedBy,
+    });
 
     if (error) {
+      if (error.message.includes("GARAGE_BUFFER_VIOLATION")) {
+        throw new GarageBufferViolationError();
+      }
       throw new Error(`Failed to create garage assignment: ${error.message}`);
     }
 
     return data;
+  }
+
+  /**
+   * Re-validates that `reservationId`'s current garage assignment (if any)
+   * still respects the 10h buffer against a new `[checkIn, checkOut)` window
+   * — call before persisting an edit to a garage reservation's planned dates.
+   * No-op if the reservation has no active garage assignment.
+   */
+  async revalidateAssignment(reservationId: string, plannedCheckIn: string, plannedCheckOut: string): Promise<void> {
+    const { data: activeAssignment, error } = await this.supabase
+      .from("garage_assignments")
+      .select("garage_spot_id")
+      .eq("reservation_id", reservationId)
+      .is("superseded_at", null)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to fetch current garage assignment: ${error.message}`);
+    }
+    if (!activeAssignment) return;
+
+    const candidate: ReservationWindow = { checkIn: new Date(plannedCheckIn), checkOut: new Date(plannedCheckOut) };
+    const existingWindows = await this.activeWindowsForSpot(activeAssignment.garage_spot_id, reservationId);
+
+    if (!existingWindows.every((existing) => respectsBuffer(candidate, existing))) {
+      throw new GarageBufferViolationError(
+        "These dates would violate the 10h buffer for the reservation's assigned garage spot"
+      );
+    }
   }
 
   /**

@@ -10,9 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export type ShiftDialogState =
-  | { mode: "create"; dateKey: string; hour: number }
-  | { mode: "edit"; shift: DriverShiftDto };
+export type ShiftDialogState = { mode: "create"; dateKey: string } | { mode: "edit"; shift: DriverShiftDto };
 
 interface ShiftDialogProps {
   state: ShiftDialogState | null;
@@ -39,11 +37,10 @@ export function ShiftDialog({ state, drivers, isProcessing, onOpenChange, onSave
       });
       return;
     }
-    const bounds = warsawHourBounds(state.dateKey, state.hour);
     form.reset({
       driver_user_id: drivers[0]?.id ?? "",
-      starts_at: toWarsawDateTimeLocal(bounds.start),
-      ends_at: toWarsawDateTimeLocal(bounds.end),
+      starts_at: toWarsawDateTimeLocal(warsawHourBounds(state.dateKey, 8).start),
+      ends_at: toWarsawDateTimeLocal(warsawHourBounds(state.dateKey, 16).start),
     });
   }, [state, drivers, form]);
 

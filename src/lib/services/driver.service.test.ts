@@ -93,3 +93,47 @@ describe("DriverService status guards", () => {
     );
   });
 });
+
+function mockListClient() {
+  const result = { data: [{ id: "h1" }], error: null };
+  const builder = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    lt: vi.fn().mockReturnThis(),
+    gte: vi.fn().mockReturnThis(),
+    not: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue(result),
+  };
+  return {
+    from: vi.fn().mockReturnValue(builder),
+    builder,
+    result,
+  };
+}
+
+describe("DriverService handled lists", () => {
+  it("listHandledArrivals filters actual_check_in from the handled window", async () => {
+    const client = mockListClient();
+    const service = new DriverService(client as never);
+    const now = new Date("2026-09-09T18:00:00Z");
+    const rows = await service.listHandledArrivals(now);
+
+    expect(client.builder.not).toHaveBeenCalledWith("actual_check_in", "is", null);
+    expect(client.builder.gte).toHaveBeenCalledWith("actual_check_in", "2026-09-08T22:00:00.000Z");
+    expect(client.builder.in).toHaveBeenCalledWith("status", ["in_progress", "completed"]);
+    expect(rows).toEqual([{ id: "h1" }]);
+  });
+
+  it("listHandledDepartures filters completed actual_check_out from the handled window", async () => {
+    const client = mockListClient();
+    const service = new DriverService(client as never);
+    const now = new Date("2026-09-09T00:00:00Z");
+    await service.listHandledDepartures(now);
+
+    expect(client.builder.not).toHaveBeenCalledWith("actual_check_out", "is", null);
+    expect(client.builder.gte).toHaveBeenCalledWith("actual_check_out", "2026-09-08T12:00:00.000Z");
+    expect(client.builder.eq).toHaveBeenCalledWith("status", "completed");
+  });
+});

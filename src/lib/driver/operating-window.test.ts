@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { isOnOrBeforeWarsawToday, startOfTomorrowWarsawIso, warsawDateKey } from "./operating-window";
+import {
+  handledWindowStartIso,
+  isOnOrBeforeWarsawToday,
+  startOfTomorrowWarsawIso,
+  startOfWarsawTodayIso,
+  warsawDateKey,
+} from "./operating-window";
 
 describe("operating-window", () => {
   afterEach(() => {
@@ -34,5 +40,20 @@ describe("operating-window", () => {
   it("warsawDateKey formats in Europe/Warsaw", () => {
     // 2026-09-09 22:30Z = 2026-09-10 00:30 Warsaw
     expect(warsawDateKey(new Date("2026-09-09T22:30:00Z"))).toBe("2026-09-10");
+  });
+
+  it("startOfWarsawTodayIso is midnight Warsaw", () => {
+    vi.setSystemTime(new Date("2026-09-09T10:00:00Z"));
+    expect(startOfWarsawTodayIso()).toBe("2026-09-08T22:00:00.000Z");
+  });
+
+  it("handled window in the evening starts at Warsaw midnight (full calendar day)", () => {
+    const now = new Date("2026-09-09T18:00:00Z"); // 20:00 Warsaw
+    expect(handledWindowStartIso(now)).toBe("2026-09-08T22:00:00.000Z");
+  });
+
+  it("handled window before noon starts 12h ago (overnight lookback)", () => {
+    const now = new Date("2026-09-09T00:00:00Z"); // 02:00 Warsaw
+    expect(handledWindowStartIso(now)).toBe("2026-09-08T12:00:00.000Z");
   });
 });

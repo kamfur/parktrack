@@ -17,7 +17,9 @@ const TABS: { id: DriverTab; label: string }[] = [
 export function DriverOpsApp() {
   const {
     arrivals,
+    handledArrivals,
     departures,
+    handledDepartures,
     occupancy,
     isLoading,
     error,
@@ -32,7 +34,9 @@ export function DriverOpsApp() {
   const [arrivalTarget, setArrivalTarget] = useState<ReservationDto | null>(null);
   const [departureTarget, setDepartureTarget] = useState<ReservationDto | null>(null);
 
-  const list = tab === "arrivals" ? arrivals : tab === "departures" ? departures : occupancy;
+  const pending = tab === "arrivals" ? arrivals : tab === "departures" ? departures : occupancy;
+  const handled = tab === "arrivals" ? handledArrivals : tab === "departures" ? handledDepartures : [];
+  const showHandled = tab !== "occupancy";
 
   return (
     <div className="space-y-4">
@@ -54,8 +58,8 @@ export function DriverOpsApp() {
 
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          {tab === "arrivals" && `${arrivals.length} przyjazdów`}
-          {tab === "departures" && `${departures.length} wyjazdów`}
+          {tab === "arrivals" && `${arrivals.length} do obsługi · ${handledArrivals.length} obsłużonych`}
+          {tab === "departures" && `${departures.length} do obsługi · ${handledDepartures.length} obsłużonych`}
           {tab === "occupancy" && `${occupancy.length} na parkingu`}
         </p>
         <Button type="button" variant="ghost" className="min-h-11" onClick={() => void refetch()}>
@@ -69,44 +73,70 @@ export function DriverOpsApp() {
         </div>
       ) : null}
 
-      {isLoading && list.length === 0 ? (
+      {isLoading && pending.length === 0 && handled.length === 0 ? (
         <div className="space-y-3">
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-28 w-full" />
         </div>
       ) : null}
 
-      {!isLoading && list.length === 0 ? (
+      {!isLoading && pending.length === 0 && handled.length === 0 ? (
         <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
           Brak pozycji w tym widoku.
         </p>
       ) : null}
 
-      <ul className="space-y-3">
-        {list.map((reservation) => (
-          <li key={reservation.id}>
-            {tab === "arrivals" ? (
-              <DriverReservationRow
-                reservation={reservation}
-                mode="arrival"
-                actionLabel="Przyjęcie"
-                disabled={isProcessing}
-                onOpen={() => setArrivalTarget(reservation)}
-              />
-            ) : null}
-            {tab === "departures" ? (
-              <DriverReservationRow
-                reservation={reservation}
-                mode="departure"
-                actionLabel="Wydanie"
-                disabled={isProcessing}
-                onOpen={() => setDepartureTarget(reservation)}
-              />
-            ) : null}
-            {tab === "occupancy" ? <DriverReservationRow reservation={reservation} mode="occupancy" /> : null}
-          </li>
-        ))}
-      </ul>
+      {pending.length > 0 ? (
+        <ul className="space-y-3">
+          {pending.map((reservation) => (
+            <li key={reservation.id}>
+              {tab === "arrivals" ? (
+                <DriverReservationRow
+                  reservation={reservation}
+                  mode="arrival"
+                  actionLabel="Przyjęcie"
+                  disabled={isProcessing}
+                  onOpen={() => setArrivalTarget(reservation)}
+                />
+              ) : null}
+              {tab === "departures" ? (
+                <DriverReservationRow
+                  reservation={reservation}
+                  mode="departure"
+                  actionLabel="Wydanie"
+                  disabled={isProcessing}
+                  onOpen={() => setDepartureTarget(reservation)}
+                />
+              ) : null}
+              {tab === "occupancy" ? <DriverReservationRow reservation={reservation} mode="occupancy" /> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {!isLoading && showHandled && pending.length === 0 && handled.length > 0 ? (
+        <p className="text-sm text-muted-foreground">Brak oczekujących.</p>
+      ) : null}
+
+      {showHandled && handled.length > 0 ? (
+        <section className="space-y-3" aria-label="Obsłużone">
+          <div>
+            <h2 className="text-sm font-medium">Obsłużone</h2>
+            <p className="text-xs text-muted-foreground">Dzisiaj oraz z ostatnich 12 godzin</p>
+          </div>
+          <ul className="space-y-3">
+            {handled.map((reservation) => (
+              <li key={reservation.id}>
+                <DriverReservationRow
+                  reservation={reservation}
+                  mode={tab === "arrivals" ? "arrival" : "departure"}
+                  handled
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <DriverArrivalDialog
         reservation={arrivalTarget}

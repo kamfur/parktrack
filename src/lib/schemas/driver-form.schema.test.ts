@@ -10,7 +10,7 @@ describe("driverArrivalFormSchema", () => {
   it("accepts paid arrival with passengers and sector", () => {
     const parsed = driverArrivalFormSchema.parse({
       planned_check_out: "2026-09-10T14:30",
-      flight_direction: "departure",
+      flight_direction: "Londyn",
       passenger_count: 2,
       parking_sector: "B3",
       paid_at_arrival: true,

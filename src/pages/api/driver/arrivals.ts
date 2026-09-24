@@ -25,8 +25,8 @@ export const GET: APIRoute = async ({ locals }) => {
 
   try {
     const service = new DriverService(locals.supabase);
-    const arrivals = await service.listArrivals();
-    return new Response(JSON.stringify({ data: arrivals }), {
+    const [arrivals, handled] = await Promise.all([service.listArrivals(), service.listHandledArrivals()]);
+    return new Response(JSON.stringify({ data: arrivals, handled }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

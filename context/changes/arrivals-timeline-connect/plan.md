@@ -262,6 +262,16 @@ No schema migration. Existing rows with a matchable free-text direction get hour
 - Driver list: `src/pages/api/driver/departures.ts`
 - Check-out command: `src/lib/reservations/operations.ts:10-14`
 
+## Implementation addendum (2026-09-16)
+
+Locked during Phase 3 manual verification; Progress still describes the original phase titles.
+
+- Display official board **status** (e.g. `PRZYLOT 00:07`, `WYLĄDOWAŁ 01:24`) instead of the scheduled clock when status is non-empty; fall back to Warsaw clock if blank. Matching still uses scheduled time ±3h. This is board status text, not a separate live-ETA field (FR-007).
+- Show at most **3** matching hours, those closest to `planned_check_out`, in scheduled order.
+- Fetch **yesterday + today + tomorrow** (Warsaw) so a 23:00 planned return can match a 00:10 arrival.
+- Alias **Madera / Madeira / Funchal**.
+- Staff and driver return rows use a **PlaneLanding** icon for board status.
+
 ## Progress
 
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles. See `references/progress-format.md`.

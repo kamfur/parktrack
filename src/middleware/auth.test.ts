@@ -90,6 +90,7 @@ describe("isStaffOnlyPath", () => {
     expect(isStaffOnlyPath("/kierowca")).toBe(false);
     expect(isStaffOnlyPath("/api/driver/arrivals")).toBe(false);
     expect(isStaffOnlyPath("/api/driver/reservations/abc/arrival")).toBe(false);
+    expect(isStaffOnlyPath("/api/flight-directions")).toBe(false);
   });
 
   it("marks remaining staff APIs and pages", () => {
@@ -193,6 +194,12 @@ describe("authMiddleware", () => {
   it("allows driver GET /api/driver/arrivals", async () => {
     const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
     const res = (await authMiddleware(makeCtx("/api/driver/arrivals", user), next)) as Response;
+    expect(res.status).toBe(200);
+  });
+
+  it("allows driver GET /api/flight-directions", async () => {
+    const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
+    const res = (await authMiddleware(makeCtx("/api/flight-directions", user), next)) as Response;
     expect(res.status).toBe(200);
   });
 

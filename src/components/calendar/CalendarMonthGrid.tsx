@@ -64,12 +64,12 @@ export function CalendarMonthGrid({
             >
               <span className={cn("text-sm font-semibold", dateKey === today && "text-primary")}>{dayNumber}</span>
               {visibility.arrivals ? (
-                <span className="text-[11px] text-orange-700">
+                <span className="text-[11px] text-emerald-700">
                   Przyjazdy <span className="font-semibold">{counts.arrivals}</span>
                 </span>
               ) : null}
               {visibility.departures ? (
-                <span className="text-[11px] text-violet-700">
+                <span className="text-[11px] text-rose-700">
                   Wyjazdy <span className="font-semibold">{counts.departures}</span>
                 </span>
               ) : null}

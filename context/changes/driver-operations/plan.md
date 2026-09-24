@@ -298,6 +298,12 @@ List endpoints should stay cheap (indexed filters on `status` + planned timestam
 - Create at least one driver user in each environment by setting `app_metadata.role = 'driver'`.
 - Rollback: revert UI/routes first; column drops only if needed (nullable columns can remain).
 
+### Addendum (impl-review 2026-09-09)
+
+- v1 keeps fail-open **missing role → staff** (brownfield). Ops: set `app_metadata.role` explicitly on every production user. Fail-closed default is out of this change.
+- Driver staff-API deny is **403** (authenticated) / pages **302** to `/kierowca`; unauthenticated APIs remain **401**.
+- Staff invoices snapshot `reservation.total_cost` only; `surcharge_amount` is operational cash, not invoice line items, unless a later billing change folds them.
+
 ## References
 
 - Related research: `context/changes/driver-operations/research.md`
@@ -353,8 +359,8 @@ List endpoints should stay cheap (indexed filters on `status` + planned timestam
 
 #### Automated
 
-- [x] 4.1 New auth/list regression tests green
-- [x] 4.2 test + typecheck + lint pass
+- [x] 4.1 New auth/list regression tests green — b036a4c
+- [x] 4.2 test + typecheck + lint pass — b036a4c
 
 #### Manual
 

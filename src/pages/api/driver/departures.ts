@@ -25,8 +25,8 @@ export const GET: APIRoute = async ({ locals }) => {
 
   try {
     const service = new DriverService(locals.supabase);
-    const departures = await service.listDepartures();
-    return new Response(JSON.stringify({ data: departures }), {
+    const { data: departures, handled } = await service.listDeparturesWithHandled();
+    return new Response(JSON.stringify({ data: departures, handled }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,18 +21,31 @@ function monthLabel(monthAnchor: string): string {
   );
 }
 
-/** The entry (if any) occupying `spotId` on the given day, by planned check-in/out overlap. */
+/** Groups entries by garage spot, so each grid cell only scans its own spot's entries. */
+function groupEntriesBySpot(entries: GarageOccupancyEntryDto[]): Map<string, GarageOccupancyEntryDto[]> {
+  const bySpot = new Map<string, GarageOccupancyEntryDto[]>();
+  for (const entry of entries) {
+    const forSpot = bySpot.get(entry.garageSpotId);
+    if (forSpot) {
+      forSpot.push(entry);
+    } else {
+      bySpot.set(entry.garageSpotId, [entry]);
+    }
+  }
+  return bySpot;
+}
+
+/** The entry (if any) among `spotEntries` occupying the given day, by planned check-in/out overlap. */
 function entryForDay(
-  entries: GarageOccupancyEntryDto[],
-  spotId: string,
+  spotEntries: GarageOccupancyEntryDto[] | undefined,
   dateKey: string
 ): GarageOccupancyEntryDto | null {
+  if (!spotEntries) return null;
   const { start, end } = warsawDayBounds(dateKey);
   const dayStart = Date.parse(start);
   const dayEnd = Date.parse(end);
   return (
-    entries.find((entry) => {
-      if (entry.garageSpotId !== spotId) return false;
+    spotEntries.find((entry) => {
       const checkIn = Date.parse(entry.plannedCheckIn);
       const checkOut = Date.parse(entry.plannedCheckOut);
       return checkIn < dayEnd && checkOut > dayStart;
@@ -50,6 +64,7 @@ export function GarageOccupancyGrid({
   const monthStart = warsawMonthStart(monthAnchor);
   const nextMonthStart = addUtcMonths(monthStart, 1);
   const dateKeys = dateKeysInRange(monthStart, nextMonthStart);
+  const entriesBySpot = useMemo(() => groupEntriesBySpot(entries), [entries]);
 
   if (isLoading) {
     return <Skeleton className="h-64 w-full" />;
@@ -89,7 +104,7 @@ export function GarageOccupancyGrid({
                 <tr key={spot.id}>
                   <td className="sticky left-0 z-10 border-b bg-card px-2 py-1 font-medium">{spot.name}</td>
                   {dateKeys.map((dateKey) => {
-                    const entry = entryForDay(entries, spot.id, dateKey);
+                    const entry = entryForDay(entriesBySpot.get(spot.id), dateKey);
                     return (
                       <td key={dateKey} className="border-b p-0.5">
                         <button

@@ -5,8 +5,10 @@ import { DeparturesColumn } from "./DeparturesColumn";
 interface TodayViewProps {
   arrivals: ReservationDto[];
   departures: ReservationDto[];
-  onCheckIn: (reservationId: string) => Promise<void>;
-  onCheckOut: (reservationId: string) => Promise<void>;
+  onCheckIn: (reservation: ReservationDto) => void;
+  onCheckOut: (reservation: ReservationDto) => void;
+  onCancel: (reservation: ReservationDto) => void;
+  onChangeReturnDate: (reservation: ReservationDto) => void;
   isLoading?: boolean;
 }
 
@@ -14,14 +16,27 @@ interface TodayViewProps {
  * Kontener dla dwóch kolumn zawierających listy przyjazdów i wyjazdów.
  * Odpowiada za layout i responsive design (2 kolumny desktop, 1 kolumna mobile).
  */
-export function TodayView({ arrivals, departures, onCheckIn, onCheckOut, isLoading = false }: TodayViewProps) {
+export function TodayView({
+  arrivals,
+  departures,
+  onCheckIn,
+  onCheckOut,
+  onCancel,
+  onChangeReturnDate,
+  isLoading = false,
+}: TodayViewProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-20rem)]">
       <div className="border rounded-lg p-6 bg-card">
-        <ArrivalsColumn arrivals={arrivals} onCheckIn={onCheckIn} isLoading={isLoading} />
+        <ArrivalsColumn arrivals={arrivals} onCheckIn={onCheckIn} onCancel={onCancel} isLoading={isLoading} />
       </div>
       <div className="border rounded-lg p-6 bg-card">
-        <DeparturesColumn departures={departures} onCheckOut={onCheckOut} isLoading={isLoading} />
+        <DeparturesColumn
+          departures={departures}
+          onCheckOut={onCheckOut}
+          onChangeReturnDate={onChangeReturnDate}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

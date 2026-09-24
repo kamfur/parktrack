@@ -14,8 +14,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
 
 interface DriverArrivalDialogProps {
   reservation: ReservationDto | null;
@@ -25,9 +25,8 @@ interface DriverArrivalDialogProps {
   isProcessing: boolean;
 }
 
-function normalizeFlightDirection(value: string | null | undefined): DriverArrivalFormData["flight_direction"] {
-  if (value === "departure" || value === "arrival") return value;
-  return null;
+function normalizeFlightDirection(value: string | null | undefined): string {
+  return value ?? "";
 }
 
 export function DriverArrivalDialog({
@@ -43,7 +42,7 @@ export function DriverArrivalDialog({
     resolver: zodResolver(driverArrivalFormSchema) as Resolver<DriverArrivalFormData>,
     defaultValues: {
       planned_check_out: "",
-      flight_direction: null,
+      flight_direction: "",
       passenger_count: null,
       parking_sector: "",
       paid_at_arrival: false,
@@ -70,7 +69,7 @@ export function DriverArrivalDialog({
         paid_at_arrival: data.paid_at_arrival,
         passenger_count: data.passenger_count ?? null,
         parking_sector: data.parking_sector?.trim() ? data.parking_sector.trim() : null,
-        flight_direction: data.flight_direction ?? null,
+        flight_direction: data.flight_direction?.trim() ? data.flight_direction.trim() : null,
       };
       const checkoutIso = datetimeLocalToIso(data.planned_check_out);
       if (checkoutIso) body.planned_check_out = checkoutIso;
@@ -114,18 +113,15 @@ export function DriverArrivalDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Kierunek lotu</FormLabel>
-                  <Select value={field.value ?? "none"} onValueChange={(v) => field.onChange(v === "none" ? null : v)}>
-                    <FormControl>
-                      <SelectTrigger className="min-h-11 w-full">
-                        <SelectValue placeholder="Wybierz" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">—</SelectItem>
-                      <SelectItem value="departure">Wylot</SelectItem>
-                      <SelectItem value="arrival">Przylot</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FlightDirectionInput
+                    className="min-h-11"
+                    placeholder="np. Londyn, LO 392"
+                    maxLength={100}
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                  />
                   <FormMessage />
                 </FormItem>
               )}

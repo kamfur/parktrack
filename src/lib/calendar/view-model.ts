@@ -95,6 +95,56 @@ export function shiftsOverlappingHour(shifts: DriverShiftDto[], dateKey: string,
   return shifts.filter((shift) => Date.parse(shift.starts_at) < endMs && Date.parse(shift.ends_at) > startMs);
 }
 
+export interface ShiftDaySpan {
+  startHour: number;
+  endHour: number;
+}
+
+export function shiftSpanForDay(shift: DriverShiftDto, dateKey: string): ShiftDaySpan | null {
+  const bounds = warsawDayBounds(dateKey);
+  const dayStart = Date.parse(bounds.start);
+  const dayEnd = Date.parse(bounds.end);
+  const start = Math.max(Date.parse(shift.starts_at), dayStart);
+  const end = Math.min(Date.parse(shift.ends_at), dayEnd);
+  if (!(end > start)) return null;
+  const hourMs = 60 * 60 * 1000;
+  return {
+    startHour: (start - dayStart) / hourMs,
+    endHour: (end - dayStart) / hourMs,
+  };
+}
+
+export interface ShiftLaneLayout extends ShiftDaySpan {
+  shift: DriverShiftDto;
+  lane: number;
+  laneCount: number;
+}
+
+export function layoutShiftsForDay(shifts: DriverShiftDto[], dateKey: string): ShiftLaneLayout[] {
+  const spanned = shifts
+    .map((shift) => {
+      const span = shiftSpanForDay(shift, dateKey);
+      return span ? { shift, ...span } : null;
+    })
+    .filter((item): item is { shift: DriverShiftDto } & ShiftDaySpan => item !== null)
+    .sort((left, right) => left.startHour - right.startHour || left.endHour - right.endHour);
+
+  const laneEnds: number[] = [];
+  const assigned = spanned.map((item) => {
+    let lane = laneEnds.findIndex((endHour) => endHour <= item.startHour);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(item.endHour);
+    } else {
+      laneEnds[lane] = item.endHour;
+    }
+    return { ...item, lane };
+  });
+
+  const laneCount = Math.max(laneEnds.length, 1);
+  return assigned.map((item) => ({ ...item, laneCount }));
+}
+
 export function formatDayHeading(dateKey: string): string {
   return new Intl.DateTimeFormat("pl-PL", {
     timeZone: "Europe/Warsaw",

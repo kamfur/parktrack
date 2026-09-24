@@ -5,24 +5,20 @@ import { Calendar } from "lucide-react";
 
 interface DeparturesColumnProps {
   departures: ReservationDto[];
-  onCheckOut: (reservationId: string) => Promise<void>;
+  onCheckOut: (reservation: ReservationDto) => void;
+  onChangeReturnDate: (reservation: ReservationDto) => void;
   isLoading?: boolean;
 }
 
-function formatNearestDate(isoDate: string): string {
-  const date = new Date(isoDate);
-  const today = new Date();
-  if (date.toDateString() === today.toDateString()) return "Dzisiaj";
-  return new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short" }).format(date);
-}
-
 /**
- * Kolumna wyświetlająca listę wyjazdów z najbliższego dnia.
- * Każda rezerwacja jest reprezentowana przez ReservationCard z przyciskiem "Check-out".
+ * Kolumna wyjazdów: dzień bieżący (Warsaw) oraz opóźnione powroty bez check-out.
  */
-export function DeparturesColumn({ departures, onCheckOut, isLoading = false }: DeparturesColumnProps) {
-  const dateLabel = departures[0]?.planned_check_out ? formatNearestDate(departures[0].planned_check_out) : null;
-  // Loading skeletons
+export function DeparturesColumn({
+  departures,
+  onCheckOut,
+  onChangeReturnDate,
+  isLoading = false,
+}: DeparturesColumnProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
@@ -48,7 +44,6 @@ export function DeparturesColumn({ departures, onCheckOut, isLoading = false }: 
     );
   }
 
-  // Empty state
   if (departures.length === 0) {
     return (
       <div className="flex flex-col h-full">
@@ -58,23 +53,24 @@ export function DeparturesColumn({ departures, onCheckOut, isLoading = false }: 
         </div>
         <EmptyState
           icon={Calendar}
-          title="Brak zaplanowanych wyjazdów"
-          description="Nie ma żadnych rezerwacji z check-out na dzisiaj"
+          title="Brak wyjazdów do obsługi"
+          description="Nie ma powrotów na dziś ani opóźnionych, które czekają na wydanie"
         />
       </div>
     );
   }
 
-  // Lista rezerwacji
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-4 pb-4 border-b">
-        <h2 className="text-2xl font-bold" id="departures-heading">
-          Wyjazdy
-          {dateLabel && <span className="ml-2 text-base font-normal text-muted-foreground">{dateLabel}</span>}
-        </h2>
+        <div>
+          <h2 className="text-2xl font-bold" id="departures-heading">
+            Wyjazdy
+          </h2>
+          <p className="text-sm text-muted-foreground">Dziś i opóźnione</p>
+        </div>
         <span
-          className="text-sm font-medium text-purple-600 bg-purple-100 px-3 py-1 rounded-full"
+          className="text-sm font-medium text-rose-700 bg-rose-100 px-3 py-1 rounded-full"
           aria-label={`${departures.length} ${departures.length === 1 ? "wyjazd" : "wyjazdów"}`}
         >
           {departures.length}
@@ -83,7 +79,12 @@ export function DeparturesColumn({ departures, onCheckOut, isLoading = false }: 
       <div className="flex-1 overflow-y-auto space-y-3 pr-2" role="list" aria-labelledby="departures-heading">
         {departures.map((departure) => (
           <div key={departure.id} role="listitem">
-            <ReservationCard reservation={departure} actionType="check-out" onAction={onCheckOut} />
+            <ReservationCard
+              reservation={departure}
+              actionType="check-out"
+              onAction={onCheckOut}
+              onChangeReturnDate={onChangeReturnDate}
+            />
           </div>
         ))}
       </div>

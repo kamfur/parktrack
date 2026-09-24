@@ -44,3 +44,11 @@ export const updateGarageSpotSchema = z.object({
 });
 
 export type UpdateGarageSpotSchema = typeof updateGarageSpotSchema;
+
+/** Body for PATCH /api/garage-assignments (manual swap). */
+export const garageAssignmentSwapSchema = z.object({
+  reservationId: z.string().uuid("reservationId must be a valid UUID"),
+  garageSpotId: z.string().uuid("garageSpotId must be a valid UUID"),
+});
+
+export type GarageAssignmentSwapSchema = typeof garageAssignmentSwapSchema;

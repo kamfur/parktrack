@@ -8,7 +8,7 @@ import {
   type DriverDepartureUpdate,
 } from "../schemas/driver.schema";
 import { handledWindowStartIso, startOfTomorrowWarsawIso } from "../driver/operating-window";
-import { enrichDepartures } from "./ktw-arrival-hours.service";
+import { enrichDepartureLists, enrichDepartures } from "./ktw-arrival-hours.service";
 
 export class DriverServiceError extends Error {
   constructor(
@@ -50,7 +50,7 @@ export class DriverService {
     return (data ?? []) as ReservationDto[];
   }
 
-  async listDepartures(now: Date = new Date()): Promise<DepartureListItem[]> {
+  private async fetchPendingDepartures(now: Date): Promise<ReservationDto[]> {
     const upper = startOfTomorrowWarsawIso(now);
     const { data, error } = await this.supabase
       .from("reservations")
@@ -64,7 +64,11 @@ export class DriverService {
       throw new DriverServiceError(`Failed to fetch driver departures: ${error.message}`, 500);
     }
 
-    return enrichDepartures((data ?? []) as ReservationDto[], now);
+    return (data ?? []) as ReservationDto[];
+  }
+
+  async listDepartures(now: Date = new Date()): Promise<DepartureListItem[]> {
+    return enrichDepartures(await this.fetchPendingDepartures(now), now);
   }
 
   async listHandledArrivals(now: Date = new Date()): Promise<ReservationDto[]> {
@@ -85,7 +89,7 @@ export class DriverService {
     return (data ?? []) as ReservationDto[];
   }
 
-  async listHandledDepartures(now: Date = new Date()): Promise<DepartureListItem[]> {
+  private async fetchHandledDepartures(now: Date): Promise<ReservationDto[]> {
     const since = handledWindowStartIso(now);
     const { data, error } = await this.supabase
       .from("reservations")
@@ -100,7 +104,18 @@ export class DriverService {
       throw new DriverServiceError(`Failed to fetch handled departures: ${error.message}`, 500);
     }
 
-    return enrichDepartures((data ?? []) as ReservationDto[], now);
+    return (data ?? []) as ReservationDto[];
+  }
+
+  async listHandledDepartures(now: Date = new Date()): Promise<DepartureListItem[]> {
+    return enrichDepartures(await this.fetchHandledDepartures(now), now);
+  }
+
+  async listDeparturesWithHandled(
+    now: Date = new Date()
+  ): Promise<{ data: DepartureListItem[]; handled: DepartureListItem[] }> {
+    const [pending, handled] = await Promise.all([this.fetchPendingDepartures(now), this.fetchHandledDepartures(now)]);
+    return enrichDepartureLists(pending, handled, now);
   }
 
   async listOccupancy(): Promise<ReservationDto[]> {

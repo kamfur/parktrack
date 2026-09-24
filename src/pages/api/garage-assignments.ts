@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { GarageAllocationService, GarageBufferViolationError } from "../../lib/services/garage-allocation.service";
+import { garageAssignmentSwapSchema } from "../../lib/schemas/garage-spot.schema";
 
 export const prerender = false;
 
@@ -24,12 +25,14 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
   if (!locals.user) return json({ error: "Unauthorized" }, 401);
 
   try {
-    const body = (await request.json()) as { reservationId?: unknown; garageSpotId?: unknown };
-    if (typeof body.reservationId !== "string" || typeof body.garageSpotId !== "string") {
-      return json({ error: "Validation failed", details: "reservationId and garageSpotId are required strings" }, 400);
+    const body = await request.json();
+    const validationResult = await garageAssignmentSwapSchema.safeParseAsync(body);
+    if (!validationResult.success) {
+      return json({ error: "Validation failed", details: validationResult.error.format() }, 400);
     }
 
-    const assignment = await new GarageAllocationService(locals.supabase).swap(body.reservationId, body.garageSpotId);
+    const { reservationId, garageSpotId } = validationResult.data;
+    const assignment = await new GarageAllocationService(locals.supabase).swap(reservationId, garageSpotId);
     return json(assignment);
   } catch (error) {
     if (error instanceof GarageBufferViolationError) {

@@ -6,7 +6,7 @@ describe("driverArrivalUpdateSchema", () => {
     const parsed = driverArrivalUpdateSchema.parse({
       passenger_count: 3,
       parking_sector: "A12",
-      flight_direction: "departure",
+      flight_direction: "Londyn",
       paid_at_arrival: true,
       planned_check_out: "2026-09-12T10:00:00.000Z",
     });

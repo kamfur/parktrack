@@ -5,24 +5,15 @@ import { Calendar } from "lucide-react";
 
 interface ArrivalsColumnProps {
   arrivals: ReservationDto[];
-  onCheckIn: (reservationId: string) => Promise<void>;
+  onCheckIn: (reservation: ReservationDto) => void;
+  onCancel: (reservation: ReservationDto) => void;
   isLoading?: boolean;
 }
 
-function formatNearestDate(isoDate: string): string {
-  const date = new Date(isoDate);
-  const today = new Date();
-  if (date.toDateString() === today.toDateString()) return "Dzisiaj";
-  return new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short" }).format(date);
-}
-
 /**
- * Kolumna wyświetlająca listę przyjazdów z najbliższego dnia.
- * Każda rezerwacja jest reprezentowana przez ReservationCard z przyciskiem "Check-in".
+ * Kolumna przyjazdów: dzień bieżący (Warsaw) oraz zaległe, jeszcze nieprzyjęte.
  */
-export function ArrivalsColumn({ arrivals, onCheckIn, isLoading = false }: ArrivalsColumnProps) {
-  const dateLabel = arrivals[0]?.planned_check_in ? formatNearestDate(arrivals[0].planned_check_in) : null;
-  // Loading skeletons
+export function ArrivalsColumn({ arrivals, onCheckIn, onCancel, isLoading = false }: ArrivalsColumnProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
@@ -48,7 +39,6 @@ export function ArrivalsColumn({ arrivals, onCheckIn, isLoading = false }: Arriv
     );
   }
 
-  // Empty state
   if (arrivals.length === 0) {
     return (
       <div className="flex flex-col h-full">
@@ -58,23 +48,24 @@ export function ArrivalsColumn({ arrivals, onCheckIn, isLoading = false }: Arriv
         </div>
         <EmptyState
           icon={Calendar}
-          title="Brak zaplanowanych przyjazdów"
-          description="Nie ma żadnych rezerwacji z check-in na dzisiaj"
+          title="Brak przyjazdów do obsługi"
+          description="Nie ma przyjazdów na dziś ani zaległych, które czekają na przyjęcie"
         />
       </div>
     );
   }
 
-  // Lista rezerwacji
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-4 pb-4 border-b">
-        <h2 className="text-2xl font-bold" id="arrivals-heading">
-          Przyjazdy
-          {dateLabel && <span className="ml-2 text-base font-normal text-muted-foreground">{dateLabel}</span>}
-        </h2>
+        <div>
+          <h2 className="text-2xl font-bold" id="arrivals-heading">
+            Przyjazdy
+          </h2>
+          <p className="text-sm text-muted-foreground">Dziś i zaległe</p>
+        </div>
         <span
-          className="text-sm font-medium text-orange-600 bg-orange-100 px-3 py-1 rounded-full"
+          className="text-sm font-medium text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full"
           aria-label={`${arrivals.length} ${arrivals.length === 1 ? "przyjazd" : "przyjazdów"}`}
         >
           {arrivals.length}
@@ -83,7 +74,7 @@ export function ArrivalsColumn({ arrivals, onCheckIn, isLoading = false }: Arriv
       <div className="flex-1 overflow-y-auto space-y-3 pr-2" role="list" aria-labelledby="arrivals-heading">
         {arrivals.map((arrival) => (
           <div key={arrival.id} role="listitem">
-            <ReservationCard reservation={arrival} actionType="check-in" onAction={onCheckIn} />
+            <ReservationCard reservation={arrival} actionType="check-in" onAction={onCheckIn} onCancel={onCancel} />
           </div>
         ))}
       </div>

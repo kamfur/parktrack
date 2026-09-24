@@ -6,11 +6,12 @@ vi.mock("../supabase-admin", () => ({
 
 vi.mock("./garage-allocation.service", () => ({
   GarageAllocationService: vi.fn(),
+  GarageBufferViolationError: class GarageBufferViolationError extends Error {},
 }));
 
 import { ReservationService, NoGarageAvailableError } from "./reservation.service";
 import { createSupabaseAdminClient } from "../supabase-admin";
-import { GarageAllocationService } from "./garage-allocation.service";
+import { GarageAllocationService, GarageBufferViolationError } from "./garage-allocation.service";
 
 function mockListClient() {
   const result = { data: [{ id: "r1" }], error: null };
@@ -89,12 +90,16 @@ describe("ReservationService.createReservation — garage auto-assign", () => {
   };
 
   function mockAdminClient() {
+    const deleteEq = vi.fn().mockResolvedValue({ error: null });
     return {
       from: vi.fn().mockReturnValue({
         insert: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: insertedReservation, error: null }),
+        delete: vi.fn().mockReturnThis(),
+        eq: deleteEq,
       }),
+      deleteEq,
     };
   }
 
@@ -132,8 +137,9 @@ describe("ReservationService.createReservation — garage auto-assign", () => {
     expect(result).toEqual(insertedReservation);
   });
 
-  it("throws NoGarageAvailableError when no spot is available within the buffer", async () => {
-    vi.mocked(createSupabaseAdminClient).mockReturnValue(mockAdminClient() as never);
+  it("throws NoGarageAvailableError when no spot is available within the buffer, and deletes the orphaned reservation", async () => {
+    const adminClient = mockAdminClient();
+    vi.mocked(createSupabaseAdminClient).mockReturnValue(adminClient as never);
 
     const findAvailableSpot = vi.fn().mockResolvedValue(null);
     const assign = vi.fn();
@@ -158,6 +164,7 @@ describe("ReservationService.createReservation — garage auto-assign", () => {
     ).rejects.toBeInstanceOf(NoGarageAvailableError);
 
     expect(assign).not.toHaveBeenCalled();
+    expect(adminClient.deleteEq).toHaveBeenCalledWith("id", "r1");
   });
 
   it("does not touch garage allocation for a regular (open_air) reservation", async () => {
@@ -175,6 +182,76 @@ describe("ReservationService.createReservation — garage auto-assign", () => {
       },
       "user-1"
     );
+
+    expect(GarageAllocationService).not.toHaveBeenCalled();
+  });
+});
+
+describe("ReservationService.updateReservation — garage buffer revalidation", () => {
+  function mockClient(currentReservation: unknown, updatedReservation: unknown) {
+    const single = vi
+      .fn()
+      .mockResolvedValueOnce({ data: currentReservation, error: null }) // fetch current dates
+      .mockResolvedValueOnce({ data: updatedReservation, error: null }); // update().select().single()
+    return {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single,
+      }),
+    };
+  }
+
+  beforeEach(() => {
+    vi.mocked(GarageAllocationService).mockClear();
+  });
+
+  it("re-validates the buffer when planned dates change, and proceeds when it passes", async () => {
+    const current = { planned_check_in: "2026-09-02T00:00:00Z", planned_check_out: "2026-09-02T08:00:00Z" };
+    const updated = { id: "r1", planned_check_out: "2026-09-02T10:00:00Z" };
+    const client = mockClient(current, updated);
+
+    const revalidateAssignment = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(GarageAllocationService).mockImplementation(function () {
+      return { revalidateAssignment };
+    } as never);
+
+    const service = new ReservationService(client as never);
+    const result = await service.updateReservation("r1", { planned_check_out: "2026-09-02T10:00:00Z" });
+
+    expect(revalidateAssignment).toHaveBeenCalledWith("r1", current.planned_check_in, "2026-09-02T10:00:00Z");
+    expect(result).toEqual(updated);
+  });
+
+  it("propagates GarageBufferViolationError when the new dates would break the buffer", async () => {
+    const current = { planned_check_in: "2026-09-02T00:00:00Z", planned_check_out: "2026-09-02T08:00:00Z" };
+    const client = mockClient(current, {});
+
+    const revalidateAssignment = vi.fn().mockRejectedValue(new GarageBufferViolationError());
+    vi.mocked(GarageAllocationService).mockImplementation(function () {
+      return { revalidateAssignment };
+    } as never);
+
+    const service = new ReservationService(client as never);
+
+    await expect(service.updateReservation("r1", { planned_check_out: "2026-09-02T10:00:00Z" })).rejects.toBeInstanceOf(
+      GarageBufferViolationError
+    );
+  });
+
+  it("does not touch garage allocation when planned dates are not part of the update", async () => {
+    const client = {
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: "r1", notes: "updated" }, error: null }),
+      }),
+    };
+
+    const service = new ReservationService(client as never);
+    await service.updateReservation("r1", { notes: "updated" });
 
     expect(GarageAllocationService).not.toHaveBeenCalled();
   });

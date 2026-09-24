@@ -5,7 +5,7 @@ import { test, expect } from "@playwright/test";
  * Skips when unset so CI without driver credentials stays green.
  */
 test.describe("driver role gates", () => {
-  test.beforeEach((_fixtures, testInfo) => {
+  test.beforeEach(({}, testInfo) => {
     if (!process.env.E2E_DRIVER_EMAIL || !process.env.E2E_DRIVER_PASSWORD) {
       testInfo.skip(true, "E2E_DRIVER_EMAIL / E2E_DRIVER_PASSWORD not set");
     }

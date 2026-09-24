@@ -75,10 +75,10 @@ orchestrator updates Status as artifacts appear on disk.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
-| 1 | Test runner bootstrap + auth guard | Install Vitest and prove auth middleware covers all new M-1 routes | #5 | integration | complete | testing-auth-guard |
-| 2 | Invoice service correctness | Prove invoice total accuracy, completed-only guard, numbering integrity, and external API contract | #1, #2, #4, #7 | unit + integration | complete | testing-invoice-service |
-| 3 | Settings admin client + stats correctness | Prove settings write failure surfaces visibly and Warsaw timezone boundary is enforced | #3, #6 | integration | researched | testing-settings-stats |
-| 4 | Quality gates wiring | Wire `npm run test`, lint, and build into a GitHub Actions CI workflow on every PR | cross-cutting | CI config | not started | — |
+| 1 | Test runner bootstrap + auth guard | Install Vitest and prove auth middleware covers all new M-1 routes | #5 | integration | complete | context/archive/2026-09-02-testing-auth-guard |
+| 2 | Invoice service correctness | Prove invoice total accuracy, completed-only guard, numbering integrity, and external API contract | #1, #2, #4, #7 | unit + integration | complete | context/archive/2026-09-02-testing-invoice-service |
+| 3 | Settings admin client + stats correctness | Prove settings write failure surfaces visibly and Warsaw timezone boundary is enforced | #3, #6 | integration | complete | context/archive/2026-09-02-testing-settings-stats |
+| 4 | Quality gates wiring | Wire `npm run test`, lint, and build into a GitHub Actions CI workflow on every PR | cross-cutting | CI config | complete | context/archive/2026-09-03-testing-quality-gates |
 
 **Status vocabulary** (parser literals — do not rename):
 `not started` → `change opened` → `researched` → `planned` → `implementing` → `complete`

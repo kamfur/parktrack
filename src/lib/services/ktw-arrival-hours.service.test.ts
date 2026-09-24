@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { KtwArrivalsPort } from "../ktw/ktw-arrivals.port";
 import { KtwArrivalsError } from "../ktw/ktw-arrivals.port";
-import { enrichDepartures } from "./ktw-arrival-hours.service";
+import { enrichDepartureLists, enrichDepartures } from "./ktw-arrival-hours.service";
 
 const planned = "2026-09-16T12:00:00.000Z";
 const now = new Date("2026-09-16T12:00:00.000Z");
@@ -76,6 +76,46 @@ describe("enrichDepartures", () => {
     };
 
     await expect(enrichDepartures([], now, port)).resolves.toEqual([]);
+    expect(called).toBe(false);
+  });
+});
+
+describe("enrichDepartureLists", () => {
+  it("fetches the board once and attaches hours to pending and handled", async () => {
+    let calls = 0;
+    const port: KtwArrivalsPort = {
+      listArrivals: async () => {
+        calls += 1;
+        return [{ originLabel: "London Luton", scheduledAt: "2026-09-16T10:00:00.000Z" }];
+      },
+    };
+
+    const result = await enrichDepartureLists(
+      [{ id: "pending", flight_direction: "Londyn", planned_check_out: planned }],
+      [{ id: "handled", flight_direction: "Londyn", planned_check_out: planned }],
+      now,
+      port
+    );
+
+    expect(calls).toBe(1);
+    expect(result.data[0]?.ktw_arrival_hours).toEqual([
+      { scheduled_at: "2026-09-16T10:00:00.000Z", origin_label: "London Luton" },
+    ]);
+    expect(result.handled[0]?.ktw_arrival_hours).toEqual([
+      { scheduled_at: "2026-09-16T10:00:00.000Z", origin_label: "London Luton" },
+    ]);
+  });
+
+  it("does not call the port when both lists are empty", async () => {
+    let called = false;
+    const port: KtwArrivalsPort = {
+      listArrivals: async () => {
+        called = true;
+        return [];
+      },
+    };
+
+    await expect(enrichDepartureLists([], [], now, port)).resolves.toEqual({ data: [], handled: [] });
     expect(called).toBe(false);
   });
 });

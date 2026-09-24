@@ -1,7 +1,7 @@
 ---
 change_id: driver-operations
 title: Mobile driver module for airport parking ops
-status: implementing
+status: impl_reviewed
 created: 2026-09-08
 updated: 2026-09-09
 archived_at: null
@@ -25,4 +25,5 @@ Plan decisions (2026-09-08):
 Phase 1 landed: 7264474 (2026-09-09)
 Phase 2 landed: 3a7dedc (2026-09-09)
 Phase 3 landed: 623fc06 (2026-09-09)
+Phase 4 landed: b036a4c (2026-09-09)
 

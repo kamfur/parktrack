@@ -13,8 +13,6 @@ export { NotesSection } from "./NotesSection";
 export { TimelineSection } from "./TimelineSection";
 export { TimelineEventComponent } from "./TimelineEvent";
 export { ActionFooter } from "./ActionFooter";
-export { CheckInModalPlaceholder } from "./CheckInModalPlaceholder";
-export { CheckOutModalPlaceholder } from "./CheckOutModalPlaceholder";
 export { CancelDialogPlaceholder } from "./CancelDialogPlaceholder";
 export { LoadingSkeleton } from "./LoadingSkeleton";
 export { ErrorState } from "./ErrorState";

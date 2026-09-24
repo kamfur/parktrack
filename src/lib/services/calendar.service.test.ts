@@ -11,6 +11,8 @@ function reservation(overrides: Partial<ReservationDto>): ReservationDto {
     planned_check_in: "2026-09-14T21:30:00Z",
     planned_check_out: "2026-09-15T06:00:00Z",
     status: "confirmed",
+    actual_check_in: null,
+    actual_check_out: null,
     ...overrides,
   } as ReservationDto;
 }
@@ -57,11 +59,32 @@ describe("toCalendarEvent", () => {
       kind: "arrival",
       at: row.planned_check_in,
       reservationId: row.id,
+      handled: false,
     });
     expect(toCalendarEvent(row, "departure")).toMatchObject({
       kind: "departure",
       at: row.planned_check_out,
       reservationId: row.id,
+      handled: false,
     });
+  });
+
+  it("marks an arrival handled after check-in without striking the departure", () => {
+    const row = reservation({
+      status: "in_progress",
+      actual_check_in: "2026-09-14T21:40:00Z",
+    });
+    expect(toCalendarEvent(row, "arrival").handled).toBe(true);
+    expect(toCalendarEvent(row, "departure").handled).toBe(false);
+  });
+
+  it("marks a departure handled after check-out", () => {
+    const row = reservation({
+      status: "completed",
+      actual_check_in: "2026-09-14T21:40:00Z",
+      actual_check_out: "2026-09-15T06:10:00Z",
+    });
+    expect(toCalendarEvent(row, "arrival").handled).toBe(true);
+    expect(toCalendarEvent(row, "departure").handled).toBe(true);
   });
 });

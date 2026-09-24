@@ -88,8 +88,8 @@ export function SettingsForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Stawka dobowa (PLN)</FormLabel>
-              <FormControl>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <FormControl>
                   <Input
                     type="number"
                     min="0"
@@ -97,9 +97,9 @@ export function SettingsForm({
                     {...field}
                     onChange={(e) => field.onChange(parseFloat(e.target.value))}
                   />
-                  <span className="text-sm text-neutral-500 shrink-0">PLN</span>
-                </div>
-              </FormControl>
+                </FormControl>
+                <span className="text-sm text-neutral-500 shrink-0">PLN</span>
+              </div>
               <FormMessage />
             </FormItem>
           )}

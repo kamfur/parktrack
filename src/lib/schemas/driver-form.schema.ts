@@ -3,7 +3,7 @@ import { z } from "zod";
 /** Form schema for driver arrival card — maps to driverArrivalUpdateSchema on submit. */
 export const driverArrivalFormSchema = z.object({
   planned_check_out: z.string().optional(),
-  flight_direction: z.enum(["departure", "arrival"]).optional().nullable(),
+  flight_direction: z.string().max(100).optional().nullable(),
   passenger_count: z.number().int().min(0).max(99).nullable().optional(),
   parking_sector: z.string().max(50).optional(),
   paid_at_arrival: z.boolean(),

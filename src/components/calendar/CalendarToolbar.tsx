@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,8 @@ interface CalendarToolbarProps {
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
+  onNewReservation: () => void;
+  onAddShift: () => void;
 }
 
 const VIEWS: { id: CalendarViewMode; label: string }[] = [
@@ -23,8 +25,8 @@ const VIEWS: { id: CalendarViewMode; label: string }[] = [
 ];
 
 const LAYERS: { id: keyof CalendarVisibility; label: string; swatch: string }[] = [
-  { id: "arrivals", label: "Przyjazdy", swatch: "bg-orange-400" },
-  { id: "departures", label: "Wyjazdy", swatch: "bg-violet-500" },
+  { id: "arrivals", label: "Przyjazdy", swatch: "bg-emerald-400" },
+  { id: "departures", label: "Wyjazdy", swatch: "bg-rose-400" },
   { id: "shifts", label: "Zmiany", swatch: "bg-sky-500" },
 ];
 
@@ -38,6 +40,8 @@ export function CalendarToolbar({
   onPrev,
   onNext,
   onToday,
+  onNewReservation,
+  onAddShift,
 }: CalendarToolbarProps) {
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -55,6 +59,16 @@ export function CalendarToolbar({
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={onNewReservation}>
+            <Plus className="h-4 w-4" />
+            Nowa rezerwacja
+          </Button>
+          <Button size="sm" variant="outline" onClick={onAddShift}>
+            <Plus className="h-4 w-4" />
+            Dodaj zmianę
+          </Button>
+        </div>
         <div className="flex gap-2" role="group" aria-label="Widok kalendarza">
           {VIEWS.map(({ id, label }) => (
             <Button

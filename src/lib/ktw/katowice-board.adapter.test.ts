@@ -4,9 +4,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
   arrivalsRequestUrl,
+  assertAllowedKtwArrivalsUrl,
   boardDateKeys,
   createKatowiceBoardAdapter,
   DEFAULT_KTW_ARRIVALS_URL,
+  MAX_PARSED_BOARD_ROWS,
+  OFFICIAL_KTW_BOARD_PAGE,
   parseKatowiceBoardPayload,
 } from "./katowice-board.adapter";
 import { KtwArrivalsError } from "./ktw-arrivals.port";
@@ -55,6 +58,29 @@ describe("parseKatowiceBoardPayload", () => {
     expect(() => parseKatowiceBoardPayload("<html>Tablica lotów</html>", now)).toThrow(KtwArrivalsError);
     expect(() => parseKatowiceBoardPayload("", now)).toThrow(KtwArrivalsError);
     expect(() => parseKatowiceBoardPayload(JSON.stringify({ foo: 1 }), now)).toThrow(KtwArrivalsError);
+  });
+
+  it("caps parsed rows so a huge payload stays bounded", () => {
+    const data = Array.from({ length: MAX_PARSED_BOARD_ROWS + 1 }, (_, index) => ({
+      direction: 2,
+      scheduled_time: "12:00",
+      airport: `Origin ${index}`,
+    }));
+    expect(parseKatowiceBoardPayload(JSON.stringify({ data }), now)).toHaveLength(MAX_PARSED_BOARD_ROWS);
+  });
+});
+
+describe("assertAllowedKtwArrivalsUrl", () => {
+  it("keeps the official list URL and remaps the public board page", () => {
+    expect(assertAllowedKtwArrivalsUrl(DEFAULT_KTW_ARRIVALS_URL)).toBe(DEFAULT_KTW_ARRIVALS_URL);
+    expect(assertAllowedKtwArrivalsUrl(OFFICIAL_KTW_BOARD_PAGE)).toBe(DEFAULT_KTW_ARRIVALS_URL);
+  });
+
+  it("rejects non-https and non-KTW hosts", () => {
+    expect(() => assertAllowedKtwArrivalsUrl("http://www.katowice-airport.com/pl/api/flight-board/list")).toThrow(
+      KtwArrivalsError
+    );
+    expect(() => assertAllowedKtwArrivalsUrl("https://example.com/list")).toThrow(KtwArrivalsError);
   });
 });
 
