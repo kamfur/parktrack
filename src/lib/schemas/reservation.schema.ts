@@ -184,11 +184,7 @@ export const fullReservationSchema = z
       )
       .optional()
       .or(z.literal("")),
-    licensePlate: z
-      .string()
-      .regex(/^[A-Z]{2}\s?[A-Z0-9]{4,5}$/, "Nieprawidłowy format numeru rejestracyjnego")
-      .optional()
-      .or(z.literal("")),
+    licensePlate: z.string().max(15, "Numer rejestracyjny jest zbyt długi").optional().or(z.literal("")),
     flightDirection: z
       .string()
       .max(100, "Kierunek lotu może zawierać maksymalnie 100 znaków")

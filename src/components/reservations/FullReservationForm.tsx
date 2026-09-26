@@ -63,13 +63,6 @@ export function FullReservationForm({
     return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 9)}`;
   };
 
-  // Format license plate: uppercase + space (XX 12345)
-  const formatLicensePlate = (value: string) => {
-    const cleaned = value.replace(/\s/g, "").toUpperCase();
-    if (cleaned.length <= 2) return cleaned;
-    return `${cleaned.slice(0, 2)} ${cleaned.slice(2)}`;
-  };
-
   // Ustaw minimalną datę
   const minDate = new Date();
   minDate.setHours(0, 0, 0, 0);
@@ -256,13 +249,12 @@ export function FullReservationForm({
                   <Input
                     {...field}
                     placeholder="WX 12345"
-                    maxLength={8}
+                    maxLength={15}
                     onChange={(e) => {
-                      field.onChange(formatLicensePlate(e.target.value));
+                      field.onChange(e.target.value.toUpperCase());
                     }}
                   />
                 </FormControl>
-                <FormDescription>Format: XX 12345 lub XX 1234A</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
