@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { CreateExternalReservationResponseDto } from "@/types";
 import {
   createExternalReservationSchema,
+  createLegacyDepartureSchema,
   createReservationSchema,
   changeReturnDateFormSchema,
   editReservationSchema,
@@ -183,5 +184,46 @@ describe("changeReturnDateFormSchema", () => {
 
   it("rejects an empty return date", () => {
     expect(changeReturnDateFormSchema.safeParse({ planned_check_out: "" }).success).toBe(false);
+  });
+});
+
+const hoursFromNow = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString();
+
+describe("createLegacyDepartureSchema", () => {
+  it("accepts a car parked in the past returning later", () => {
+    const result = createLegacyDepartureSchema.safeParse({
+      last_name: "Kowalski",
+      planned_check_in: hoursFromNow(-72),
+      planned_check_out: hoursFromNow(5),
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an arrival in the future", () => {
+    const result = createLegacyDepartureSchema.safeParse({
+      last_name: "Kowalski",
+      planned_check_in: hoursFromNow(2),
+      planned_check_out: hoursFromNow(5),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a return before the arrival", () => {
+    const result = createLegacyDepartureSchema.safeParse({
+      last_name: "Kowalski",
+      planned_check_in: hoursFromNow(-2),
+      planned_check_out: hoursFromNow(-5),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a missing last name and non-positive cost", () => {
+    const result = createLegacyDepartureSchema.safeParse({
+      last_name: " ",
+      planned_check_in: hoursFromNow(-2),
+      planned_check_out: hoursFromNow(5),
+      total_cost: 0,
+    });
+    expect(result.success).toBe(false);
   });
 });

@@ -9,6 +9,7 @@ interface TodayViewProps {
   onCheckOut: (reservation: ReservationDto) => void;
   onCancel: (reservation: ReservationDto) => void;
   onChangeReturnDate: (reservation: ReservationDto) => void;
+  onAddLegacyDeparture?: () => void;
   isLoading?: boolean;
 }
 
@@ -23,6 +24,7 @@ export function TodayView({
   onCheckOut,
   onCancel,
   onChangeReturnDate,
+  onAddLegacyDeparture,
   isLoading = false,
 }: TodayViewProps) {
   return (
@@ -35,6 +37,7 @@ export function TodayView({
           departures={departures}
           onCheckOut={onCheckOut}
           onChangeReturnDate={onChangeReturnDate}
+          onAddLegacyDeparture={onAddLegacyDeparture}
           isLoading={isLoading}
         />
       </div>

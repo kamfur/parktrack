@@ -8,10 +8,12 @@ import type {
   StatsData,
 } from "@/types";
 import { fetchGarageSpotNameMap, type GarageSpotNameMap } from "@/lib/garage/spot-names";
+import { isCoveredParkingType } from "@/lib/pricing/parking-type";
+import type { CreateLegacyDepartureCommand } from "@/lib/schemas/reservation.schema";
 
 function withGarageSpotName(items: DepartureListItem[], spotNames: GarageSpotNameMap): DepartureListItem[] {
   return items.map((item) =>
-    item.parking_type === "garage" ? { ...item, garage_spot_name: spotNames[item.id] ?? null } : item
+    isCoveredParkingType(item.parking_type) ? { ...item, garage_spot_name: spotNames[item.id] ?? null } : item
   );
 }
 
@@ -177,6 +179,25 @@ export function useDashboard() {
     }
   };
 
+  // TEMPORARY (go-live migration): car already on the lot before ParkTrack.
+  const handleCreateLegacyDeparture = async (command: CreateLegacyDepartureCommand) => {
+    setState((prev) => ({ ...prev, isProcessing: true }));
+    try {
+      const response = await fetch("/api/reservations/legacy-departure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(command),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Nie udało się dodać wyjazdu");
+      }
+      await fetchDashboardData(period);
+    } finally {
+      setState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
 
@@ -204,5 +225,6 @@ export function useDashboard() {
     handleCheckOut,
     handleCancel,
     handleChangeReturnDate,
+    handleCreateLegacyDeparture,
   };
 }

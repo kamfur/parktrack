@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PARKING_TYPES } from "../pricing/parking-type";
 
 /**
  * Schema for validating external reservation requests.
@@ -48,7 +49,7 @@ export const createReservationSchema = z
     license_plate: z.string().optional(),
     notes: z.string().optional(),
     flight_direction: z.string().max(100, "Flight direction must be at most 100 characters").optional(),
-    parking_type: z.enum(["open_air", "garage"]).default("open_air"),
+    parking_type: z.enum(PARKING_TYPES).default("open_air"),
   })
   .refine(
     (data) => {
@@ -95,7 +96,7 @@ export const updateReservationSchema = z.object({
   paid_at_departure: z.boolean().optional(),
   surcharge_amount: z.number().nonnegative().nullable().optional(),
   is_paid: z.boolean().optional(),
-  parking_type: z.enum(["open_air", "garage"]).optional(),
+  parking_type: z.enum(PARKING_TYPES).optional(),
 });
 
 export type UpdateReservationSchema = typeof updateReservationSchema;
@@ -191,7 +192,7 @@ export const fullReservationSchema = z
       .optional()
       .or(z.literal("")),
     notes: z.string().max(1000, "Notatki mogą zawierać maksymalnie 1000 znaków").optional(),
-    requiresGarage: z.boolean().optional(),
+    parkingType: z.enum(PARKING_TYPES).optional(),
   })
   .refine(
     (data) => {
@@ -263,3 +264,32 @@ export const editReservationSchema = z
 
 export type EditReservationSchema = typeof editReservationSchema;
 export type EditReservationFormData = z.infer<typeof editReservationSchema>;
+
+/**
+ * TEMPORARY (go-live migration): register a car that was already parked before
+ * ParkTrack went live, so its return shows up on the departures list.
+ * Creates the reservation directly as `in_progress` with `actual_check_in = planned_check_in`.
+ * Remove together with `/api/reservations/legacy-departure` once migration is done.
+ */
+export const createLegacyDepartureSchema = z
+  .object({
+    last_name: z.string().trim().min(1, "Nazwisko jest wymagane").max(100),
+    first_name: z.string().trim().max(100).optional(),
+    phone: z.string().trim().max(20).optional(),
+    license_plate: z.string().trim().max(15).optional(),
+    notes: z.string().max(1000).optional(),
+    planned_check_in: z.string().datetime("Nieprawidłowa data przyjazdu"),
+    planned_check_out: z.string().datetime("Nieprawidłowa data powrotu"),
+    total_cost: z.number().positive("Kwota musi być dodatnia").optional(),
+  })
+  .refine((data) => Date.parse(data.planned_check_out) > Date.parse(data.planned_check_in), {
+    message: "Data powrotu musi być późniejsza niż przyjazd",
+    path: ["planned_check_out"],
+  })
+  // The car is already on the lot — its arrival cannot be in the future (5 min clock-skew slack).
+  .refine((data) => Date.parse(data.planned_check_in) <= Date.now() + 5 * 60_000, {
+    message: "Data przyjazdu nie może być w przyszłości",
+    path: ["planned_check_in"],
+  });
+
+export type CreateLegacyDepartureCommand = z.infer<typeof createLegacyDepartureSchema>;

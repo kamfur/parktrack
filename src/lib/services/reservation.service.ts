@@ -8,14 +8,17 @@ import type {
 } from "../../types";
 import {
   createExternalReservationSchema,
+  createLegacyDepartureSchema,
   createReservationSchema,
   updateReservationSchema,
+  type CreateLegacyDepartureCommand,
 } from "../schemas/reservation.schema";
 import { createSupabaseAdminClient } from "../supabase-admin";
 import { startOfTomorrowWarsawIso } from "../driver/operating-window";
 import { uniqueFlightDirections } from "../reservations/flight-directions";
 import { enrichDepartures } from "./ktw-arrival-hours.service";
 import { GarageAllocationService } from "./garage-allocation.service";
+import { isCoveredParkingType, type ParkingType } from "../pricing/parking-type";
 
 export class NoGarageAvailableError extends Error {
   constructor(message = "No garage/carport spot is available within the required buffer") {
@@ -24,8 +27,39 @@ export class NoGarageAvailableError extends Error {
   }
 }
 
+export class NoPriceListError extends Error {
+  constructor(message = "No price list covers the reservation's check-in date") {
+    super(message);
+    this.name = "NoPriceListError";
+  }
+}
+
+/** Translates the DB's NO_PRICE_LIST exception (calculate_total_cost / cost trigger) into a typed error. */
+function asPriceListError(message: string | undefined): NoPriceListError | null {
+  return message?.includes("NO_PRICE_LIST") ? new NoPriceListError() : null;
+}
+
 export class ReservationService {
   constructor(private readonly supabase: SupabaseClient) {}
+
+  /** Total price from the price list covering the check-in date, for the given parking type. */
+  async calculateCost(checkIn: string, checkOut: string, parkingType: ParkingType = "open_air"): Promise<number> {
+    // Parameter names must match the DB function definition exactly.
+    const { data, error } = await this.supabase.rpc("calculate_total_cost", {
+      p_check_in: checkIn,
+      p_check_out: checkOut,
+      p_parking_type: parkingType,
+    });
+
+    if (error) {
+      throw asPriceListError(error.message) ?? new Error(`Failed to calculate reservation cost: ${error.message}`);
+    }
+    if (data === null || data === undefined) {
+      throw new Error("Failed to calculate reservation cost");
+    }
+
+    return Number(data);
+  }
 
   /**
    * Creates a new reservation from an external source (e.g. public website).
@@ -85,19 +119,18 @@ export class ReservationService {
       }
     }
 
-    // Calculate total cost using database function
-    // Note: Parameter names must match exactly with function definition (p_check_in, p_check_out)
-    const { data: costData } = await this.supabase.rpc("calculate_total_cost", {
-      p_check_in: validatedData.checkInDate,
-      p_check_out: validatedData.checkOutDate,
-    });
+    // External (website) reservations are always regular open-air parking.
+    const costData = await this.calculateCost(validatedData.checkInDate, validatedData.checkOutDate, "open_air");
 
-    if (!costData) {
-      throw new Error("Failed to calculate reservation cost");
+    // Admin client: external requests are anonymous, and both get_system_user
+    // (not executable by anon) and the INSERT must bypass RLS.
+    const adminClient = createSupabaseAdminClient();
+    if (!adminClient) {
+      throw new Error("Admin client not available. Please configure SUPABASE_SERVICE_ROLE_KEY.");
     }
 
     // Get system user ID for audit fields
-    const { data: systemUserId, error: systemUserError } = await this.supabase.rpc("get_system_user");
+    const { data: systemUserId, error: systemUserError } = await adminClient.rpc("get_system_user");
     if (systemUserError || !systemUserId) {
       throw new Error(`Failed to get system user: ${systemUserError?.message || "Unknown error"}`);
     }
@@ -116,12 +149,6 @@ export class ReservationService {
       created_by: systemUserId,
       last_modified_by: systemUserId,
     };
-
-    // Use admin client for INSERT operation to bypass RLS
-    const adminClient = createSupabaseAdminClient();
-    if (!adminClient) {
-      throw new Error("Admin client not available. Please configure SUPABASE_SERVICE_ROLE_KEY.");
-    }
 
     // Insert reservation using admin client (bypasses RLS)
     const { data: reservation, error } = await adminClient
@@ -149,18 +176,14 @@ export class ReservationService {
     // Validate input data
     const validatedData = await createReservationSchema.parseAsync(command);
 
-    // Calculate total cost if not provided
+    // Calculate total cost if not provided — the price list row follows the requested parking type
     let totalCost = validatedData.total_cost;
     if (!totalCost) {
-      const { data: costData } = await this.supabase.rpc("calculate_total_cost", {
-        p_check_in: validatedData.planned_check_in,
-        p_check_out: validatedData.planned_check_out,
-      });
-
-      if (!costData) {
-        throw new Error("Failed to calculate reservation cost");
-      }
-      totalCost = costData;
+      totalCost = await this.calculateCost(
+        validatedData.planned_check_in,
+        validatedData.planned_check_out,
+        validatedData.parking_type
+      );
     }
 
     // Get user ID for audit fields (use provided userId or system user)
@@ -200,12 +223,13 @@ export class ReservationService {
       throw new Error(`Failed to create reservation: ${error.message}`);
     }
 
-    if (validatedData.parking_type === "garage") {
+    if (isCoveredParkingType(validatedData.parking_type)) {
       try {
         const allocationService = new GarageAllocationService(adminClient);
         const spot = await allocationService.findAvailableSpot(
           reservation.planned_check_in,
-          reservation.planned_check_out
+          reservation.planned_check_out,
+          validatedData.parking_type
         );
         if (!spot) {
           throw new NoGarageAvailableError();
@@ -216,6 +240,63 @@ export class ReservationService {
         await adminClient.from("reservations").delete().eq("id", reservation.id);
         throw allocationError;
       }
+    }
+
+    return reservation;
+  }
+
+  /**
+   * TEMPORARY (go-live migration): registers a car that was parked before ParkTrack
+   * went live. Inserted straight as `in_progress` (arrival = planned check-in) so it
+   * appears on the departures list and can be checked out normally.
+   * Open-air only — no garage allocation.
+   */
+  async createLegacyDeparture(command: CreateLegacyDepartureCommand, userId?: string): Promise<ReservationDto> {
+    const data = await createLegacyDepartureSchema.parseAsync(command);
+
+    const totalCost = data.total_cost ?? (await this.calculateCost(data.planned_check_in, data.planned_check_out));
+
+    const adminClient = createSupabaseAdminClient();
+    if (!adminClient) {
+      throw new Error("Admin client not available. Please configure SUPABASE_SERVICE_ROLE_KEY.");
+    }
+
+    let auditUserId = userId;
+    if (!auditUserId) {
+      const { data: systemUserId, error: systemUserError } = await adminClient.rpc("get_system_user");
+      if (systemUserError || !systemUserId) {
+        throw new Error(`Failed to get system user: ${systemUserError?.message || "Unknown error"}`);
+      }
+      auditUserId = systemUserId as string;
+    }
+
+    const marker = "[Migracja] Samochód na parkingu przed wdrożeniem systemu";
+    const { data: reservation, error } = await adminClient
+      .from("reservations")
+      .insert({
+        last_name: data.last_name,
+        first_name: data.first_name || null,
+        phone: data.phone || null,
+        license_plate: data.license_plate || null,
+        notes: data.notes
+          ? `${marker}
+${data.notes}`
+          : marker,
+        planned_check_in: data.planned_check_in,
+        planned_check_out: data.planned_check_out,
+        actual_check_in: data.planned_check_in,
+        status: "in_progress" as const,
+        source: "walk_in" as const,
+        parking_type: "open_air" as const,
+        total_cost: totalCost,
+        created_by: auditUserId,
+        last_modified_by: auditUserId,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create reservation: ${error.message}`);
     }
 
     return reservation;
@@ -271,7 +352,8 @@ export class ReservationService {
         // No rows found/updated
         throw new Error(`Reservation with ID ${id} not found`);
       }
-      throw new Error(`Failed to update reservation: ${error.message}`);
+      // The cost trigger re-prices on date/parking type changes and raises when no list covers the date.
+      throw asPriceListError(error.message) ?? new Error(`Failed to update reservation: ${error.message}`);
     }
 
     return reservation;

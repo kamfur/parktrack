@@ -1,12 +1,15 @@
 import type { ReservationDto } from "@/types";
 import { ReservationCard } from "./ReservationCard";
 import { EmptyState } from "@/components/common/EmptyState";
-import { Calendar } from "lucide-react";
+import { Calendar, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface DeparturesColumnProps {
   departures: ReservationDto[];
   onCheckOut: (reservation: ReservationDto) => void;
   onChangeReturnDate: (reservation: ReservationDto) => void;
+  /** TYMCZASOWE: dodanie wyjazdu dla auta stojącego przed wdrożeniem systemu. */
+  onAddLegacyDeparture?: () => void;
   isLoading?: boolean;
 }
 
@@ -17,8 +20,16 @@ export function DeparturesColumn({
   departures,
   onCheckOut,
   onChangeReturnDate,
+  onAddLegacyDeparture,
   isLoading = false,
 }: DeparturesColumnProps) {
+  const addButton = onAddLegacyDeparture ? (
+    <Button type="button" variant="outline" size="sm" onClick={onAddLegacyDeparture} disabled={isLoading}>
+      <Plus className="h-4 w-4" aria-hidden="true" />
+      Dodaj wyjazd
+    </Button>
+  ) : null;
+
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
@@ -49,7 +60,10 @@ export function DeparturesColumn({
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 pb-4 border-b">
           <h2 className="text-2xl font-bold">Wyjazdy</h2>
-          <span className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">0</span>
+          <div className="flex items-center gap-2">
+            {addButton}
+            <span className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">0</span>
+          </div>
         </div>
         <EmptyState
           icon={Calendar}
@@ -69,12 +83,15 @@ export function DeparturesColumn({
           </h2>
           <p className="text-sm text-muted-foreground">Dziś i opóźnione</p>
         </div>
-        <span
-          className="text-sm font-medium text-rose-700 bg-rose-100 px-3 py-1 rounded-full"
-          aria-label={`${departures.length} ${departures.length === 1 ? "wyjazd" : "wyjazdów"}`}
-        >
-          {departures.length}
-        </span>
+        <div className="flex items-center gap-2">
+          {addButton}
+          <span
+            className="text-sm font-medium text-rose-700 bg-rose-100 px-3 py-1 rounded-full"
+            aria-label={`${departures.length} ${departures.length === 1 ? "wyjazd" : "wyjazdów"}`}
+          >
+            {departures.length}
+          </span>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto space-y-3 pr-2" role="list" aria-labelledby="departures-heading">
         {departures.map((departure) => (

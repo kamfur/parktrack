@@ -4,6 +4,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { MetricsSection } from "./MetricsSection";
 import { TodayView } from "./TodayView";
 import { ChangeReturnDateDialog } from "./ChangeReturnDateDialog";
+import { LegacyDepartureDialog } from "./LegacyDepartureDialog";
 import { ErrorState } from "@/components/common/ErrorState";
 import { CancelDialogPlaceholder } from "@/components/reservations/details/CancelDialogPlaceholder";
 import { DriverArrivalDialog } from "@/components/driver/DriverArrivalDialog";
@@ -21,6 +22,7 @@ export function DashboardContainer() {
     handleCheckOut,
     handleCancel,
     handleChangeReturnDate,
+    handleCreateLegacyDeparture,
     period,
     setPeriod,
   } = useDashboard();
@@ -28,6 +30,7 @@ export function DashboardContainer() {
   const [returnDateTarget, setReturnDateTarget] = useState<ReservationDto | null>(null);
   const [arrivalTarget, setArrivalTarget] = useState<ReservationDto | null>(null);
   const [departureTarget, setDepartureTarget] = useState<ReservationDto | null>(null);
+  const [isLegacyDepartureOpen, setLegacyDepartureOpen] = useState(false);
 
   const onConfirmCancel = async (reason?: string) => {
     if (!cancelTarget) return;
@@ -90,6 +93,7 @@ export function DashboardContainer() {
         onCheckOut={setDepartureTarget}
         onCancel={setCancelTarget}
         onChangeReturnDate={setReturnDateTarget}
+        onAddLegacyDeparture={() => setLegacyDepartureOpen(true)}
         isLoading={isProcessing}
       />
       <DriverArrivalDialog
@@ -120,6 +124,16 @@ export function DashboardContainer() {
         isOpen={Boolean(cancelTarget)}
         onClose={() => setCancelTarget(null)}
         onConfirm={onConfirmCancel}
+        isLoading={isProcessing}
+      />
+      <LegacyDepartureDialog
+        isOpen={isLegacyDepartureOpen}
+        onClose={() => setLegacyDepartureOpen(false)}
+        onConfirm={async (command) => {
+          await handleCreateLegacyDeparture(command);
+          setLegacyDepartureOpen(false);
+          toast.success("Wyjazd dodany");
+        }}
         isLoading={isProcessing}
       />
       <ChangeReturnDateDialog
