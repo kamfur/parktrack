@@ -5,6 +5,7 @@ export const driverArrivalUpdateSchema = z.object({
   flight_direction: z.string().max(100).optional().nullable(),
   passenger_count: z.number().int().min(0).max(99).nullable().optional(),
   parking_sector: z.string().max(50).nullable().optional(),
+  license_plate: z.string().max(15).nullable().optional(),
   paid_at_arrival: z.boolean().optional(),
   actual_check_in: z.string().datetime("Invalid actual check-in date format").optional(),
 });

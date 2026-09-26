@@ -92,6 +92,36 @@ describe("DriverService status guards", () => {
       })
     );
   });
+
+  it("confirmArrival saves license_plate entered by the driver", async () => {
+    const client = mockSupabase({
+      id: "r1",
+      status: "confirmed",
+      paid_at_arrival: false,
+      paid_at_departure: false,
+      planned_check_out: "2026-09-10T10:00:00.000Z",
+      license_plate: null,
+    });
+    const service = new DriverService(client as never);
+    await service.confirmArrival("r1", { license_plate: "WX 12345" });
+
+    expect(client.update).toHaveBeenCalledWith(expect.objectContaining({ license_plate: "WX 12345" }));
+  });
+
+  it("confirmArrival keeps existing license_plate when not provided", async () => {
+    const client = mockSupabase({
+      id: "r1",
+      status: "confirmed",
+      paid_at_arrival: false,
+      paid_at_departure: false,
+      planned_check_out: "2026-09-10T10:00:00.000Z",
+      license_plate: "KR 999AA",
+    });
+    const service = new DriverService(client as never);
+    await service.confirmArrival("r1", { paid_at_arrival: true });
+
+    expect(client.update).toHaveBeenCalledWith(expect.objectContaining({ license_plate: "KR 999AA" }));
+  });
 });
 
 function mockListClient() {

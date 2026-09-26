@@ -6,6 +6,7 @@ export const driverArrivalFormSchema = z.object({
   flight_direction: z.string().max(100).optional().nullable(),
   passenger_count: z.number().int().min(0).max(99).nullable().optional(),
   parking_sector: z.string().max(50).optional(),
+  license_plate: z.string().max(15).optional(),
   paid_at_arrival: z.boolean(),
 });
 

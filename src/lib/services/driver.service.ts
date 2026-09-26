@@ -152,6 +152,7 @@ export class DriverService {
         validated.flight_direction === undefined ? current.flight_direction : validated.flight_direction,
       passenger_count: validated.passenger_count === undefined ? current.passenger_count : validated.passenger_count,
       parking_sector: validated.parking_sector === undefined ? current.parking_sector : validated.parking_sector,
+      license_plate: validated.license_plate === undefined ? current.license_plate : validated.license_plate,
       paid_at_arrival: paidAtArrival,
       is_paid: syncIsPaid(paidAtArrival, paidAtDeparture),
     };

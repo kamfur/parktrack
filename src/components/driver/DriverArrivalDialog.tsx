@@ -45,6 +45,7 @@ export function DriverArrivalDialog({
       flight_direction: "",
       passenger_count: null,
       parking_sector: "",
+      license_plate: "",
       paid_at_arrival: false,
     },
   });
@@ -56,6 +57,7 @@ export function DriverArrivalDialog({
       flight_direction: normalizeFlightDirection(reservation.flight_direction),
       passenger_count: reservation.passenger_count,
       parking_sector: reservation.parking_sector ?? "",
+      license_plate: reservation.license_plate ?? "",
       paid_at_arrival: reservation.paid_at_arrival ?? false,
     });
     setSubmitError(null);
@@ -69,6 +71,7 @@ export function DriverArrivalDialog({
         paid_at_arrival: data.paid_at_arrival,
         passenger_count: data.passenger_count ?? null,
         parking_sector: data.parking_sector?.trim() ? data.parking_sector.trim() : null,
+        license_plate: data.license_plate?.trim() ? data.license_plate.trim().toUpperCase() : null,
         flight_direction: data.flight_direction?.trim() ? data.flight_direction.trim() : null,
       };
       const checkoutIso = datetimeLocalToIso(data.planned_check_out);
@@ -94,6 +97,26 @@ export function DriverArrivalDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="license_plate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Numer rejestracyjny</FormLabel>
+                  <FormControl>
+                    <Input
+                      className="min-h-11"
+                      placeholder="np. WX 12345"
+                      maxLength={15}
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="planned_check_out"
