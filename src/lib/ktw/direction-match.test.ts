@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchDirectionKey, originMatchesKey } from "./direction-match";
+import { directionMatchesOrigin, matchDirectionKey, originMatchesKey } from "./direction-match";
 
 describe("matchDirectionKey", () => {
   it("maps a known city alias", () => {
@@ -43,5 +43,47 @@ describe("originMatchesKey", () => {
 
   it("does not cross keys", () => {
     expect(originMatchesKey("Dortmund", "london")).toBe(false);
+  });
+});
+
+describe("directionMatchesOrigin", () => {
+  it("uses aliases for codes and foreign spellings", () => {
+    expect(directionMatchesOrigin("LTN", "Londyn - Luton")).toBe(true);
+    expect(directionMatchesOrigin("Stansted", "Londyn - Stansted")).toBe(true);
+    expect(directionMatchesOrigin("Napoli", "Neapol")).toBe(true);
+  });
+
+  it("matches the Polish board names of aliased cities", () => {
+    expect(directionMatchesOrigin("Dubrownik", "Dubrownik")).toBe(true);
+    expect(directionMatchesOrigin("Katania", "Katania")).toBe(true);
+    expect(directionMatchesOrigin("Neapol", "Neapol")).toBe(true);
+  });
+
+  it("falls back to the board place name for cities outside the alias table", () => {
+    expect(directionMatchesOrigin("Bodrum", "Bodrum")).toBe(true);
+    expect(directionMatchesOrigin("hurghada, W6 123", "Hurghada")).toBe(true);
+    expect(directionMatchesOrigin("Kos", "Kos")).toBe(true);
+    expect(directionMatchesOrigin("Braszow", "Braszów - Ghimbav")).toBe(true);
+    expect(directionMatchesOrigin("Sharm el Sheikh", "Sharm El Sheikh")).toBe(true);
+  });
+
+  it("matches a whole-word part of a longer board name", () => {
+    expect(directionMatchesOrigin("Palma", "Palma De Mallorca")).toBe(true);
+    expect(directionMatchesOrigin("Keflavik", "Reykjavik - Keflavik")).toBe(true);
+    expect(directionMatchesOrigin("Girona", "Barcelona (Girona)")).toBe(true);
+  });
+
+  it("does not match fragments or different cities", () => {
+    expect(directionMatchesOrigin("Kosice", "Kos")).toBe(false);
+    expect(directionMatchesOrigin("Bodrum", "Dalaman")).toBe(false);
+    expect(directionMatchesOrigin("De", "Palma De Mallorca")).toBe(false);
+    expect(directionMatchesOrigin("Marsa", "Marsa Alam")).toBe(true);
+    expect(directionMatchesOrigin("Dortmund", "Londyn - Luton")).toBe(false);
+  });
+
+  it("skips empty and legacy directions", () => {
+    expect(directionMatchesOrigin(null, "Bodrum")).toBe(false);
+    expect(directionMatchesOrigin("  ", "Bodrum")).toBe(false);
+    expect(directionMatchesOrigin("arrival", "Arrival City")).toBe(false);
   });
 });

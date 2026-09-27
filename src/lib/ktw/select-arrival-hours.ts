@@ -1,5 +1,5 @@
 import { isWithinArrivalWindow } from "./arrival-window";
-import { matchDirectionKey, originMatchesKey } from "./direction-match";
+import { directionMatchesOrigin } from "./direction-match";
 
 export interface KtwBoardRow {
   originLabel: string;
@@ -29,13 +29,12 @@ export function selectArrivalHours(
   board: readonly KtwBoardRow[],
   input: { flightDirection: string | null | undefined; plannedCheckOut: string }
 ): KtwArrivalHour[] {
-  const key = matchDirectionKey(input.flightDirection);
-  if (!key) return [];
-
   const plannedMs = Date.parse(input.plannedCheckOut);
   const matched = board
     .filter(
-      (row) => originMatchesKey(row.originLabel, key) && isWithinArrivalWindow(row.scheduledAt, input.plannedCheckOut)
+      (row) =>
+        isWithinArrivalWindow(row.scheduledAt, input.plannedCheckOut) &&
+        directionMatchesOrigin(input.flightDirection, row.originLabel)
     )
     .map(toHour);
 

@@ -1,4 +1,8 @@
-/** Canonical origin keys plus spellings staff/drivers actually type. */
+/**
+ * Canonical origin keys plus spellings staff/drivers actually type (IATA codes,
+ * airport names, foreign spellings). Cities typed exactly as the KTW board names
+ * them need no entry — `directionMatchesOrigin` falls back to the board label.
+ */
 export const DIRECTION_ALIASES: readonly { key: string; patterns: readonly string[] }[] = [
   {
     key: "london",
@@ -24,11 +28,11 @@ export const DIRECTION_ALIASES: readonly { key: string; patterns: readonly strin
   { key: "malaga", patterns: ["malaga", "agp"] },
   { key: "alicante", patterns: ["alicante", "alc"] },
   { key: "split", patterns: ["split", "spu"] },
-  { key: "dubrovnik", patterns: ["dubrovnik", "dbv"] },
+  { key: "dubrovnik", patterns: ["dubrovnik", "dubrownik", "dbv"] },
   { key: "zaragoza", patterns: ["zaragoza", "zaz"] },
   { key: "bari", patterns: ["bari", "bri"] },
-  { key: "naples", patterns: ["naples", "napoli", "nap"] },
-  { key: "catania", patterns: ["catania", "cta"] },
+  { key: "naples", patterns: ["naples", "napoli", "neapol", "nap"] },
+  { key: "catania", patterns: ["catania", "katania", "cta"] },
   { key: "malta", patterns: ["malta", "mla"] },
   { key: "madeira", patterns: ["madeira", "madera", "funchal", "fnc"] },
   { key: "larnaca", patterns: ["larnaca", "larnaka", "lca"] },
@@ -78,4 +82,43 @@ export function originMatchesKey(originLabel: string, key: string): boolean {
   const foldedOrigin = foldDirectionText(originLabel);
   if (!foldedOrigin) return false;
   return alias.patterns.some((pattern) => textContainsPattern(foldedOrigin, pattern));
+}
+
+/** Folded text as space-separated tokens, padded so `includes(" x ")` is a whole-word test. */
+function tokenPhrase(value: string): string {
+  return ` ${tokens(foldDirectionText(value)).join(" ")} `;
+}
+
+/** Place names in a board label: "Londyn - Luton" → ["Londyn", "Luton"], "Barcelona (Girona)" → both. */
+function originPlaces(originLabel: string): string[] {
+  return originLabel
+    .split(/\s+-\s+|[()/,]/)
+    .map((part) => tokenPhrase(part))
+    .filter((phrase) => phrase.trim().length >= 3);
+}
+
+/** Minimum typed length before a direction may match as the start of a longer board name ("Palma"). */
+const MIN_PARTIAL_DIRECTION_LENGTH = 4;
+
+/**
+ * True when a stored flight_direction refers to this KTW board origin — via the alias
+ * table, or by the board's own place name appearing in the direction as whole words
+ * ("Hurghada, W6 123" ↔ "Hurghada"), or the direction being a whole-word part of it
+ * ("Palma" ↔ "Palma De Mallorca").
+ */
+export function directionMatchesOrigin(direction: string | null | undefined, originLabel: string): boolean {
+  if (direction == null) return false;
+  const folded = foldDirectionText(direction);
+  if (!folded || LEGACY_DIRECTION.has(folded)) return false;
+
+  const key = matchDirectionKey(direction);
+  if (key && originMatchesKey(originLabel, key)) return true;
+
+  const directionPhrase = tokenPhrase(direction);
+  const directionLength = directionPhrase.trim().length;
+  return originPlaces(originLabel).some(
+    (place) =>
+      directionPhrase.includes(place) ||
+      (directionLength >= MIN_PARTIAL_DIRECTION_LENGTH && place.includes(directionPhrase))
+  );
 }

@@ -57,4 +57,15 @@ describe("selectArrivalHours", () => {
     expect(selectArrivalHours(board, { flightDirection: "departure", plannedCheckOut: planned })).toEqual([]);
     expect(selectArrivalHours(board, { flightDirection: "Narnia", plannedCheckOut: planned })).toEqual([]);
   });
+
+  it("matches a city outside the alias table by its board name", () => {
+    const hours = selectArrivalHours(
+      [
+        { originLabel: "Bodrum", scheduledAt: "2026-09-16T13:00:00.000Z" },
+        { originLabel: "Dalaman", scheduledAt: "2026-09-16T12:30:00.000Z" },
+      ],
+      { flightDirection: "Bodrum", plannedCheckOut: planned }
+    );
+    expect(hours.map((row) => row.originLabel)).toEqual(["Bodrum"]);
+  });
 });
