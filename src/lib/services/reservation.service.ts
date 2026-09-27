@@ -247,14 +247,15 @@ export class ReservationService {
 
   /**
    * TEMPORARY (go-live migration): registers a car that was parked before ParkTrack
-   * went live. Inserted straight as `in_progress` (arrival = planned check-in) so it
-   * appears on the departures list and can be checked out normally.
-   * Open-air only — no garage allocation.
+   * went live. The real arrival date is unknown/irrelevant, so check-in is set to now.
+   * Inserted straight as `in_progress` so it appears on the departures list and can be
+   * checked out normally. Open-air only — no garage allocation.
    */
   async createLegacyDeparture(command: CreateLegacyDepartureCommand, userId?: string): Promise<ReservationDto> {
     const data = await createLegacyDepartureSchema.parseAsync(command);
+    const checkIn = new Date().toISOString();
 
-    const totalCost = data.total_cost ?? (await this.calculateCost(data.planned_check_in, data.planned_check_out));
+    const totalCost = data.total_cost ?? (await this.calculateCost(checkIn, data.planned_check_out));
 
     const adminClient = createSupabaseAdminClient();
     if (!adminClient) {
@@ -282,9 +283,12 @@ export class ReservationService {
           ? `${marker}
 ${data.notes}`
           : marker,
-        planned_check_in: data.planned_check_in,
+        flight_direction: data.flight_direction || null,
+        parking_sector: data.parking_sector || null,
+        passenger_count: data.passenger_count ?? null,
+        planned_check_in: checkIn,
         planned_check_out: data.planned_check_out,
-        actual_check_in: data.planned_check_in,
+        actual_check_in: checkIn,
         status: "in_progress" as const,
         source: "walk_in" as const,
         parking_type: "open_air" as const,

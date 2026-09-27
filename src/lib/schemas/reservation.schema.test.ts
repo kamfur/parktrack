@@ -190,29 +190,30 @@ describe("changeReturnDateFormSchema", () => {
 const hoursFromNow = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString();
 
 describe("createLegacyDepartureSchema", () => {
-  it("accepts a car parked in the past returning later", () => {
+  it("accepts a car returning later with flight direction, sector and passengers", () => {
     const result = createLegacyDepartureSchema.safeParse({
       last_name: "Kowalski",
-      planned_check_in: hoursFromNow(-72),
       planned_check_out: hoursFromNow(5),
+      flight_direction: "Londyn",
+      parking_sector: "A12",
+      passenger_count: 3,
     });
     expect(result.success).toBe(true);
   });
 
-  it("rejects an arrival in the future", () => {
+  it("rejects a return in the past", () => {
     const result = createLegacyDepartureSchema.safeParse({
       last_name: "Kowalski",
-      planned_check_in: hoursFromNow(2),
-      planned_check_out: hoursFromNow(5),
+      planned_check_out: hoursFromNow(-1),
     });
     expect(result.success).toBe(false);
   });
 
-  it("rejects a return before the arrival", () => {
+  it("rejects an out-of-range passenger count", () => {
     const result = createLegacyDepartureSchema.safeParse({
       last_name: "Kowalski",
-      planned_check_in: hoursFromNow(-2),
-      planned_check_out: hoursFromNow(-5),
+      planned_check_out: hoursFromNow(5),
+      passenger_count: 100,
     });
     expect(result.success).toBe(false);
   });
@@ -220,7 +221,6 @@ describe("createLegacyDepartureSchema", () => {
   it("rejects a missing last name and non-positive cost", () => {
     const result = createLegacyDepartureSchema.safeParse({
       last_name: " ",
-      planned_check_in: hoursFromNow(-2),
       planned_check_out: hoursFromNow(5),
       total_cost: 0,
     });

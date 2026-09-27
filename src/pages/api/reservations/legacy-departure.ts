@@ -38,7 +38,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     console.error("Error creating legacy departure:", error);
 
     if (error instanceof NoPriceListError) {
-      return new Response(JSON.stringify({ error: "Brak cennika obejmującego datę przyjazdu — podaj kwotę ręcznie" }), {
+      return new Response(JSON.stringify({ error: "Brak cennika na dziś — podaj kwotę ręcznie" }), {
         status: 422,
         headers: { "Content-Type": "application/json" },
       });

@@ -268,7 +268,8 @@ export type EditReservationFormData = z.infer<typeof editReservationSchema>;
 /**
  * TEMPORARY (go-live migration): register a car that was already parked before
  * ParkTrack went live, so its return shows up on the departures list.
- * Creates the reservation directly as `in_progress` with `actual_check_in = planned_check_in`.
+ * The arrival date is irrelevant here — the server sets `planned_check_in`/`actual_check_in`
+ * to the moment of registration and creates the reservation directly as `in_progress`.
  * Remove together with `/api/reservations/legacy-departure` once migration is done.
  */
 export const createLegacyDepartureSchema = z
@@ -278,18 +279,16 @@ export const createLegacyDepartureSchema = z
     phone: z.string().trim().max(20).optional(),
     license_plate: z.string().trim().max(15).optional(),
     notes: z.string().max(1000).optional(),
-    planned_check_in: z.string().datetime("Nieprawidłowa data przyjazdu"),
+    flight_direction: z.string().trim().max(100, "Kierunek lotu może mieć maksymalnie 100 znaków").optional(),
+    parking_sector: z.string().trim().max(50, "Sektor może mieć maksymalnie 50 znaków").optional(),
+    passenger_count: z.number().int().min(0).max(99, "Maksymalnie 99 pasażerów").optional(),
     planned_check_out: z.string().datetime("Nieprawidłowa data powrotu"),
     total_cost: z.number().positive("Kwota musi być dodatnia").optional(),
   })
-  .refine((data) => Date.parse(data.planned_check_out) > Date.parse(data.planned_check_in), {
-    message: "Data powrotu musi być późniejsza niż przyjazd",
+  // Arrival is "now", so the return must be in the future.
+  .refine((data) => Date.parse(data.planned_check_out) > Date.now(), {
+    message: "Data powrotu musi być w przyszłości",
     path: ["planned_check_out"],
-  })
-  // The car is already on the lot — its arrival cannot be in the future (5 min clock-skew slack).
-  .refine((data) => Date.parse(data.planned_check_in) <= Date.now() + 5 * 60_000, {
-    message: "Data przyjazdu nie może być w przyszłości",
-    path: ["planned_check_in"],
   });
 
 export type CreateLegacyDepartureCommand = z.infer<typeof createLegacyDepartureSchema>;

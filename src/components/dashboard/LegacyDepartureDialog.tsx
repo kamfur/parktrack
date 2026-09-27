@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { createLegacyDepartureSchema, type CreateLegacyDepartureCommand } from "@/lib/schemas/reservation.schema";
-import { fromWarsawDateTimeLocal, toWarsawDateTimeLocal } from "@/lib/calendar/warsaw-time";
+import { useForm } from "react-hook-form";
+import type { CreateLegacyDepartureCommand } from "@/lib/schemas/reservation.schema";
+import { createLegacyDepartureSchema } from "@/lib/schemas/reservation.schema";
+import { fromWarsawDateTimeLocal } from "@/lib/calendar/warsaw-time";
 import {
   Dialog,
   DialogContent,
@@ -9,10 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
 
 interface LegacyDepartureDialogProps {
   isOpen: boolean;
@@ -21,13 +24,28 @@ interface LegacyDepartureDialogProps {
   onConfirm: (command: CreateLegacyDepartureCommand) => Promise<void>;
 }
 
-const EMPTY_FORM = {
+interface LegacyDepartureFormValues {
+  lastName: string;
+  firstName: string;
+  phone: string;
+  licensePlate: string;
+  checkOut: string;
+  flightDirection: string;
+  parkingSector: string;
+  passengerCount: number | null;
+  totalCost: string;
+  notes: string;
+}
+
+const EMPTY_FORM: LegacyDepartureFormValues = {
   lastName: "",
   firstName: "",
   phone: "",
   licensePlate: "",
-  checkIn: "",
   checkOut: "",
+  flightDirection: "",
+  parkingSector: "",
+  passengerCount: null,
   totalCost: "",
   notes: "",
 };
@@ -37,39 +55,37 @@ const EMPTY_FORM = {
  * przed wdrożeniem ParkTrack — trafia od razu na listę wyjazdów.
  */
 export function LegacyDepartureDialog({ isOpen, isLoading = false, onClose, onConfirm }: LegacyDepartureDialogProps) {
-  const [form, setForm] = useState(EMPTY_FORM);
+  const form = useForm<LegacyDepartureFormValues>({ defaultValues: EMPTY_FORM });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
-    setForm({ ...EMPTY_FORM, checkIn: toWarsawDateTimeLocal(new Date().toISOString()) });
+    form.reset(EMPTY_FORM);
     setError(null);
-  }, [isOpen]);
+  }, [isOpen, form]);
 
-  const update = (field: keyof typeof EMPTY_FORM) => (event: { target: { value: string } }) => {
-    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  const handleConfirm = form.handleSubmit(async (values) => {
     setError(null);
-  };
-
-  const handleConfirm = async () => {
-    if (!form.checkIn || !form.checkOut) {
-      setError("Podaj datę przyjazdu i planowaną datę powrotu");
+    if (!values.checkOut) {
+      setError("Podaj planowaną datę powrotu");
       return;
     }
-    const cost = form.totalCost.trim() ? Number(form.totalCost.replace(",", ".")) : undefined;
+    const cost = values.totalCost.trim() ? Number(values.totalCost.replace(",", ".")) : undefined;
     if (cost !== undefined && Number.isNaN(cost)) {
       setError("Nieprawidłowa kwota");
       return;
     }
 
     const parsed = createLegacyDepartureSchema.safeParse({
-      last_name: form.lastName,
-      first_name: form.firstName || undefined,
-      phone: form.phone || undefined,
-      license_plate: form.licensePlate || undefined,
-      notes: form.notes || undefined,
-      planned_check_in: fromWarsawDateTimeLocal(form.checkIn),
-      planned_check_out: fromWarsawDateTimeLocal(form.checkOut),
+      last_name: values.lastName,
+      first_name: values.firstName || undefined,
+      phone: values.phone || undefined,
+      license_plate: values.licensePlate.trim() ? values.licensePlate.trim().toUpperCase() : undefined,
+      notes: values.notes || undefined,
+      flight_direction: values.flightDirection.trim() || undefined,
+      parking_sector: values.parkingSector.trim() || undefined,
+      passenger_count: values.passengerCount ?? undefined,
+      planned_check_out: fromWarsawDateTimeLocal(values.checkOut),
       total_cost: cost,
     });
     if (!parsed.success) {
@@ -82,7 +98,7 @@ export function LegacyDepartureDialog({ isOpen, isLoading = false, onClose, onCo
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się dodać wyjazdu");
     }
-  };
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -94,68 +110,166 @@ export function LegacyDepartureDialog({ isOpen, isLoading = false, onClose, onCo
             liście wyjazdów.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="legacy-last-name">Nazwisko *</Label>
-            <Input id="legacy-last-name" value={form.lastName} onChange={update("lastName")} disabled={isLoading} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="legacy-first-name">Imię</Label>
-            <Input id="legacy-first-name" value={form.firstName} onChange={update("firstName")} disabled={isLoading} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="legacy-plate">Numer rejestracyjny</Label>
-            <Input id="legacy-plate" value={form.licensePlate} onChange={update("licensePlate")} disabled={isLoading} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="legacy-phone">Telefon</Label>
-            <Input id="legacy-phone" type="tel" value={form.phone} onChange={update("phone")} disabled={isLoading} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="legacy-check-in">Data przyjazdu *</Label>
-            <Input
-              id="legacy-check-in"
-              type="datetime-local"
-              value={form.checkIn}
-              onChange={update("checkIn")}
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="legacy-check-out">Planowany powrót *</Label>
-            <Input
-              id="legacy-check-out"
-              type="datetime-local"
-              value={form.checkOut}
-              onChange={update("checkOut")}
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="legacy-cost">Kwota (zł)</Label>
-            <Input
-              id="legacy-cost"
-              inputMode="decimal"
-              placeholder="Puste = wylicz z cennika"
-              value={form.totalCost}
-              onChange={update("totalCost")}
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="legacy-notes">Notatki</Label>
-            <Textarea id="legacy-notes" value={form.notes} onChange={update("notes")} disabled={isLoading} />
-          </div>
-        </div>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
-            Anuluj
-          </Button>
-          <Button type="button" onClick={() => void handleConfirm()} disabled={isLoading}>
-            {isLoading ? "Zapisywanie..." : "Dodaj wyjazd"}
-          </Button>
-        </DialogFooter>
+        <Form {...form}>
+          <form onSubmit={handleConfirm} onChange={() => setError(null)}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nazwisko *</FormLabel>
+                    <FormControl>
+                      <Input {...field} disabled={isLoading} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Imię</FormLabel>
+                    <FormControl>
+                      <Input {...field} disabled={isLoading} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="licensePlate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Numer rejestracyjny</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        maxLength={15}
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                        disabled={isLoading}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefon</FormLabel>
+                    <FormControl>
+                      <Input type="tel" {...field} disabled={isLoading} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="checkOut"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Planowany powrót *</FormLabel>
+                    <FormControl>
+                      <Input type="datetime-local" {...field} disabled={isLoading} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="flightDirection"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kierunek lotu</FormLabel>
+                    <FlightDirectionInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      disabled={isLoading}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="parkingSector"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sektor</FormLabel>
+                    <FormControl>
+                      <Input placeholder="np. A12" maxLength={50} {...field} disabled={isLoading} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="passengerCount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Liczba pasażerów</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={99}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        ref={field.ref}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)}
+                        disabled={isLoading}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="totalCost"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Kwota (zł)</FormLabel>
+                    <FormControl>
+                      <Input
+                        inputMode="decimal"
+                        placeholder="Puste = wylicz z cennika (od dziś do powrotu)"
+                        {...field}
+                        disabled={isLoading}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Notatki</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} disabled={isLoading} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+                Anuluj
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Zapisywanie..." : "Dodaj wyjazd"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
