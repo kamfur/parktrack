@@ -3,7 +3,7 @@ change_id: travel-agencies
 title: Travel agencies — agency reservations and monthly VAT invoice per agency
 status: implementing
 created: 2026-09-28
-updated: 2026-09-28
+updated: 2026-09-29
 archived_at: null
 ---
 

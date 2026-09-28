@@ -1,33 +1,35 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { SettingsForm } from "../components/settings/SettingsForm";
+import { PriceListsManager } from "../components/settings/PriceListsManager";
+import { GarageSpotConfigurator } from "../components/garage/GarageSpotConfigurator";
 import { createSupabaseAdminClient } from "../lib/supabase-admin";
 
 const supabaseAdmin = createSupabaseAdminClient();
 
-let initialDailyRate = 0;
 let initialTotalSpots = 100;
 let initialSellerName = "";
 let initialSellerAddress = "";
 let initialSellerNip = "";
 let initialSellerBankAccount = "";
+let initialVatRate = 23;
 
 if (supabaseAdmin) {
   const { data } = await supabaseAdmin.from("settings").select("key, value");
   if (data) {
     const find = (key: string) => data.find((r) => r.key === key)?.value;
-    const dailyRateRow = find("daily_rate");
     const totalSpotsRow = find("total_parking_spots");
     const sellerNameVal = find("seller_name");
     const sellerAddressVal = find("seller_address");
     const sellerNipVal = find("seller_nip");
     const sellerBankVal = find("seller_bank_account");
-    if (dailyRateRow !== undefined) initialDailyRate = Number(dailyRateRow);
     if (totalSpotsRow !== undefined) initialTotalSpots = Number(totalSpotsRow);
     if (typeof sellerNameVal === "string") initialSellerName = sellerNameVal;
     if (typeof sellerAddressVal === "string") initialSellerAddress = sellerAddressVal;
     if (typeof sellerNipVal === "string") initialSellerNip = sellerNipVal;
     if (typeof sellerBankVal === "string") initialSellerBankAccount = sellerBankVal;
+    const vatRateVal = find("vat_rate");
+    if (vatRateVal !== undefined && Number.isFinite(Number(vatRateVal))) initialVatRate = Number(vatRateVal);
   }
 }
 ---
@@ -37,12 +39,18 @@ if (supabaseAdmin) {
     <h1 class="text-2xl font-semibold mb-6">Ustawienia</h1>
     <SettingsForm
       client:load
-      initialDailyRate={initialDailyRate}
       initialTotalSpots={initialTotalSpots}
       initialSellerName={initialSellerName}
       initialSellerAddress={initialSellerAddress}
       initialSellerNip={initialSellerNip}
       initialSellerBankAccount={initialSellerBankAccount}
+      initialVatRate={initialVatRate}
     />
+    <div class="mt-10 border-t pt-6">
+      <PriceListsManager client:load />
+    </div>
+    <div id="miejsca-garazowe" class="mt-10 border-t pt-6">
+      <GarageSpotConfigurator client:load />
+    </div>
   </div>
 </Layout>

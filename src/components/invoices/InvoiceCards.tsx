@@ -99,10 +99,12 @@ export function InvoiceCards({ invoices, isLoading, onCardClick, onAction }: Inv
                     <Printer className="mr-2 h-4 w-4" />
                     Podgląd / druk
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => handleAction("reservation", invoice, e)}>
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    Rezerwacja
-                  </DropdownMenuItem>
+                  {invoice.items.length === 1 && (
+                    <DropdownMenuItem onClick={(e) => handleAction("reservation", invoice, e)}>
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      Rezerwacja
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

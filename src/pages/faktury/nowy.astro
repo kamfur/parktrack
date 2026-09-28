@@ -23,14 +23,14 @@ if (!reservation || reservation.status !== "completed") {
   return Astro.redirect("/");
 }
 
-const { data: existingInvoice } = await supabase
-  .from("invoices")
-  .select("id")
+const { data: existingItem } = await supabase
+  .from("invoice_items")
+  .select("invoice_id")
   .eq("reservation_id", reservationId)
   .maybeSingle();
 
-if (existingInvoice) {
-  return Astro.redirect(`/faktury/${existingInvoice.id}/druk`);
+if (existingItem) {
+  return Astro.redirect(`/faktury/${existingItem.invoice_id}/druk`);
 }
 
 const reservationSummary = {

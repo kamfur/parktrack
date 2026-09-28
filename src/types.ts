@@ -6,6 +6,9 @@ import type {
   ChangeReturnDateFormData,
 } from "./lib/schemas/reservation.schema";
 import type { AppRole } from "./lib/auth/resolve-app-role";
+import type { ParkingType } from "./lib/pricing/parking-type";
+import type { PriceListRates } from "./lib/pricing/price-list";
+import type { SavePriceListCommand } from "./lib/schemas/price-list.schema";
 import type {
   CalendarRangeQuery,
   DriverShiftFormData,
@@ -23,6 +26,9 @@ export type {
   DriverShiftFormData,
   DriverShiftWrite,
   ShiftRangeQuery,
+  ParkingType,
+  PriceListRates,
+  SavePriceListCommand,
 };
 
 // ############################################################################
@@ -68,6 +74,20 @@ export type DriverShiftDto = Tables<"driver_shifts">;
 /** A staff-configured garage/carport unit. Single/double is a capacity label, not a sub-spot hierarchy. */
 export type GarageSpotDto = Tables<"garage_spots">;
 
+/**
+ * Price list for a validity period; `rates` holds one row per parking type.
+ */
+export interface PriceListDto {
+  id: string;
+  /** YYYY-MM-DD */
+  valid_from: string;
+  /** YYYY-MM-DD, null = open-ended */
+  valid_to: string | null;
+  created_at: string;
+  updated_at: string;
+  rates: PriceListRates;
+}
+
 /** A reservation-to-garage-spot assignment; `superseded_at: null` means it is the currently active one. */
 export type GarageAssignmentDto = Tables<"garage_assignments">;
 
@@ -97,7 +117,7 @@ export interface CalendarEventDto {
   licensePlate: string | null;
   status: "confirmed" | "in_progress" | "completed";
   handled: boolean;
-  parkingType: "open_air" | "garage";
+  parkingType: ParkingType;
   /** Assigned garage/carport spot name, resolved client-side (not part of the API response). */
   garageSpotName?: string | null;
 }
@@ -157,10 +177,7 @@ export type CreateReservationCommand = Omit<
 /**
  * Command model for creating a garage/carport spot (configurator).
  */
-export type CreateGarageSpotCommand = Pick<
-  TablesInsert<"garage_spots">,
-  "name" | "spot_type" | "capacity_label" | "price_per_day"
-> & {
+export type CreateGarageSpotCommand = Pick<TablesInsert<"garage_spots">, "name" | "spot_type" | "capacity_label"> & {
   is_available?: boolean;
 };
 
@@ -185,7 +202,7 @@ export interface CreateExternalReservationCommand {
   firstName: string;
   email: string;
   phone: string;
-  licensePlate: string;
+  licensePlate?: string;
   checkInDate: string;
   checkOutDate: string;
 }
@@ -533,6 +550,8 @@ export interface CostPreviewProps {
   checkInDate: Date | null;
   /** Data wyjazdu */
   checkOutDate: Date | null;
+  /** Typ miejsca — wybiera wiersz cennika (domyślnie parking) */
+  parkingType?: ParkingType;
   /** Czy koszt jest w trakcie obliczania */
   isCalculating: boolean;
 }
@@ -875,9 +894,14 @@ export interface ResetPasswordCommand {
 //
 // ############################################################################
 
+/**
+ * Pozycja faktury — snapshot rezerwacji z chwili wystawienia.
+ * net_amount / vat_amount są null na fakturach sprzed rozbicia VAT (legacy).
+ */
+export type InvoiceItemDto = Tables<"invoice_items">;
+
 export interface InvoiceDto {
   id: string;
-  reservation_id: string;
   invoice_number: string;
   invoice_year: number;
   invoice_month: number;
@@ -890,11 +914,22 @@ export interface InvoiceDto {
   buyer_nip: string;
   buyer_address: string;
   buyer_email: string | null;
+  /** Kwota brutto (suma pozycji) */
   total_amount: number;
-  days_count: number;
-  daily_rate_snapshot: number;
+  total_net: number | null;
+  total_vat: number | null;
+  /** Stawka VAT w %; null = faktura legacy (tylko brutto) */
+  vat_rate: number | null;
+  issue_date: string;
+  sale_date: string | null;
+  payment_due_date: string | null;
+  travel_agency_id: string | null;
+  billing_year: number | null;
+  billing_month: number | null;
   created_at: string;
   created_by: string;
+  /** Pozycje w kolejności `position` */
+  items: InvoiceItemDto[];
 }
 
 /**

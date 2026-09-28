@@ -692,8 +692,8 @@ Volumes are small (tens to hundreds of reservations per agency per month). `agen
 #### Automated
 
 - [ ] 1.1 Local DB rebuilds cleanly: `npx supabase db reset`
-- [x] 1.2 pgTAP suite passes locally: `npx supabase test db`
-- [x] 1.3 Existing unit tests still pass: `npm run test`
+- [x] 1.2 pgTAP suite passes locally: `npx supabase test db` — f4bfaf5
+- [x] 1.3 Existing unit tests still pass: `npm run test` — f4bfaf5
 - [ ] 1.4 CI `db-tests` job is green on the PR
 
 #### Manual
@@ -704,12 +704,12 @@ Volumes are small (tens to hundreds of reservations per agency per month). `agen
 
 #### Automated
 
-- [ ] 2.1 Migration applies on a DB with existing invoices: `npx supabase db reset`
-- [ ] 2.2 pgTAP passes: `npx supabase test db`
-- [ ] 2.3 Unit tests pass: `npm run test`
-- [ ] 2.4 Type checking passes: `npm run typecheck`
+- [x] 2.1 Migration applies on a DB with existing invoices: `npx supabase db reset`
+- [x] 2.2 pgTAP passes: `npx supabase test db`
+- [x] 2.3 Unit tests pass: `npm run test`
+- [x] 2.4 Type checking passes: `npm run typecheck`
 - [ ] 2.5 Linting passes: `npm run lint`
-- [ ] 2.6 Build passes: `npm run build`
+- [x] 2.6 Build passes: `npm run build`
 
 #### Manual
 

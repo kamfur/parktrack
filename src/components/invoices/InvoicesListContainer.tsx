@@ -39,8 +39,8 @@ export function InvoicesListContainer() {
     (action: "print" | "reservation", invoice: InvoiceDto) => {
       if (action === "print") {
         handleOpenInvoice(invoice);
-      } else {
-        window.location.href = `/rezerwacje/${invoice.reservation_id}`;
+      } else if (invoice.items.length === 1) {
+        window.location.href = `/rezerwacje/${invoice.items[0].reservation_id}`;
       }
     },
     [handleOpenInvoice]
