@@ -21,8 +21,9 @@ ParkTrack — Astro 5 SSR + React 19 islands + Supabase. Staff-facing parking ma
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 | `npm run build` | Production build |
+| `npx supabase test db` | pgTAP DB tests (`supabase/tests/*.test.sql`) — needs local Supabase (`npx supabase start`) |
 
-CI (`.github/workflows/ci.yml`): test → lint → build on PR/push to `main`.
+CI (`.github/workflows/ci.yml`): job `ci` test → lint → build; job `db-tests` runs pgTAP against a fresh local DB. DB triggers/RPCs that enforce money or access rules get a pgTAP test.
 
 ## Depth — read on demand
 

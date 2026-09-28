@@ -177,6 +177,22 @@ and month-start strings.
 - **Restore timers in `afterEach`**: `vi.useRealTimers()` — prevents bleed between test cases.
 - **Reference test**: `src/pages/api/stats.test.ts`
 
+### 6.6 Adding a DB-level test (pgTAP) for a trigger or RPC
+
+Use when a rule lives in Postgres (pricing trigger, driver allowlist, invoice RPCs, locks) —
+Vitest mocks cannot see it.
+
+- **File**: `supabase/tests/NNN_<area>.test.sql`; wrap in `begin; … select * from finish(); rollback;`
+  so fixtures never persist. Start with `create extension if not exists pgtap with schema extensions;`.
+- **Fixtures inline**: insert a far-future price list (`valid_from 2099-01-01`) so seeded lists never win;
+  use `public.get_system_user()` for `created_by` / `last_modified_by`.
+- **Act as a role**: `select set_config('request.jwt.claims', json_build_object('sub', …, 'app_metadata',
+  json_build_object('role', 'driver'))::text, true);` — `current_app_role()` / `auth.uid()` read it.
+- **Assert money with literals** (oracle problem, §6.4); errors with `throws_ok(sql, '42501', …)` or
+  `throws_like(sql, 'CODE%', …)`.
+- **Run**: `npx supabase test db` (CI job `db-tests`).
+- **Reference test**: `supabase/tests/000_smoke.test.sql`
+
 ---
 
 ## 7. What We Deliberately Don't Test
