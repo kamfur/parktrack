@@ -279,7 +279,15 @@ export type Database = {
           travel_agency_id?: string | null
           vat_rate?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invoices_travel_agency_id_fkey"
+            columns: ["travel_agency_id"]
+            isOneToOne: false
+            referencedRelation: "travel_agencies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -515,6 +523,54 @@ export type Database = {
           license_plate?: string
           name?: string
           notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      travel_agencies: {
+        Row: {
+          address: string
+          archived_at: string | null
+          contact_person: string | null
+          created_at: string
+          discount_pct: number
+          email: string | null
+          id: string
+          name: string
+          nip: string
+          notes: string | null
+          payment_term_days: number
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          archived_at?: string | null
+          contact_person?: string | null
+          created_at?: string
+          discount_pct?: number
+          email?: string | null
+          id?: string
+          name: string
+          nip: string
+          notes?: string | null
+          payment_term_days?: number
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          archived_at?: string | null
+          contact_person?: string | null
+          created_at?: string
+          discount_pct?: number
+          email?: string | null
+          id?: string
+          name?: string
+          nip?: string
+          notes?: string | null
+          payment_term_days?: number
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []

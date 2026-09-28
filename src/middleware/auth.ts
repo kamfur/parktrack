@@ -15,6 +15,7 @@ const STAFF_ONLY_PAGE_PREFIXES = [
   "/kalendarz",
   "/garage-spots",
   "/garage-occupancy",
+  "/biura-podrozy",
 ];
 
 /** Staff-only API prefixes. Drivers receive 403. */
@@ -31,6 +32,8 @@ const STAFF_ONLY_API_PREFIXES = [
   "/api/drivers",
   "/api/garage-spots",
   "/api/garage-assignments",
+  "/api/price-lists",
+  "/api/travel-agencies",
 ];
 
 export const DRIVER_HOME = "/kierowca";

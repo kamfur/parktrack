@@ -9,6 +9,7 @@ import type { AppRole } from "./lib/auth/resolve-app-role";
 import type { ParkingType } from "./lib/pricing/parking-type";
 import type { PriceListRates } from "./lib/pricing/price-list";
 import type { SavePriceListCommand } from "./lib/schemas/price-list.schema";
+import type { SaveTravelAgencyCommand, SaveTravelAgencyInput } from "./lib/schemas/travel-agency.schema";
 import type {
   CalendarRangeQuery,
   DriverShiftFormData,
@@ -29,6 +30,8 @@ export type {
   ParkingType,
   PriceListRates,
   SavePriceListCommand,
+  SaveTravelAgencyCommand,
+  SaveTravelAgencyInput,
 };
 
 // ############################################################################
@@ -87,6 +90,9 @@ export interface PriceListDto {
   updated_at: string;
   rates: PriceListRates;
 }
+
+/** Travel agency billed monthly for its clients; `archived_at` set = hidden from reservation pickers. */
+export type TravelAgencyDto = Tables<"travel_agencies">;
 
 /** A reservation-to-garage-spot assignment; `superseded_at: null` means it is the currently active one. */
 export type GarageAssignmentDto = Tables<"garage_assignments">;

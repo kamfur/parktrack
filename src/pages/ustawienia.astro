@@ -2,6 +2,7 @@
 import Layout from "../layouts/Layout.astro";
 import { SettingsForm } from "../components/settings/SettingsForm";
 import { PriceListsManager } from "../components/settings/PriceListsManager";
+import { TravelAgenciesManager } from "../components/settings/TravelAgenciesManager";
 import { GarageSpotConfigurator } from "../components/garage/GarageSpotConfigurator";
 import { createSupabaseAdminClient } from "../lib/supabase-admin";
 
@@ -48,6 +49,9 @@ if (supabaseAdmin) {
     />
     <div class="mt-10 border-t pt-6">
       <PriceListsManager client:load />
+    </div>
+    <div id="biura-podrozy" class="mt-10 border-t pt-6">
+      <TravelAgenciesManager client:load />
     </div>
     <div id="miejsca-garazowe" class="mt-10 border-t pt-6">
       <GarageSpotConfigurator client:load />
