@@ -16,6 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
+import { useCheckoutQuote } from "@/hooks/useCheckoutQuote";
+import { PaymentQuote } from "@/components/driver/PaymentQuote";
 
 interface DriverDepartureDialogProps {
   reservation: ReservationDto | null;
@@ -58,6 +60,13 @@ export function DriverDepartureDialog({
     setSubmitError(null);
     setShowDateField(false);
   }, [reservation, open, form]);
+
+  const watchedCheckout = form.watch("planned_check_out");
+  const watchedSurcharge = form.watch("surcharge_amount");
+  const quoteCheckoutIso = showDateField
+    ? datetimeLocalToIso(watchedCheckout ?? "")
+    : (reservation?.planned_check_out ?? null);
+  const quote = useCheckoutQuote(reservation?.id ?? null, quoteCheckoutIso ?? null, open && !alreadyPaid);
 
   const handleSubmit = form.handleSubmit(async (data) => {
     if (!reservation) return;
@@ -152,6 +161,7 @@ export function DriverDepartureDialog({
                 </FormItem>
               )}
             />
+            {alreadyPaid ? null : <PaymentQuote {...quote} surcharge={watchedSurcharge} />}
             {alreadyPaid ? null : (
               <FormField
                 control={form.control}

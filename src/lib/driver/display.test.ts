@@ -1,11 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { amountDue, flightDirectionLabel, garageSpotLabel, isAgencyPaid, isNearCheckout, isOverdue } from "./display";
+import {
+  amountDue,
+  flightDirectionLabel,
+  garageSpotLabel,
+  isAfterToday,
+  isAgencyPaid,
+  isNearCheckout,
+  isOverdue,
+} from "./display";
 
 describe("isOverdue", () => {
   it("flags yesterday as overdue relative to a fixed now", () => {
     const now = new Date("2026-09-09T12:00:00+02:00");
     expect(isOverdue("2026-09-08T10:00:00+02:00", now)).toBe(true);
     expect(isOverdue("2026-09-09T08:00:00+02:00", now)).toBe(false);
+  });
+});
+
+describe("isAfterToday", () => {
+  it("flags only timestamps on a later Warsaw day", () => {
+    const now = new Date("2026-09-09T20:00:00+02:00");
+    expect(isAfterToday("2026-09-10T00:30:00+02:00", now)).toBe(true);
+    expect(isAfterToday("2026-09-09T23:30:00+02:00", now)).toBe(false);
   });
 });
 

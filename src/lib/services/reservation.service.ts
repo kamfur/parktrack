@@ -14,7 +14,7 @@ import {
   type CreateLegacyDepartureCommand,
 } from "../schemas/reservation.schema";
 import { createSupabaseAdminClient } from "../supabase-admin";
-import { startOfTomorrowWarsawIso } from "../driver/operating-window";
+import { pendingWindowEndIso } from "../driver/operating-window";
 import { uniqueFlightDirections } from "../reservations/flight-directions";
 import { enrichDepartures } from "./ktw-arrival-hours.service";
 import { GarageAllocationService } from "./garage-allocation.service";
@@ -421,11 +421,11 @@ ${data.notes}`
   }
 
   /**
-   * Staff dashboard arrivals: Warsaw today plus any earlier confirmed arrivals
-   * that have not been checked in yet.
+   * Staff dashboard arrivals: Warsaw today (or the next 12h, whichever reaches further)
+   * plus any earlier confirmed arrivals that have not been checked in yet.
    */
   async getTodaysArrivals(now: Date = new Date()): Promise<ReservationDto[]> {
-    const upper = startOfTomorrowWarsawIso(now);
+    const upper = pendingWindowEndIso(now);
     const { data, error } = await this.supabase
       .from("reservations")
       .select("*")
@@ -442,11 +442,11 @@ ${data.notes}`
   }
 
   /**
-   * Staff dashboard departures: Warsaw today plus delayed in-progress returns
-   * that have not been checked out yet.
+   * Staff dashboard departures: Warsaw today (or the next 12h, whichever reaches further)
+   * plus delayed in-progress returns that have not been checked out yet.
    */
   async getTodaysDepartures(now: Date = new Date()): Promise<DepartureListItem[]> {
-    const upper = startOfTomorrowWarsawIso(now);
+    const upper = pendingWindowEndIso(now);
     const { data, error } = await this.supabase
       .from("reservations")
       .select("*")

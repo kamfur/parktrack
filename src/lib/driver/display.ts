@@ -7,6 +7,11 @@ export function isOverdue(plannedIso: string, now: Date = new Date()): boolean {
   return warsawDateKey(new Date(plannedIso)) < warsawDateKey(now);
 }
 
+/** Planned timestamp is on a Warsaw calendar day after today (shown in the 12h look-ahead). */
+export function isAfterToday(plannedIso: string, now: Date = new Date()): boolean {
+  return warsawDateKey(new Date(plannedIso)) > warsawDateKey(now);
+}
+
 /** Departure within the next 2 hours (airport pickup emphasis). */
 export function isNearCheckout(
   plannedCheckoutIso: string,

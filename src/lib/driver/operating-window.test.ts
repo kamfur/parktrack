@@ -2,6 +2,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   handledWindowStartIso,
   isOnOrBeforeWarsawToday,
+  pendingWindowEndIso,
   startOfTomorrowWarsawIso,
   startOfWarsawTodayIso,
   warsawDateKey,
@@ -35,6 +36,15 @@ describe("operating-window", () => {
     // 2026-09-10 00:00 Warsaw = 2026-09-09 22:00Z
     expect(new Date("2026-09-09T21:59:59.000Z").toISOString() < bound).toBe(true);
     expect(new Date("2026-09-09T22:00:00.000Z").toISOString() < bound).toBe(false);
+  });
+
+  it("pendingWindowEndIso is end of Warsaw today until the 12h look-ahead reaches past midnight", () => {
+    // 12:00 Warsaw: now + 12h = midnight exactly
+    expect(pendingWindowEndIso(new Date("2026-09-09T10:00:00Z"))).toBe("2026-09-09T22:00:00.000Z");
+    // 09:00 Warsaw: end of today wins
+    expect(pendingWindowEndIso(new Date("2026-09-09T07:00:00Z"))).toBe("2026-09-09T22:00:00.000Z");
+    // 20:00 Warsaw: look ahead to 08:00 tomorrow
+    expect(pendingWindowEndIso(new Date("2026-09-09T18:00:00Z"))).toBe("2026-09-10T06:00:00.000Z");
   });
 
   it("warsawDateKey formats in Europe/Warsaw", () => {

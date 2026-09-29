@@ -194,3 +194,43 @@ describe("travel agency stays", () => {
     expect(sent).not.toHaveProperty("paid_at_arrival");
   });
 });
+
+describe("quoteCheckout", () => {
+  const current = {
+    id: "r1",
+    planned_check_in: "2026-09-10T08:00:00.000Z",
+    planned_check_out: "2026-09-15T08:00:00.000Z",
+    parking_type: "open_air",
+    total_cost: 150,
+  };
+
+  function clientWithRpc(rpcResult: { data: unknown; error: unknown }) {
+    const client = mockSupabase(current);
+    const rpc = vi.fn().mockResolvedValue(rpcResult);
+    return { ...client, rpc };
+  }
+
+  it("returns the stored total when the return date is unchanged", async () => {
+    const client = clientWithRpc({ data: 999, error: null });
+    const total = await new DriverService(client as never).quoteCheckout("r1", "2026-09-15T08:00:00Z");
+    expect(total).toBe(150);
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it("reprices from the price list when the return date changes", async () => {
+    const client = clientWithRpc({ data: 210, error: null });
+    const total = await new DriverService(client as never).quoteCheckout("r1", "2026-09-17T08:00:00.000Z");
+    expect(total).toBe(210);
+    expect(client.rpc).toHaveBeenCalledWith("calculate_total_cost", {
+      p_check_in: current.planned_check_in,
+      p_check_out: "2026-09-17T08:00:00.000Z",
+      p_parking_type: "open_air",
+    });
+  });
+
+  it("rejects a return before check-in and a missing price list", async () => {
+    const service = new DriverService(clientWithRpc({ data: null, error: { message: "no list" } }) as never);
+    await expect(service.quoteCheckout("r1", "2026-09-09T08:00:00.000Z")).rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.quoteCheckout("r1", "2026-09-17T08:00:00.000Z")).rejects.toMatchObject({ statusCode: 422 });
+  });
+});

@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
+import { useCheckoutQuote } from "@/hooks/useCheckoutQuote";
+import { PaymentQuote } from "@/components/driver/PaymentQuote";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
 
 interface DriverArrivalDialogProps {
@@ -62,6 +64,14 @@ export function DriverArrivalDialog({
     });
     setSubmitError(null);
   }, [reservation, open, form]);
+
+  const paymentDue = reservation ? !reservation.is_paid : false;
+  const watchedCheckout = form.watch("planned_check_out");
+  const quote = useCheckoutQuote(
+    reservation?.id ?? null,
+    datetimeLocalToIso(watchedCheckout ?? "") ?? null,
+    open && paymentDue
+  );
 
   const handleSubmit = form.handleSubmit(async (data) => {
     if (!reservation) return;
@@ -187,18 +197,21 @@ export function DriverArrivalDialog({
                 Biuro podróży – opłacone. Nie pobieraj płatności od klienta.
               </p>
             ) : (
-              <FormField
-                control={form.control}
-                name="paid_at_arrival"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
-                    <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
-                    </FormControl>
-                    <FormLabel className="font-normal">Opłacono przy przyjeździe</FormLabel>
-                  </FormItem>
-                )}
-              />
+              <>
+                {paymentDue ? <PaymentQuote {...quote} /> : null}
+                <FormField
+                  control={form.control}
+                  name="paid_at_arrival"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
+                      </FormControl>
+                      <FormLabel className="font-normal">Opłacono przy przyjeździe</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </>
             )}
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
             <DialogFooter className="gap-2 sm:gap-0">

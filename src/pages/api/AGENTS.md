@@ -21,8 +21,10 @@ Run one file: `npm run test -- src/pages/api/settings.test.ts`.
 ## Driver APIs
 
 - Prefix: `/api/driver/*` — arrivals, departures, occupancy, reservation arrival/departure PATCH.
+- `GET /api/driver/reservations/:id/quote?check_out=` — live price for the arrival/departure dialogs; unchanged date returns stored `total_cost`, otherwise `calculate_total_cost` (same rule as `trg_update_cost`).
+- `POST /api/driver/reservations` — driver adds a reservation (`driverCreateReservationSchema`: no price/agency/payment fields, `source=walk_in`, audited as the user); `GET /api/driver/price` previews the price-list total for it.
 - Allowed roles: `driver` and `staff`. Staff-only APIs remain blocked for drivers in `authMiddleware`.
-- List window: overdue + calendar today (Warsaw) for both `/api/driver/*` lists and staff dashboard `getTodaysArrivals` / `getTodaysDepartures`.
+- List window: overdue + calendar today (Warsaw), extended to now + 12h when that reaches past midnight (`pendingWindowEndIso`), for both `/api/driver/*` lists and staff dashboard `getTodaysArrivals` / `getTodaysDepartures`.
 - Handled window: `GET /api/driver/arrivals` and `/departures` also return `handled` — actual timestamp on Warsaw today **or** within the last 12 hours (union).
 - RLS defense-in-depth: migration `20260909140000_harden_rls_by_app_role.sql` — drivers cannot write invoices/settings; reservation UPDATEs constrained by status + column trigger.
 

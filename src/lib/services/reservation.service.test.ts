@@ -47,6 +47,14 @@ describe("ReservationService dashboard lists", () => {
     expect(rows).toEqual([{ id: "r1" }]);
   });
 
+  it("getTodaysArrivals looks 12h ahead in the evening (customers after midnight)", async () => {
+    const client = mockListClient();
+    const service = new ReservationService(client as never);
+    await service.getTodaysArrivals(new Date("2026-09-09T18:00:00Z"));
+
+    expect(client.builder.lt).toHaveBeenCalledWith("planned_check_in", "2026-09-10T06:00:00.000Z");
+  });
+
   it("getTodaysDepartures includes delayed plus Warsaw today in-progress returns", async () => {
     const client = mockListClient();
     const service = new ReservationService(client as never);

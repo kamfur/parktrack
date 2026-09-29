@@ -21,7 +21,7 @@ const { title = "ParkTrack — Kierowca", userEmail } = Astro.props;
   </head>
   <body class="min-h-screen bg-background text-foreground antialiased">
     <header class="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-      <div class="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3">
+      <div class="mx-auto flex max-w-lg lg:max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <div>
           <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">ParkTrack</p>
           <h1 class="text-lg font-semibold leading-tight">Kierowca</h1>
@@ -36,7 +36,7 @@ const { title = "ParkTrack — Kierowca", userEmail } = Astro.props;
         </div>
       </div>
     </header>
-    <main class="mx-auto max-w-lg px-4 py-4 pb-24">
+    <main class="mx-auto max-w-lg lg:max-w-6xl px-4 py-4 pb-24">
       <slot />
     </main>
   </body>

@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
 
 interface LegacyDepartureDialogProps {
@@ -34,6 +35,7 @@ interface LegacyDepartureFormValues {
   parkingSector: string;
   passengerCount: number | null;
   totalCost: string;
+  unpaid: boolean;
   notes: string;
 }
 
@@ -47,6 +49,7 @@ const EMPTY_FORM: LegacyDepartureFormValues = {
   parkingSector: "",
   passengerCount: null,
   totalCost: "",
+  unpaid: false,
   notes: "",
 };
 
@@ -87,6 +90,7 @@ export function LegacyDepartureDialog({ isOpen, isLoading = false, onClose, onCo
       passenger_count: values.passengerCount ?? undefined,
       planned_check_out: fromWarsawDateTimeLocal(values.checkOut),
       total_cost: cost,
+      unpaid: values.unpaid,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Nieprawidłowe dane");
@@ -243,6 +247,28 @@ export function LegacyDepartureDialog({ isOpen, isLoading = false, onClose, onCo
                         disabled={isLoading}
                       />
                     </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="unpaid"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2 flex flex-row items-start gap-3 space-y-0 rounded-md border p-3">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(v) => field.onChange(v === true)}
+                        disabled={isLoading}
+                      />
+                    </FormControl>
+                    <div className="space-y-1">
+                      <FormLabel className="font-normal">Pobyt nieopłacony</FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Zaznacz, jeśli klient jeszcze nie zapłacił — kwota pojawi się przy wyjeździe do pobrania. Bez
+                        zaznaczenia pobyt jest traktowany jako opłacony.
+                      </p>
+                    </div>
                   </FormItem>
                 )}
               />

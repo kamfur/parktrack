@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PARKING_TYPES } from "../pricing/parking-type";
 
 export const driverArrivalUpdateSchema = z.object({
   planned_check_out: z.string().datetime("Invalid check-out date format").optional(),
@@ -21,3 +22,26 @@ export const driverDepartureUpdateSchema = z.object({
 });
 
 export type DriverDepartureUpdate = z.infer<typeof driverDepartureUpdateSchema>;
+
+/**
+ * Driver-created reservation. Deliberately narrow: no price, agency or payment fields —
+ * the server prices it from the price list (unknown keys are stripped).
+ */
+export const driverCreateReservationSchema = z
+  .object({
+    last_name: z.string().trim().min(1, "Nazwisko jest wymagane").max(100),
+    first_name: z.string().trim().max(100).optional(),
+    phone: z.string().trim().max(20).optional(),
+    license_plate: z.string().trim().max(15).optional(),
+    flight_direction: z.string().trim().max(100, "Kierunek lotu może mieć maksymalnie 100 znaków").optional(),
+    notes: z.string().max(1000).optional(),
+    planned_check_in: z.string().datetime("Nieprawidłowa data przyjazdu"),
+    planned_check_out: z.string().datetime("Nieprawidłowa data powrotu"),
+    parking_type: z.enum(PARKING_TYPES).default("open_air"),
+  })
+  .refine((data) => Date.parse(data.planned_check_out) > Date.parse(data.planned_check_in), {
+    message: "Data powrotu musi być późniejsza niż data przyjazdu",
+    path: ["planned_check_out"],
+  });
+
+export type DriverCreateReservation = z.infer<typeof driverCreateReservationSchema>;

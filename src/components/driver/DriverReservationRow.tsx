@@ -5,17 +5,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   amountDue,
-  isAgencyPaid,
   driverDisplayName,
   flightDirectionLabel,
   formatDriverTime,
   garageSpotLabel,
+  isAfterToday,
+  isAgencyPaid,
   isNearCheckout,
   isOverdue,
 } from "@/lib/driver/display";
 import { formatKtwHourList } from "@/lib/ktw/format-hours";
 import { formatCost } from "@/lib/utils/reservation.formatters";
-import { Banknote, Car, Clock, PlaneLanding, Users, Warehouse } from "lucide-react";
+import { Banknote, Car, Clock, Mail, Phone, PlaneLanding, Users, Warehouse } from "lucide-react";
 
 interface DriverReservationRowProps {
   reservation: DepartureListItem;
@@ -40,6 +41,7 @@ export function DriverReservationRow({
   const displayTime = handled && actual ? actual : planned;
   const overdue = !handled && mode !== "occupancy" && isOverdue(planned);
   const nearCheckout = !handled && mode === "departure" && isNearCheckout(reservation.planned_check_out);
+  const tomorrow = !handled && mode !== "occupancy" && isAfterToday(planned);
   const direction = flightDirectionLabel(reservation.flight_direction);
   const ktwHoursLabel = mode === "departure" ? formatKtwHourList(reservation.ktw_arrival_hours) : null;
   const garageLabel = garageSpotLabel(reservation.parking_type, reservation.garage_spot_name);
@@ -62,6 +64,7 @@ export function DriverReservationRow({
             {handled ? <Badge variant="secondary">Obsłużone</Badge> : null}
             {overdue ? <Badge variant="secondary">Zaległe</Badge> : null}
             {nearCheckout ? <Badge variant="secondary">Odbiór wkrótce</Badge> : null}
+            {tomorrow ? <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100">Jutro</Badge> : null}
             {isAgencyPaid(reservation) ? (
               <Badge className="bg-sky-100 text-sky-800 hover:bg-sky-100">Biuro podróży – opłacone</Badge>
             ) : null}
@@ -71,6 +74,14 @@ export function DriverReservationRow({
               <div className="flex items-center gap-2 font-semibold text-foreground">
                 <Banknote className="h-4 w-4 shrink-0" aria-hidden />
                 <span>Do zapłaty: {formatCost(due)}</span>
+              </div>
+            ) : null}
+            {reservation.phone ? (
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 shrink-0" aria-hidden />
+                <a href={`tel:${reservation.phone}`} className="underline-offset-2 hover:underline">
+                  {reservation.phone}
+                </a>
               </div>
             ) : null}
             {reservation.license_plate ? (
@@ -112,6 +123,13 @@ export function DriverReservationRow({
                 <span>{garageLabel}</span>
               </div>
             ) : null}
+            {reservation.email ? (
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="truncate text-xs">{reservation.email}</span>
+              </div>
+            ) : null}
+            {reservation.notes ? <p className="whitespace-pre-line text-xs italic">{reservation.notes}</p> : null}
           </div>
         </div>
         {onOpen && actionLabel ? (

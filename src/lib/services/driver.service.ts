@@ -7,7 +7,7 @@ import {
   type DriverArrivalUpdate,
   type DriverDepartureUpdate,
 } from "../schemas/driver.schema";
-import { handledWindowStartIso, startOfTomorrowWarsawIso } from "../driver/operating-window";
+import { handledWindowStartIso, pendingWindowEndIso } from "../driver/operating-window";
 import { enrichDepartureLists, enrichDepartures } from "./ktw-arrival-hours.service";
 
 export class DriverServiceError extends Error {
@@ -21,7 +21,7 @@ export class DriverServiceError extends Error {
 }
 
 const DRIVER_LIST_SELECT =
-  "id, last_name, first_name, license_plate, planned_check_in, planned_check_out, flight_direction, passenger_count, parking_sector, paid_at_arrival, paid_at_departure, surcharge_amount, total_cost, notes, status, is_paid, actual_check_in, actual_check_out, travel_agency_id";
+  "id, last_name, first_name, phone, email, license_plate, parking_type, planned_check_in, planned_check_out, flight_direction, passenger_count, parking_sector, paid_at_arrival, paid_at_departure, surcharge_amount, total_cost, notes, status, is_paid, actual_check_in, actual_check_out, travel_agency_id";
 
 /**
  * Sync rule: is_paid is true when either driver payment flag is true.
@@ -51,7 +51,7 @@ export class DriverService {
   constructor(private supabase: SupabaseClient<Database>) {}
 
   async listArrivals(now: Date = new Date()): Promise<ReservationDto[]> {
-    const upper = startOfTomorrowWarsawIso(now);
+    const upper = pendingWindowEndIso(now);
     const { data, error } = await this.supabase
       .from("reservations")
       .select(DRIVER_LIST_SELECT)
@@ -68,7 +68,7 @@ export class DriverService {
   }
 
   private async fetchPendingDepartures(now: Date): Promise<ReservationDto[]> {
-    const upper = startOfTomorrowWarsawIso(now);
+    const upper = pendingWindowEndIso(now);
     const { data, error } = await this.supabase
       .from("reservations")
       .select(DRIVER_LIST_SELECT)
@@ -200,6 +200,33 @@ export class DriverService {
     };
 
     return this.applyUpdate(id, withoutPaymentForAgency(current, updateData));
+  }
+
+  /**
+   * Price of the stay if it ends at `checkOutIso` — mirrors trg_update_cost, which reprices
+   * individual reservations when planned_check_out changes. Unchanged date → stored total_cost.
+   */
+  async quoteCheckout(id: string, checkOutIso: string): Promise<number> {
+    const current = await this.getById(id);
+
+    if (Date.parse(checkOutIso) === Date.parse(current.planned_check_out)) {
+      return Number(current.total_cost);
+    }
+    if (Date.parse(checkOutIso) <= Date.parse(current.planned_check_in)) {
+      throw new DriverServiceError("Check-out must be after check-in", 400);
+    }
+
+    const { data, error } = await this.supabase.rpc("calculate_total_cost", {
+      p_check_in: current.planned_check_in,
+      p_check_out: checkOutIso,
+      p_parking_type: current.parking_type,
+    });
+
+    if (error || data === null || data === undefined) {
+      throw new DriverServiceError("Brak cennika dla tego terminu", 422);
+    }
+
+    return Number(data);
   }
 
   private async getById(id: string): Promise<ReservationDto> {

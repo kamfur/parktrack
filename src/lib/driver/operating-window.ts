@@ -1,6 +1,7 @@
 /**
  * Operating-window helpers for driver arrival/departure lists.
- * Pending lists: calendar date in Europe/Warsaw ≤ today (overdue any past day + all of today).
+ * Pending lists: overdue (any past day) + all of Warsaw today, extended to the next 12 hours
+ * so late-evening shifts see the customers arriving/returning after midnight.
  * Handled lists: actual timestamp on Warsaw today OR within the last 12 hours (union).
  */
 
@@ -43,6 +44,15 @@ export function startOfWarsawTodayIso(now: Date = new Date()): string {
 export function startOfTomorrowWarsawIso(now: Date = new Date()): string {
   const startOfTodayUtcMs = Date.parse(startOfWarsawTodayIso(now));
   return new Date(startOfTodayUtcMs + 24 * 60 * 60 * 1000).toISOString();
+}
+
+/**
+ * Exclusive upper bound for pending arrivals/departures: the later of Warsaw midnight
+ * (end of today) and now + 12h.
+ */
+export function pendingWindowEndIso(now: Date = new Date()): string {
+  const endOfTodayMs = Date.parse(startOfTomorrowWarsawIso(now));
+  return new Date(Math.max(endOfTodayMs, now.getTime() + TWELVE_HOURS_MS)).toISOString();
 }
 
 /**

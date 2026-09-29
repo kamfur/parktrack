@@ -2,10 +2,11 @@ import type { ReservationCardProps } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Car, Clock, Mail, Plane, PlaneLanding, Warehouse } from "lucide-react";
+import { Banknote, Phone, Car, Clock, Mail, Plane, PlaneLanding, Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { flightDirectionLabel, garageSpotLabel, isOverdue } from "@/lib/driver/display";
+import { amountDue, flightDirectionLabel, garageSpotLabel, isAfterToday, isOverdue } from "@/lib/driver/display";
 import { formatKtwHourList } from "@/lib/ktw/format-hours";
+import { formatCost } from "@/lib/utils/reservation.formatters";
 
 function formatWarsawDateTime(dateString: string): string {
   return new Date(dateString).toLocaleString("pl-PL", {
@@ -31,6 +32,7 @@ export function ReservationCard({
 }: ReservationCardProps) {
   const plannedAt = actionType === "check-in" ? reservation.planned_check_in : reservation.planned_check_out;
   const overdue = isOverdue(plannedAt);
+  const tomorrow = isAfterToday(plannedAt);
 
   const isCheckInDisabled =
     actionType === "check-in" &&
@@ -57,6 +59,7 @@ export function ReservationCard({
   const directionLabel = actionType === "check-out" ? flightDirectionLabel(reservation.flight_direction) : null;
   const ktwHoursLabel = actionType === "check-out" ? formatKtwHourList(reservation.ktw_arrival_hours) : null;
   const garageLabel = garageSpotLabel(reservation.parking_type, reservation.garage_spot_name);
+  const due = amountDue(reservation);
 
   return (
     <Card
@@ -72,9 +75,17 @@ export function ReservationCard({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-lg">{fullName}</h3>
             {overdue ? <Badge variant="secondary">{actionType === "check-in" ? "Zaległe" : "Opóźniony"}</Badge> : null}
+            {tomorrow ? <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100">Jutro</Badge> : null}
           </div>
 
           <div className="space-y-2 text-sm text-muted-foreground">
+            {due != null ? (
+              <div className="flex items-center gap-2 font-semibold text-foreground">
+                <Banknote className="h-4 w-4" aria-hidden />
+                <span>Do zapłaty: {formatCost(due)}</span>
+              </div>
+            ) : null}
+
             {reservation.phone && (
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />

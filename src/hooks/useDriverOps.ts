@@ -142,12 +142,31 @@ export function useDriverOps() {
     }
   };
 
+  const createReservation = async (body: Record<string, unknown>) => {
+    setState((prev) => ({ ...prev, isProcessing: true, error: null }));
+    try {
+      const res = await fetch("/api/driver/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? `Błąd tworzenia rezerwacji (${res.status})`);
+      }
+      await refetch();
+    } finally {
+      setState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
   return {
     ...state,
     setTab,
     refetch,
     confirmArrival,
     completeDeparture,
+    createReservation,
   };
 }
 
