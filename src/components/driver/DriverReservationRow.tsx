@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
+  amountDue,
+  isAgencyPaid,
   driverDisplayName,
   flightDirectionLabel,
   formatDriverTime,
@@ -12,7 +14,8 @@ import {
   isOverdue,
 } from "@/lib/driver/display";
 import { formatKtwHourList } from "@/lib/ktw/format-hours";
-import { Car, Clock, PlaneLanding, Users, Warehouse } from "lucide-react";
+import { formatCost } from "@/lib/utils/reservation.formatters";
+import { Banknote, Car, Clock, PlaneLanding, Users, Warehouse } from "lucide-react";
 
 interface DriverReservationRowProps {
   reservation: DepartureListItem;
@@ -40,6 +43,7 @@ export function DriverReservationRow({
   const direction = flightDirectionLabel(reservation.flight_direction);
   const ktwHoursLabel = mode === "departure" ? formatKtwHourList(reservation.ktw_arrival_hours) : null;
   const garageLabel = garageSpotLabel(reservation.parking_type, reservation.garage_spot_name);
+  const due = !handled && mode !== "occupancy" ? amountDue(reservation) : null;
 
   return (
     <Card
@@ -58,8 +62,17 @@ export function DriverReservationRow({
             {handled ? <Badge variant="secondary">Obsłużone</Badge> : null}
             {overdue ? <Badge variant="secondary">Zaległe</Badge> : null}
             {nearCheckout ? <Badge variant="secondary">Odbiór wkrótce</Badge> : null}
+            {isAgencyPaid(reservation) ? (
+              <Badge className="bg-sky-100 text-sky-800 hover:bg-sky-100">Biuro podróży – opłacone</Badge>
+            ) : null}
           </div>
           <div className="space-y-1 text-sm text-muted-foreground">
+            {due != null ? (
+              <div className="flex items-center gap-2 font-semibold text-foreground">
+                <Banknote className="h-4 w-4 shrink-0" aria-hidden />
+                <span>Do zapłaty: {formatCost(due)}</span>
+              </div>
+            ) : null}
             {reservation.license_plate ? (
               <div className="flex items-center gap-2">
                 <Car className="h-4 w-4 shrink-0" aria-hidden />

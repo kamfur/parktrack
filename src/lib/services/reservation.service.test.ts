@@ -9,7 +9,12 @@ vi.mock("./garage-allocation.service", () => ({
   GarageBufferViolationError: class GarageBufferViolationError extends Error {},
 }));
 
-import { ReservationService, NoGarageAvailableError } from "./reservation.service";
+import {
+  ReservationService,
+  NoGarageAvailableError,
+  NoPriceListError,
+  TravelAgencyUnavailableError,
+} from "./reservation.service";
 import { createSupabaseAdminClient } from "../supabase-admin";
 import { GarageAllocationService, GarageBufferViolationError } from "./garage-allocation.service";
 
@@ -131,10 +136,37 @@ describe("ReservationService.createReservation — garage auto-assign", () => {
 
     expect(findAvailableSpot).toHaveBeenCalledWith(
       insertedReservation.planned_check_in,
-      insertedReservation.planned_check_out
+      insertedReservation.planned_check_out,
+      "garage"
     );
     expect(assign).toHaveBeenCalledWith("r1", "spot-1", "system");
     expect(result).toEqual(insertedReservation);
+  });
+
+  it("auto-assigns only a carport spot when parking_type is 'carport'", async () => {
+    vi.mocked(createSupabaseAdminClient).mockReturnValue(mockAdminClient() as never);
+
+    const findAvailableSpot = vi.fn().mockResolvedValue({ id: "spot-2" });
+    const assign = vi.fn().mockResolvedValue({ id: "assignment-2" });
+    vi.mocked(GarageAllocationService).mockImplementation(function () {
+      return { findAvailableSpot, assign };
+    } as never);
+
+    const service = new ReservationService({} as never);
+    await service.createReservation(
+      {
+        last_name: "Kowalski",
+        planned_check_in: "2026-09-02T00:00:00Z",
+        planned_check_out: "2026-09-02T08:00:00Z",
+        source: "phone",
+        total_cost: 100,
+        parking_type: "carport",
+      },
+      "user-1"
+    );
+
+    expect(findAvailableSpot).toHaveBeenCalledWith(expect.any(String), expect.any(String), "carport");
+    expect(assign).toHaveBeenCalledWith("r1", "spot-2", "system");
   });
 
   it("throws NoGarageAvailableError when no spot is available within the buffer, and deletes the orphaned reservation", async () => {
@@ -184,6 +216,54 @@ describe("ReservationService.createReservation — garage auto-assign", () => {
     );
 
     expect(GarageAllocationService).not.toHaveBeenCalled();
+  });
+});
+
+describe("ReservationService pricing", () => {
+  it("prices a reservation without total_cost from the price list row for its parking type", async () => {
+    const insert = vi.fn().mockReturnThis();
+    vi.mocked(createSupabaseAdminClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        insert,
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: "r1" }, error: null }),
+      }),
+    } as never);
+    const rpc = vi.fn().mockResolvedValue({ data: 180, error: null });
+    vi.mocked(GarageAllocationService).mockImplementation(function () {
+      return { findAvailableSpot: vi.fn().mockResolvedValue({ id: "spot-1" }), assign: vi.fn() };
+    } as never);
+
+    const service = new ReservationService({ rpc } as never);
+    await service.createReservation(
+      {
+        last_name: "Kowalski",
+        planned_check_in: "2026-09-02T00:00:00Z",
+        planned_check_out: "2026-09-05T00:00:00Z",
+        source: "phone",
+        parking_type: "carport",
+      },
+      "user-1"
+    );
+
+    expect(rpc).toHaveBeenCalledWith("calculate_total_cost", {
+      p_check_in: "2026-09-02T00:00:00Z",
+      p_check_out: "2026-09-05T00:00:00Z",
+      p_parking_type: "carport",
+    });
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ total_cost: 180, parking_type: "carport" }));
+  });
+
+  it("throws NoPriceListError when no price list covers the check-in date", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "NO_PRICE_LIST: no price list for open_air on 2030-01-01" },
+    });
+    const service = new ReservationService({ rpc } as never);
+
+    await expect(service.calculateCost("2030-01-01T10:00:00Z", "2030-01-03T10:00:00Z")).rejects.toBeInstanceOf(
+      NoPriceListError
+    );
   });
 });
 
@@ -254,5 +334,95 @@ describe("ReservationService.updateReservation — garage buffer revalidation", 
     await service.updateReservation("r1", { notes: "updated" });
 
     expect(GarageAllocationService).not.toHaveBeenCalled();
+  });
+});
+
+describe("ReservationService — travel agency pricing", () => {
+  const AGENCY_ID = "11111111-1111-4111-8111-111111111111";
+
+  function agencyClient(agency: { discount_pct: number; archived_at: string | null } | null) {
+    return {
+      rpc: vi.fn().mockResolvedValue({ data: 50, error: null }),
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: agency, error: null }),
+      }),
+    };
+  }
+
+  it("quoteCost applies the agency discount to the price-list total", async () => {
+    const service = new ReservationService(agencyClient({ discount_pct: 15, archived_at: null }) as never);
+    await expect(
+      service.quoteCost("2026-09-02T10:00:00Z", "2026-09-07T10:00:00Z", "open_air", AGENCY_ID)
+    ).resolves.toEqual({ baseCost: 50, discountPct: 15, totalCost: 42.5 });
+  });
+
+  it("quoteCost without an agency returns the full price", async () => {
+    const service = new ReservationService(agencyClient(null) as never);
+    await expect(service.quoteCost("2026-09-02T10:00:00Z", "2026-09-07T10:00:00Z")).resolves.toEqual({
+      baseCost: 50,
+      discountPct: 0,
+      totalCost: 50,
+    });
+  });
+
+  it("quoteCost rejects an archived agency", async () => {
+    const service = new ReservationService(agencyClient({ discount_pct: 15, archived_at: "2026-09-01" }) as never);
+    await expect(
+      service.quoteCost("2026-09-02T10:00:00Z", "2026-09-07T10:00:00Z", "open_air", AGENCY_ID)
+    ).rejects.toBeInstanceOf(TravelAgencyUnavailableError);
+  });
+
+  it("createReservation ignores a client total for agency reservations (DB prices it)", async () => {
+    const insert = vi.fn().mockReturnThis();
+    vi.mocked(createSupabaseAdminClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        insert,
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: "r1" }, error: null }),
+      }),
+    } as never);
+    const rpc = vi.fn().mockResolvedValue({ data: 180, error: null });
+
+    const service = new ReservationService({ rpc } as never);
+    await service.createReservation(
+      {
+        last_name: "Kowalski",
+        planned_check_in: "2026-09-02T00:00:00Z",
+        planned_check_out: "2026-09-05T00:00:00Z",
+        source: "phone",
+        total_cost: 1,
+        travel_agency_id: AGENCY_ID,
+      },
+      "user-1"
+    );
+
+    expect(rpc).toHaveBeenCalledWith("calculate_total_cost", expect.anything());
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ total_cost: 180, travel_agency_id: AGENCY_ID }));
+  });
+
+  it("maps the AGENCY_ARCHIVED trigger error on create", async () => {
+    vi.mocked(createSupabaseAdminClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: null, error: { message: "AGENCY_ARCHIVED: x" } }),
+      }),
+    } as never);
+    const service = new ReservationService({ rpc: vi.fn().mockResolvedValue({ data: 180, error: null }) } as never);
+
+    await expect(
+      service.createReservation(
+        {
+          last_name: "Kowalski",
+          planned_check_in: "2026-09-02T00:00:00Z",
+          planned_check_out: "2026-09-05T00:00:00Z",
+          source: "phone",
+          travel_agency_id: AGENCY_ID,
+        },
+        "user-1"
+      )
+    ).rejects.toBeInstanceOf(TravelAgencyUnavailableError);
   });
 });

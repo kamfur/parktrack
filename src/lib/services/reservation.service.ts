@@ -19,6 +19,7 @@ import { uniqueFlightDirections } from "../reservations/flight-directions";
 import { enrichDepartures } from "./ktw-arrival-hours.service";
 import { GarageAllocationService } from "./garage-allocation.service";
 import { isCoveredParkingType, type ParkingType } from "../pricing/parking-type";
+import { applyAgencyDiscount } from "../pricing/agency-discount";
 
 export class NoGarageAvailableError extends Error {
   constructor(message = "No garage/carport spot is available within the required buffer") {
@@ -34,9 +35,34 @@ export class NoPriceListError extends Error {
   }
 }
 
+/** Travel agency is archived (cannot be newly assigned) or does not exist. */
+export class TravelAgencyUnavailableError extends Error {
+  constructor(message = "Biuro podróży jest zarchiwizowane lub nie istnieje") {
+    super(message);
+    this.name = "TravelAgencyUnavailableError";
+  }
+}
+
 /** Translates the DB's NO_PRICE_LIST exception (calculate_total_cost / cost trigger) into a typed error. */
 function asPriceListError(message: string | undefined): NoPriceListError | null {
   return message?.includes("NO_PRICE_LIST") ? new NoPriceListError() : null;
+}
+
+/** Typed error for DB exceptions raised by the pricing trigger (price list, agency). */
+function asPricingError(message: string | undefined): Error | null {
+  if (message?.includes("AGENCY_ARCHIVED") || message?.includes("AGENCY_NOT_FOUND")) {
+    return new TravelAgencyUnavailableError();
+  }
+  return asPriceListError(message);
+}
+
+export interface CostQuote {
+  /** Price-list total before any discount */
+  baseCost: number;
+  /** Agency discount in % (0 when no agency) */
+  discountPct: number;
+  /** Price to pay (after the discount) */
+  totalCost: number;
 }
 
 export class ReservationService {
@@ -59,6 +85,32 @@ export class ReservationService {
     }
 
     return Number(data);
+  }
+
+  /**
+   * Preview price including the travel agency discount (current agency value — the DB
+   * snapshots it on assignment and stays authoritative).
+   */
+  async quoteCost(
+    checkIn: string,
+    checkOut: string,
+    parkingType: ParkingType = "open_air",
+    travelAgencyId?: string | null
+  ): Promise<CostQuote> {
+    const baseCost = await this.calculateCost(checkIn, checkOut, parkingType);
+    if (!travelAgencyId) return { baseCost, discountPct: 0, totalCost: baseCost };
+
+    const { data: agency, error } = await this.supabase
+      .from("travel_agencies")
+      .select("discount_pct, archived_at")
+      .eq("id", travelAgencyId)
+      .maybeSingle();
+
+    if (error) throw new Error(`Failed to fetch travel agency: ${error.message}`);
+    if (!agency || agency.archived_at) throw new TravelAgencyUnavailableError();
+
+    const discountPct = Number(agency.discount_pct);
+    return { baseCost, discountPct, totalCost: applyAgencyDiscount(baseCost, discountPct) };
   }
 
   /**
@@ -141,7 +193,7 @@ export class ReservationService {
       first_name: validatedData.firstName,
       email: validatedData.email,
       phone: validatedData.phone,
-      license_plate: validatedData.licensePlate,
+      license_plate: validatedData.licensePlate ?? null,
       planned_check_in: validatedData.checkInDate,
       planned_check_out: validatedData.checkOutDate,
       source: "api" as const,
@@ -176,8 +228,10 @@ export class ReservationService {
     // Validate input data
     const validatedData = await createReservationSchema.parseAsync(command);
 
-    // Calculate total cost if not provided — the price list row follows the requested parking type
-    let totalCost = validatedData.total_cost;
+    // Calculate total cost if not provided — the price list row follows the requested parking type.
+    // Agency reservations are always priced by the DB (price list − agency discount), so a
+    // client total is ignored; the base price is computed here only to surface NO_PRICE_LIST early.
+    let totalCost = validatedData.travel_agency_id ? undefined : validatedData.total_cost;
     if (!totalCost) {
       totalCost = await this.calculateCost(
         validatedData.planned_check_in,
@@ -220,7 +274,7 @@ export class ReservationService {
       .single();
 
     if (error) {
-      throw new Error(`Failed to create reservation: ${error.message}`);
+      throw asPricingError(error.message) ?? new Error(`Failed to create reservation: ${error.message}`);
     }
 
     if (isCoveredParkingType(validatedData.parking_type)) {
@@ -293,6 +347,9 @@ ${data.notes}`
         source: "walk_in" as const,
         parking_type: "open_air" as const,
         total_cost: totalCost,
+        // Paid unless marked otherwise — flag survives the is_paid sync at departure.
+        paid_at_arrival: !data.unpaid,
+        is_paid: !data.unpaid,
         created_by: auditUserId,
         last_modified_by: auditUserId,
       })
@@ -357,7 +414,7 @@ ${data.notes}`
         throw new Error(`Reservation with ID ${id} not found`);
       }
       // The cost trigger re-prices on date/parking type changes and raises when no list covers the date.
-      throw asPriceListError(error.message) ?? new Error(`Failed to update reservation: ${error.message}`);
+      throw asPricingError(error.message) ?? new Error(`Failed to update reservation: ${error.message}`);
     }
 
     return reservation;

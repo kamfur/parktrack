@@ -7,6 +7,7 @@ import {
   changeReturnDateFormSchema,
   editReservationSchema,
   fullReservationSchema,
+  updateReservationSchema,
 } from "@/lib/schemas/reservation.schema";
 
 // ---------------------------------------------------------------------------
@@ -52,8 +53,17 @@ describe("createExternalReservationSchema", () => {
     expect(createExternalReservationSchema.safeParse(omit(GOLDEN, "phone")).success).toBe(false);
   });
 
-  it("rejects when licensePlate is missing", () => {
-    expect(createExternalReservationSchema.safeParse(omit(GOLDEN, "licensePlate")).success).toBe(false);
+  it("accepts a missing licensePlate", () => {
+    expect(createExternalReservationSchema.safeParse(omit(GOLDEN, "licensePlate")).success).toBe(true);
+  });
+
+  it("treats an empty licensePlate as missing", () => {
+    const parsed = createExternalReservationSchema.safeParse({ ...GOLDEN, licensePlate: "  " });
+    expect(parsed.success && parsed.data.licensePlate).toBeUndefined();
+  });
+
+  it("rejects an overlong lastName", () => {
+    expect(createExternalReservationSchema.safeParse({ ...GOLDEN, lastName: "x".repeat(101) }).success).toBe(false);
   });
 
   it("rejects when checkOutDate is before checkInDate", () => {
@@ -218,6 +228,14 @@ describe("createLegacyDepartureSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("treats the stay as paid unless marked unpaid", () => {
+    const base = { last_name: "Kowalski", planned_check_out: hoursFromNow(5) };
+    const paid = createLegacyDepartureSchema.parse(base);
+    const unpaid = createLegacyDepartureSchema.parse({ ...base, unpaid: true });
+    expect(paid.unpaid).toBe(false);
+    expect(unpaid.unpaid).toBe(true);
+  });
+
   it("rejects a missing last name and non-positive cost", () => {
     const result = createLegacyDepartureSchema.safeParse({
       last_name: " ",
@@ -225,5 +243,35 @@ describe("createLegacyDepartureSchema", () => {
       total_cost: 0,
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("travel agency fields", () => {
+  const AGENCY_ID = "11111111-1111-4111-8111-111111111111";
+  const base = {
+    last_name: "Kowalski",
+    planned_check_in: "2026-09-10T14:00:00.000Z",
+    planned_check_out: "2026-09-12T12:00:00.000Z",
+    source: "phone" as const,
+  };
+
+  it("createReservationSchema accepts an agency UUID or null and rejects garbage", () => {
+    expect(createReservationSchema.safeParse({ ...base, travel_agency_id: AGENCY_ID }).success).toBe(true);
+    expect(createReservationSchema.safeParse({ ...base, travel_agency_id: null }).success).toBe(true);
+    expect(createReservationSchema.safeParse({ ...base, travel_agency_id: "biuro" }).success).toBe(false);
+  });
+
+  it("updateReservationSchema allows no_show and clearing the agency", () => {
+    expect(updateReservationSchema.parse({ status: "no_show" }).status).toBe("no_show");
+    expect(updateReservationSchema.parse({ travel_agency_id: null }).travel_agency_id).toBeNull();
+  });
+
+  it("form schemas treat an empty agency as none", () => {
+    const tomorrow = new Date(Date.now() + 86_400_000);
+    const later = new Date(Date.now() + 3 * 86_400_000);
+    const form = { lastName: "Kowalski", checkInDate: tomorrow, checkOutDate: later };
+    expect(fullReservationSchema.safeParse({ ...form, travelAgencyId: "" }).success).toBe(true);
+    expect(editReservationSchema.safeParse({ ...form, travelAgencyId: AGENCY_ID }).success).toBe(true);
+    expect(editReservationSchema.safeParse({ ...form, travelAgencyId: "x" }).success).toBe(false);
   });
 });

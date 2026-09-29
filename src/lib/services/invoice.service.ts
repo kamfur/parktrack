@@ -34,6 +34,13 @@ function withSortedItems(row: unknown): InvoiceDto {
   return { ...invoice, items: [...(invoice.items ?? [])].sort((a, b) => a.position - b.position) };
 }
 
+export class AgencyReservationInvoiceError extends Error {
+  constructor(reservationId: string) {
+    super(`Reservation ${reservationId} is billed to a travel agency (monthly agency invoice)`);
+    this.name = "AgencyReservationInvoiceError";
+  }
+}
+
 export class InvoiceService {
   constructor(private readonly supabase: SupabaseClient) {}
 
@@ -92,6 +99,7 @@ export class InvoiceService {
       if (message.includes("RESERVATION_NOT_FOUND")) throw new ReservationNotFoundError(cmd.reservation_id);
       if (message.includes("RESERVATION_NOT_COMPLETED")) throw new ReservationNotCompletedError(cmd.reservation_id);
       if (message.includes("DUPLICATE_INVOICE")) throw new DuplicateInvoiceError(cmd.reservation_id);
+      if (message.includes("RESERVATION_BILLED_TO_AGENCY")) throw new AgencyReservationInvoiceError(cmd.reservation_id);
       if (message.includes("NOT_AUTHENTICATED")) throw new Error("Not authenticated");
       throw new Error(`Failed to create invoice: ${message}`);
     }

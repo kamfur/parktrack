@@ -387,6 +387,7 @@ export type Database = {
         Row: {
           actual_check_in: string | null
           actual_check_out: string | null
+          agency_discount_pct: number | null
           created_at: string
           created_by: string
           email: string | null
@@ -410,11 +411,13 @@ export type Database = {
           status: Database["public"]["Enums"]["reservation_status"]
           surcharge_amount: number | null
           total_cost: number
+          travel_agency_id: string | null
           updated_at: string
         }
         Insert: {
           actual_check_in?: string | null
           actual_check_out?: string | null
+          agency_discount_pct?: number | null
           created_at?: string
           created_by: string
           email?: string | null
@@ -438,11 +441,13 @@ export type Database = {
           status?: Database["public"]["Enums"]["reservation_status"]
           surcharge_amount?: number | null
           total_cost: number
+          travel_agency_id?: string | null
           updated_at?: string
         }
         Update: {
           actual_check_in?: string | null
           actual_check_out?: string | null
+          agency_discount_pct?: number | null
           created_at?: string
           created_by?: string
           email?: string | null
@@ -466,9 +471,18 @@ export type Database = {
           status?: Database["public"]["Enums"]["reservation_status"]
           surcharge_amount?: number | null
           total_cost?: number
+          travel_agency_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "reservations_travel_agency_id_fkey"
+            columns: ["travel_agency_id"]
+            isOneToOne: false
+            referencedRelation: "travel_agencies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       settings: {
         Row: {

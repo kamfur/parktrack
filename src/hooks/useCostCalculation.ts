@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { UseCostCalculationResult, CostCalculationResponse } from "@/types";
+import type { UseCostCalculationResult, CostCalculationResponse, ParkingType } from "@/types";
 
 /**
  * Hook do obliczania kosztu rezerwacji.
@@ -7,10 +7,19 @@ import type { UseCostCalculationResult, CostCalculationResponse } from "@/types"
  *
  * @param checkInDate - Data przyjazdu
  * @param checkOutDate - Data wyjazdu
+ * @param parkingType - Typ miejsca (wiersz cennika)
+ * @param travelAgencyId - Biuro podróży (cena po rabacie biura)
  * @returns Stan obliczania kosztu
  */
-export function useCostCalculation(checkInDate: Date | null, checkOutDate: Date | null): UseCostCalculationResult {
+export function useCostCalculation(
+  checkInDate: Date | null,
+  checkOutDate: Date | null,
+  parkingType: ParkingType = "open_air",
+  travelAgencyId: string | null = null
+): UseCostCalculationResult {
   const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
+  const [baseCost, setBaseCost] = useState<number | null>(null);
+  const [discountPct, setDiscountPct] = useState<number>(0);
   const [days, setDays] = useState<number>(0);
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
@@ -19,6 +28,8 @@ export function useCostCalculation(checkInDate: Date | null, checkOutDate: Date 
     // Reset state if dates are invalid
     if (!checkInDate || !checkOutDate || checkOutDate <= checkInDate) {
       setEstimatedCost(null);
+      setBaseCost(null);
+      setDiscountPct(0);
       setDays(0);
       setIsCalculating(false);
       setError(null);
@@ -33,7 +44,9 @@ export function useCostCalculation(checkInDate: Date | null, checkOutDate: Date 
         const params = new URLSearchParams({
           check_in: checkInDate.toISOString(),
           check_out: checkOutDate.toISOString(),
+          parking_type: parkingType,
         });
+        if (travelAgencyId) params.set("travel_agency_id", travelAgencyId);
 
         const response = await fetch(`/api/calculate-cost?${params.toString()}`);
 
@@ -44,10 +57,14 @@ export function useCostCalculation(checkInDate: Date | null, checkOutDate: Date 
         const data: CostCalculationResponse = await response.json();
 
         setEstimatedCost(data.totalCost);
+        setBaseCost(data.baseCost ?? data.totalCost);
+        setDiscountPct(data.discountPct ?? 0);
         setDays(data.days);
       } catch (err) {
         setError(err instanceof Error ? err : new Error("Unknown error"));
         setEstimatedCost(null);
+        setBaseCost(null);
+        setDiscountPct(0);
         setDays(0);
       } finally {
         setIsCalculating(false);
@@ -55,10 +72,12 @@ export function useCostCalculation(checkInDate: Date | null, checkOutDate: Date 
     };
 
     calculateCost();
-  }, [checkInDate, checkOutDate]);
+  }, [checkInDate, checkOutDate, parkingType, travelAgencyId]);
 
   return {
     estimatedCost,
+    baseCost,
+    discountPct,
     days,
     isCalculating,
     error,

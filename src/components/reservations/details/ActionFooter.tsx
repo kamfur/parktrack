@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { LogIn, LogOut, Edit, XCircle, FileText } from "lucide-react";
+import { LogIn, LogOut, Edit, XCircle, FileText, UserX } from "lucide-react";
 import type { ActionFooterProps, ReservationStatus } from "@/types";
 
 /**
@@ -13,8 +13,10 @@ export function ActionFooter({
   onCheckOut,
   onEdit,
   onCancel,
+  onNoShow,
   isProcessing,
   existingInvoiceId,
+  isAgencyReservation,
 }: ActionFooterProps) {
   // Determine which actions are available based on status
   const availableActions = getAvailableActions(status);
@@ -51,6 +53,18 @@ export function ActionFooter({
           </Button>
         )}
 
+        {availableActions.canMarkNoShow && (
+          <Button
+            onClick={onNoShow}
+            disabled={isProcessing}
+            variant="outline"
+            className="gap-2 min-h-[44px] text-sm sm:text-base"
+          >
+            <UserX className="h-4 w-4" />
+            Nie przyjechał
+          </Button>
+        )}
+
         {availableActions.canCancel && (
           <Button
             onClick={onCancel}
@@ -64,7 +78,9 @@ export function ActionFooter({
           </Button>
         )}
 
+        {/* Agency stays go on the agency's monthly invoice (Biura podróży module). */}
         {status === "completed" &&
+          (existingInvoiceId || !isAgencyReservation) &&
           (existingInvoiceId ? (
             <a href={`/faktury/${existingInvoiceId}/druk`}>
               <Button variant="outline" className="gap-2 min-h-[44px] text-sm sm:text-base">
@@ -94,5 +110,6 @@ function getAvailableActions(status: ReservationStatus) {
     canCheckOut: status === "in_progress",
     canEdit: status === "confirmed" || status === "in_progress",
     canCancel: status === "confirmed" || status === "in_progress",
+    canMarkNoShow: status === "confirmed",
   };
 }

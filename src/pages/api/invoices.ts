@@ -7,6 +7,7 @@ import {
   ReservationNotFoundError,
   ReservationNotCompletedError,
   DuplicateInvoiceError,
+  AgencyReservationInvoiceError,
 } from "../../lib/services/invoice.service";
 
 export const prerender = false;
@@ -123,7 +124,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
         headers: { "Content-Type": "application/json" },
       });
     }
-    if (err instanceof ReservationNotCompletedError) {
+    if (err instanceof ReservationNotCompletedError || err instanceof AgencyReservationInvoiceError) {
       return new Response(JSON.stringify({ error: err.message }), {
         status: 422,
         headers: { "Content-Type": "application/json" },

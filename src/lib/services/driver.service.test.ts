@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DriverService, DriverServiceError, syncIsPaid } from "./driver.service";
+import { DriverService, DriverServiceError, syncIsPaid, withoutPaymentForAgency } from "./driver.service";
 
 type Row = Record<string, unknown>;
 
@@ -165,5 +165,32 @@ describe("DriverService handled lists", () => {
     expect(client.builder.not).toHaveBeenCalledWith("actual_check_out", "is", null);
     expect(client.builder.gte).toHaveBeenCalledWith("actual_check_out", "2026-09-08T12:00:00.000Z");
     expect(client.builder.eq).toHaveBeenCalledWith("status", "completed");
+  });
+});
+
+describe("travel agency stays", () => {
+  it("withoutPaymentForAgency strips driver payment fields only for agency stays", () => {
+    const data = { status: "completed", is_paid: false, paid_at_departure: true, surcharge_amount: 20, notes: "x" };
+    expect(withoutPaymentForAgency({ travel_agency_id: "a1" }, data)).toEqual({ status: "completed", notes: "x" });
+    expect(withoutPaymentForAgency({ travel_agency_id: null }, data)).toEqual(data);
+  });
+
+  it("confirmArrival does not send payment flags for an agency stay", async () => {
+    const { from, update } = mockSupabase({
+      id: "r1",
+      status: "confirmed",
+      travel_agency_id: "a1",
+      paid_at_arrival: false,
+      paid_at_departure: false,
+      planned_check_out: "2026-09-12T10:00:00Z",
+    });
+    const service = new DriverService({ from } as never);
+
+    await service.confirmArrival("r1", { paid_at_arrival: true });
+
+    const sent = update.mock.calls[0][0];
+    expect(sent.status).toBe("in_progress");
+    expect(sent).not.toHaveProperty("is_paid");
+    expect(sent).not.toHaveProperty("paid_at_arrival");
   });
 });

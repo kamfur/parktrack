@@ -8,7 +8,7 @@ import {
   isoToDatetimeLocal,
   type DriverArrivalFormData,
 } from "@/lib/schemas/driver-form.schema";
-import { driverDisplayName } from "@/lib/driver/display";
+import { driverDisplayName, isAgencyPaid } from "@/lib/driver/display";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -68,7 +68,7 @@ export function DriverArrivalDialog({
     setSubmitError(null);
     try {
       const body: Record<string, unknown> = {
-        paid_at_arrival: data.paid_at_arrival,
+        ...(isAgencyPaid(reservation) ? {} : { paid_at_arrival: data.paid_at_arrival }),
         passenger_count: data.passenger_count ?? null,
         parking_sector: data.parking_sector?.trim() ? data.parking_sector.trim() : null,
         license_plate: data.license_plate?.trim() ? data.license_plate.trim().toUpperCase() : null,
@@ -182,18 +182,24 @@ export function DriverArrivalDialog({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="paid_at_arrival"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
-                  <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
-                  </FormControl>
-                  <FormLabel className="font-normal">Opłacono przy przyjeździe</FormLabel>
-                </FormItem>
-              )}
-            />
+            {reservation && isAgencyPaid(reservation) ? (
+              <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                Biuro podróży – opłacone. Nie pobieraj płatności od klienta.
+              </p>
+            ) : (
+              <FormField
+                control={form.control}
+                name="paid_at_arrival"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
+                    </FormControl>
+                    <FormLabel className="font-normal">Opłacono przy przyjeździe</FormLabel>
+                  </FormItem>
+                )}
+              />
+            )}
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
             <DialogFooter className="gap-2 sm:gap-0">
               <Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)}>

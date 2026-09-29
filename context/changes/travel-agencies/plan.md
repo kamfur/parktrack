@@ -722,10 +722,10 @@ Volumes are small (tens to hundreds of reservations per agency per month). `agen
 
 #### Automated
 
-- [x] 3.1 Migration applies: `npx supabase db reset`
-- [x] 3.2 pgTAP passes: `npx supabase test db`
-- [x] 3.3 Unit and integration tests pass: `npm run test`
-- [x] 3.4 Type checking passes: `npm run typecheck`
+- [x] 3.1 Migration applies: `npx supabase db reset` — b3361ab
+- [x] 3.2 pgTAP passes: `npx supabase test db` — b3361ab
+- [x] 3.3 Unit and integration tests pass: `npm run test` — b3361ab
+- [x] 3.4 Type checking passes: `npm run typecheck` — b3361ab
 - [ ] 3.5 Linting passes: `npm run lint`
 
 #### Manual
@@ -737,10 +737,10 @@ Volumes are small (tens to hundreds of reservations per agency per month). `agen
 
 #### Automated
 
-- [ ] 4.1 Migration applies: `npx supabase db reset`
-- [ ] 4.2 pgTAP passes: `npx supabase test db`
-- [ ] 4.3 Unit tests pass: `npm run test`
-- [ ] 4.4 Type checking passes: `npm run typecheck`
+- [x] 4.1 Migration applies: `npx supabase db reset`
+- [x] 4.2 pgTAP passes: `npx supabase test db`
+- [x] 4.3 Unit tests pass: `npm run test`
+- [x] 4.4 Type checking passes: `npm run typecheck`
 - [ ] 4.5 Linting passes: `npm run lint`
 
 #### Manual

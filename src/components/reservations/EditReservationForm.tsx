@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DateTimePicker } from "@/components/shared/DateTimePicker";
 import { CostPreview } from "./CostPreview";
+import { PARKING_TYPES, type ParkingType } from "@/lib/pricing/parking-type";
 import { FlightDirectionInput } from "./FlightDirectionInput";
+import { TravelAgencySelect } from "./TravelAgencySelect";
 import { Loader2 } from "lucide-react";
 
 function parseDate(value: string): Date {
@@ -39,10 +41,11 @@ export function EditReservationForm({
       checkOutDate: parseDate(reservation.planned_check_out),
       flightDirection: reservation.flight_direction || "",
       notes: reservation.notes || "",
+      travelAgencyId: reservation.travel_agency_id ?? "",
     },
   });
 
-  const { checkInDate, checkOutDate, notes } = form.watch();
+  const { checkInDate, checkOutDate, notes, travelAgencyId } = form.watch();
 
   const capitalizeFirst = (value: string) => {
     if (!value) return value;
@@ -277,6 +280,31 @@ export function EditReservationForm({
         </div>
 
         <div className="space-y-4">
+          <h3 className="text-sm font-medium text-neutral-700">Płatnik</h3>
+
+          <FormField
+            control={form.control}
+            name="travelAgencyId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Biuro podróży</FormLabel>
+                <FormControl>
+                  <TravelAgencySelect
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    disabled={!editRules.canEditTravelAgency}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Zmiana biura przelicza cenę; rezerwacja biura jest opłacona, klient nie płaci na parkingu.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="space-y-4">
           <h3 className="text-sm font-medium text-neutral-700">Notatki</h3>
 
           <FormField
@@ -306,7 +334,17 @@ export function EditReservationForm({
           />
         </div>
 
-        <CostPreview checkInDate={checkInDate} checkOutDate={checkOutDate} isCalculating={false} />
+        <CostPreview
+          checkInDate={checkInDate}
+          checkOutDate={checkOutDate}
+          parkingType={
+            (PARKING_TYPES as readonly string[]).includes(reservation.parking_type)
+              ? (reservation.parking_type as ParkingType)
+              : "open_air"
+          }
+          travelAgencyId={travelAgencyId || null}
+          isCalculating={false}
+        />
 
         <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { flightDirectionLabel, garageSpotLabel, isNearCheckout, isOverdue } from "./display";
+import { amountDue, flightDirectionLabel, garageSpotLabel, isAgencyPaid, isNearCheckout, isOverdue } from "./display";
 
 describe("isOverdue", () => {
   it("flags yesterday as overdue relative to a fixed now", () => {
@@ -39,5 +39,38 @@ describe("garageSpotLabel", () => {
 
   it("returns a formatted label for a garage reservation with a known spot", () => {
     expect(garageSpotLabel("garage", "Garaż 1")).toBe("Garaż: Garaż 1");
+  });
+
+  it("labels a carport reservation as Wiata", () => {
+    expect(garageSpotLabel("carport", "W1")).toBe("Wiata: W1");
+  });
+});
+
+describe("amountDue", () => {
+  it("returns the total for an unpaid reservation", () => {
+    expect(amountDue({ is_paid: false, total_cost: 210, surcharge_amount: null })).toBe(210);
+  });
+
+  it("adds a recorded surcharge", () => {
+    expect(amountDue({ is_paid: false, total_cost: 210, surcharge_amount: 40 })).toBe(250);
+  });
+
+  it("returns null once paid (e.g. at arrival)", () => {
+    expect(amountDue({ is_paid: true, total_cost: 210, surcharge_amount: null })).toBeNull();
+  });
+
+  it("returns null when there is nothing to collect", () => {
+    expect(amountDue({ is_paid: false, total_cost: 0, surcharge_amount: null })).toBeNull();
+  });
+});
+
+describe("isAgencyPaid", () => {
+  it("is true only when a travel agency pays", () => {
+    expect(isAgencyPaid({ travel_agency_id: "11111111-1111-4111-8111-111111111111" })).toBe(true);
+    expect(isAgencyPaid({ travel_agency_id: null })).toBe(false);
+  });
+
+  it("agency stays show nothing to collect (the DB keeps them paid)", () => {
+    expect(amountDue({ is_paid: true, total_cost: 120, surcharge_amount: null })).toBeNull();
   });
 });

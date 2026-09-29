@@ -7,11 +7,13 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PARKING_TYPES, PARKING_TYPE_LABELS } from "@/lib/pricing/parking-type";
 import { DateTimePicker } from "@/components/shared/DateTimePicker";
 import { CostPreview } from "./CostPreview";
 import { AvailabilityIndicator } from "./AvailabilityIndicator";
 import { FlightDirectionInput } from "./FlightDirectionInput";
+import { TravelAgencySelect } from "./TravelAgencySelect";
 import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
 import { Loader2 } from "lucide-react";
 
@@ -42,11 +44,12 @@ export function FullReservationForm({
       checkOutDate: initialData?.checkOutDate || tomorrow,
       flightDirection: initialData?.flightDirection || "",
       notes: initialData?.notes || "",
-      requiresGarage: initialData?.requiresGarage ?? false,
+      parkingType: initialData?.parkingType ?? "open_air",
+      travelAgencyId: initialData?.travelAgencyId ?? "",
     },
   });
 
-  const { checkInDate, checkOutDate, notes } = form.watch();
+  const { checkInDate, checkOutDate, notes, parkingType, travelAgencyId } = form.watch();
   const { isAvailable, isChecking } = useAvailabilityCheck(checkInDate, checkOutDate);
 
   // Auto-capitalize first letter
@@ -262,13 +265,43 @@ export function FullReservationForm({
 
           <FormField
             control={form.control}
-            name="requiresGarage"
+            name="parkingType"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-center gap-2 space-y-0">
+              <FormItem>
+                <FormLabel>Typ miejsca</FormLabel>
+                <Select value={field.value ?? "open_air"} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {PARKING_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {PARKING_TYPE_LABELS[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Wiata i garaż są przydzielane automatycznie; cena wg cennika dla typu.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="travelAgencyId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Biuro podróży</FormLabel>
                 <FormControl>
-                  <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
+                  <TravelAgencySelect value={field.value ?? ""} onChange={field.onChange} />
                 </FormControl>
-                <FormLabel className="font-normal">Wymaga garażu/wiaty</FormLabel>
+                <FormDescription>Rezerwację opłaca biuro — cena z cennika minus rabat biura.</FormDescription>
+                <FormMessage />
               </FormItem>
             )}
           />
@@ -324,7 +357,13 @@ export function FullReservationForm({
         </div>
 
         {/* Cost Preview */}
-        <CostPreview checkInDate={checkInDate} checkOutDate={checkOutDate} isCalculating={false} />
+        <CostPreview
+          checkInDate={checkInDate}
+          checkOutDate={checkOutDate}
+          parkingType={parkingType ?? "open_air"}
+          travelAgencyId={travelAgencyId || null}
+          isCalculating={false}
+        />
 
         {/* Availability Indicator */}
         <AvailabilityIndicator checkInDate={checkInDate} checkOutDate={checkOutDate} isChecking={false} />

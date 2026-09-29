@@ -173,6 +173,7 @@ export type CreateReservationCommand = Omit<
     | "license_plate"
     | "notes"
     | "parking_type"
+    | "travel_agency_id"
   >,
   never
 > & {
@@ -558,6 +559,8 @@ export interface CostPreviewProps {
   checkOutDate: Date | null;
   /** Typ miejsca — wybiera wiersz cennika (domyślnie parking) */
   parkingType?: ParkingType;
+  /** Biuro podróży — cena po jego rabacie, płaci biuro */
+  travelAgencyId?: string | null;
   /** Czy koszt jest w trakcie obliczania */
   isCalculating: boolean;
 }
@@ -596,6 +599,10 @@ export interface CostCalculationResponse {
   days: number;
   /** Koszt za dzień */
   costPerDay: number;
+  /** Cena z cennika przed rabatem biura */
+  baseCost: number;
+  /** Rabat biura podróży w % (0 bez biura) */
+  discountPct: number;
 }
 
 /**
@@ -618,6 +625,10 @@ export interface UseAvailabilityCheckResult {
 export interface UseCostCalculationResult {
   /** Obliczony koszt (null jeśli nie obliczano) */
   estimatedCost: number | null;
+  /** Cena z cennika przed rabatem biura (null jeśli nie obliczano) */
+  baseCost: number | null;
+  /** Rabat biura w % (0 bez biura) */
+  discountPct: number;
   /** Liczba dni */
   days: number;
   /** Czy obliczanie jest w trakcie */
@@ -781,6 +792,8 @@ export interface ConditionalEditRules {
   canEditVehicleInfo: boolean;
   /** Czy można edytować notatki */
   canEditNotes: boolean;
+  /** Czy można zmienić biuro podróży (płatnika) */
+  canEditTravelAgency: boolean;
 }
 
 /**
@@ -820,6 +833,10 @@ export interface FinancialSectionProps {
   isPaid: boolean;
   paymentMethod: "cash" | "card" | "transfer" | null;
   source: ReservationSource;
+  /** Paying travel agency (name), when the stay is billed to an agency */
+  travelAgencyName?: string | null;
+  /** Agency discount snapshot in % */
+  agencyDiscountPct?: number | null;
 }
 
 /**
@@ -857,8 +874,12 @@ export interface ActionFooterProps {
   onCheckOut: () => void;
   onEdit: () => void;
   onCancel: () => void;
+  /** Marks a confirmed reservation as no-show (client never arrived) */
+  onNoShow: () => void;
   isProcessing: boolean;
   existingInvoiceId: string | null;
+  /** Agency reservations are billed on the agency's monthly invoice, never individually */
+  isAgencyReservation: boolean;
 }
 
 // ############################################################################

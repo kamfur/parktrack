@@ -1,17 +1,26 @@
 import type { APIRoute } from "astro";
+import { z } from "zod";
 import type { CostCalculationResponse } from "../../types";
+import { PARKING_TYPES } from "../../lib/pricing/parking-type";
+import {
+  NoPriceListError,
+  ReservationService,
+  TravelAgencyUnavailableError,
+} from "../../lib/services/reservation.service";
 
 export const prerender = false;
 
 /**
  * GET /api/calculate-cost
  *
- * Oblicza całkowity koszt rezerwacji na podstawie dat przyjazdu i wyjazdu.
- * Wykorzystuje funkcję bazodanową calculate_total_cost.
+ * Oblicza całkowity koszt rezerwacji na podstawie dat przyjazdu i wyjazdu
+ * z cennika obowiązującego w dniu przyjazdu (funkcja bazodanowa calculate_total_cost).
  *
  * Query params:
  * - check_in (required): Data przyjazdu (ISO 8601)
  * - check_out (required): Data wyjazdu (ISO 8601)
+ * - parking_type (optional): open_air (domyślnie) | carport | garage
+ * - travel_agency_id (optional): UUID biura — cena po rabacie biura (podgląd; baza liczy ostatecznie)
  *
  * Response: CostCalculationResponse
  */
@@ -20,6 +29,30 @@ export const GET: APIRoute = async ({ url, locals }) => {
     // Parse query parameters
     const checkIn = url.searchParams.get("check_in");
     const checkOut = url.searchParams.get("check_out");
+    const parkingTypeResult = z
+      .enum(PARKING_TYPES)
+      .default("open_air")
+      .safeParse(url.searchParams.get("parking_type") ?? undefined);
+
+    const travelAgencyResult = z
+      .string()
+      .uuid()
+      .optional()
+      .safeParse(url.searchParams.get("travel_agency_id") || undefined);
+
+    if (!travelAgencyResult.success) {
+      return new Response(JSON.stringify({ error: "travel_agency_id must be a valid UUID" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (!parkingTypeResult.success) {
+      return new Response(JSON.stringify({ error: `parking_type must be one of: ${PARKING_TYPES.join(", ")}` }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     // Validate required parameters
     if (!checkIn || !checkOut) {
@@ -67,20 +100,12 @@ export const GET: APIRoute = async ({ url, locals }) => {
     const millisecondsPerDay = 24 * 60 * 60 * 1000;
     const days = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / millisecondsPerDay);
 
-    // Call database function to calculate total cost
-    // Note: Parameter names must match exactly with function definition (p_check_in, p_check_out)
-    const { data: totalCost, error: costError } = await locals.supabase.rpc("calculate_total_cost", {
-      p_check_in: checkIn,
-      p_check_out: checkOut,
-    });
-
-    if (costError) {
-      throw new Error(`Failed to calculate cost: ${costError.message}`);
-    }
-
-    if (totalCost === null || totalCost === undefined) {
-      throw new Error("Cost calculation returned null");
-    }
+    const { baseCost, discountPct, totalCost } = await new ReservationService(locals.supabase).quoteCost(
+      checkIn,
+      checkOut,
+      parkingTypeResult.data,
+      travelAgencyResult.data
+    );
 
     // Get cost per day (simple division)
     const costPerDay = days > 0 ? totalCost / days : 0;
@@ -90,6 +115,8 @@ export const GET: APIRoute = async ({ url, locals }) => {
       totalCost: totalCost,
       days: days,
       costPerDay: costPerDay,
+      baseCost,
+      discountPct,
     };
 
     return new Response(JSON.stringify(response), {
@@ -97,6 +124,20 @@ export const GET: APIRoute = async ({ url, locals }) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    if (error instanceof TravelAgencyUnavailableError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (error instanceof NoPriceListError) {
+      return new Response(JSON.stringify({ error: "Brak cennika obejmującego datę przyjazdu" }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     console.error("Error calculating cost:", error);
 
     return new Response(

@@ -9,6 +9,7 @@ import type {
   GarageOccupancyEntryDto,
 } from "@/types";
 import { garageSpotLabel } from "@/lib/driver/display";
+import { isCoveredParkingType } from "@/lib/pricing/parking-type";
 
 interface UseReservationDetailsParams {
   reservationId: string;
@@ -55,6 +56,8 @@ interface UseReservationDetailsResult {
   performCheckIn: (body: Record<string, unknown>) => Promise<void>;
   performCheckOut: (body: Record<string, unknown>) => Promise<void>;
   cancelReservation: (reason?: string) => Promise<void>;
+  /** Marks a confirmed reservation whose client never arrived (status no_show). */
+  markNoShow: () => Promise<void>;
 
   // Processing state
   isProcessing: boolean;
@@ -117,7 +120,7 @@ export function useReservationDetails({
         // API returns single object
         setReservation(data);
 
-        if (data.parking_type === "garage") {
+        if (isCoveredParkingType(data.parking_type)) {
           try {
             const garageRes = await fetch(`/api/garage-assignments`);
             const entries: GarageOccupancyEntryDto[] = garageRes.ok ? await garageRes.json() : [];
@@ -305,6 +308,15 @@ export function useReservationDetails({
     [updateReservation, closeCancelDialog, reservation]
   );
 
+  const markNoShow = useCallback(async () => {
+    setIsProcessing(true);
+    try {
+      await updateReservation({ status: "no_show" });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [updateReservation]);
+
   // Build ViewModel
   const viewModel: ReservationDetailsViewModel | null = reservation
     ? buildViewModel(reservation, garageSpotName)
@@ -339,6 +351,7 @@ export function useReservationDetails({
     performCheckIn,
     performCheckOut,
     cancelReservation,
+    markNoShow,
     isProcessing,
   };
 }
@@ -459,6 +472,7 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditPersonalInfo: true,
         canEditVehicleInfo: true,
         canEditNotes: true,
+        canEditTravelAgency: true,
       };
 
     case "in_progress":
@@ -468,6 +482,7 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditPersonalInfo: true,
         canEditVehicleInfo: true,
         canEditNotes: true,
+        canEditTravelAgency: true,
       };
 
     case "completed":
@@ -479,6 +494,7 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditPersonalInfo: false,
         canEditVehicleInfo: false,
         canEditNotes: true, // ONLY NOTES
+        canEditTravelAgency: false,
       };
 
     default:
@@ -493,6 +509,7 @@ function getDefaultEditRules(): ConditionalEditRules {
     canEditPersonalInfo: false,
     canEditVehicleInfo: false,
     canEditNotes: false,
+    canEditTravelAgency: false,
   };
 }
 

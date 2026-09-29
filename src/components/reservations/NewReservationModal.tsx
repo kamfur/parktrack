@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { QuickReservationForm } from "./QuickReservationForm";
 import { FullReservationForm } from "./FullReservationForm";
 import { useCreateReservation } from "@/hooks/useCreateReservation";
-import { useCostCalculation } from "@/hooks/useCostCalculation";
 
 /**
  * Główny kontener modala nowej rezerwacji.
@@ -20,9 +19,6 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
   const [formData, setFormData] = useState<Partial<FullReservationFormData>>({});
 
   const { createReservation, isCreating } = useCreateReservation();
-
-  // Get estimated cost for both modes
-  const { estimatedCost } = useCostCalculation(formData.checkInDate || null, formData.checkOutDate || null);
 
   // Transform Quick Mode data to API command
   const transformQuickToCommand = (data: QuickReservationFormData): CreateReservationCommand => {
@@ -37,11 +33,7 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
       source: "phone",
     };
 
-    // Only include total_cost if it's a positive number (server will calculate if not provided)
-    if (estimatedCost && estimatedCost > 0) {
-      command.total_cost = estimatedCost;
-    }
-
+    // total_cost omitted — the server prices it from the price list
     return command;
   };
 
@@ -62,14 +54,11 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
       planned_check_in: data.checkInDate.toISOString(),
       planned_check_out: data.checkOutDate.toISOString(),
       source: "phone",
-      parking_type: data.requiresGarage ? "garage" : "open_air",
+      parking_type: data.parkingType ?? "open_air",
+      travel_agency_id: data.travelAgencyId || null,
     };
 
-    // Only include total_cost if it's a positive number (server will calculate if not provided)
-    if (estimatedCost && estimatedCost > 0) {
-      command.total_cost = estimatedCost;
-    }
-
+    // total_cost omitted — the server prices it from the price list row for the parking type
     return command;
   };
 

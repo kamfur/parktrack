@@ -7,11 +7,17 @@ import { PARKING_TYPES } from "../pricing/parking-type";
  */
 export const createExternalReservationSchema = z
   .object({
-    lastName: z.string().min(1, "Last name is required"),
-    firstName: z.string().min(1, "First name is required"),
-    email: z.string().email("Invalid email address"),
-    phone: z.string().min(9, "Phone number must be at least 9 characters"),
-    licensePlate: z.string().min(1, "License plate is required"),
+    lastName: z.string().trim().min(1, "Last name is required").max(100, "Last name is too long"),
+    firstName: z.string().trim().min(1, "First name is required").max(100, "First name is too long"),
+    email: z.string().email("Invalid email address").max(100, "Email is too long"),
+    phone: z.string().trim().min(9, "Phone number must be at least 9 characters").max(32, "Phone number is too long"),
+    // Optional: website customers often don't know the car yet; the driver enters it on arrival.
+    licensePlate: z
+      .string()
+      .trim()
+      .max(32, "License plate is too long")
+      .optional()
+      .transform((value) => value || undefined),
     checkInDate: z.string().datetime("Invalid check-in date format"),
     checkOutDate: z.string().datetime("Invalid check-out date format"),
   })
@@ -50,6 +56,8 @@ export const createReservationSchema = z
     notes: z.string().optional(),
     flight_direction: z.string().max(100, "Flight direction must be at most 100 characters").optional(),
     parking_type: z.enum(PARKING_TYPES).default("open_air"),
+    /** Paying travel agency; the DB then prices with its discount and marks the stay paid. */
+    travel_agency_id: z.string().uuid("Invalid travel agency ID").nullable().optional(),
   })
   .refine(
     (data) => {
@@ -87,7 +95,7 @@ export const updateReservationSchema = z.object({
   license_plate: z.string().optional(),
   notes: z.string().optional(),
   flight_direction: z.string().max(100, "Flight direction must be at most 100 characters").optional().nullable(),
-  status: z.enum(["pending", "confirmed", "in_progress", "completed", "cancelled"]).optional(),
+  status: z.enum(["pending", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(),
   actual_check_in: z.string().datetime("Invalid actual check-in date format").optional(),
   actual_check_out: z.string().datetime("Invalid actual check-out date format").optional(),
   passenger_count: z.number().int().min(0).max(99).nullable().optional(),
@@ -97,6 +105,7 @@ export const updateReservationSchema = z.object({
   surcharge_amount: z.number().nonnegative().nullable().optional(),
   is_paid: z.boolean().optional(),
   parking_type: z.enum(PARKING_TYPES).optional(),
+  travel_agency_id: z.string().uuid("Invalid travel agency ID").nullable().optional(),
 });
 
 export type UpdateReservationSchema = typeof updateReservationSchema;
@@ -193,6 +202,8 @@ export const fullReservationSchema = z
       .or(z.literal("")),
     notes: z.string().max(1000, "Notatki mogą zawierać maksymalnie 1000 znaków").optional(),
     parkingType: z.enum(PARKING_TYPES).optional(),
+    /** "" = brak biura (klient indywidualny) */
+    travelAgencyId: z.string().uuid("Nieprawidłowe biuro podróży").optional().or(z.literal("")),
   })
   .refine(
     (data) => {
@@ -250,6 +261,8 @@ export const editReservationSchema = z
       .optional()
       .or(z.literal("")),
     notes: z.string().max(1000, "Notatki mogą zawierać maksymalnie 1000 znaków").optional().or(z.literal("")),
+    /** "" = brak biura (klient indywidualny) */
+    travelAgencyId: z.string().uuid("Nieprawidłowe biuro podróży").optional().or(z.literal("")),
   })
   .refine(
     (data) => {
@@ -284,6 +297,8 @@ export const createLegacyDepartureSchema = z
     passenger_count: z.number().int().min(0).max(99, "Maksymalnie 99 pasażerów").optional(),
     planned_check_out: z.string().datetime("Nieprawidłowa data powrotu"),
     total_cost: z.number().positive("Kwota musi być dodatnia").optional(),
+    /** Rule: pre-go-live stays count as paid unless staff explicitly marks them unpaid. */
+    unpaid: z.boolean().default(false),
   })
   // Arrival is "now", so the return must be in the future.
   .refine((data) => Date.parse(data.planned_check_out) > Date.now(), {

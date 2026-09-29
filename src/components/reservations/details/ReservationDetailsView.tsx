@@ -17,6 +17,7 @@ import { EditReservationForm } from "@/components/reservations/EditReservationFo
 import { DriverArrivalDialog } from "@/components/driver/DriverArrivalDialog";
 import { DriverDepartureDialog } from "@/components/driver/DriverDepartureDialog";
 import { useReservationDetails } from "@/hooks/useReservationDetails";
+import { useTravelAgency } from "@/hooks/useTravelAgencies";
 
 /**
  * Główny kontener widoku szczegółów rezerwacji.
@@ -51,12 +52,14 @@ export function ReservationDetailsView({
     openCancelDialog,
     closeCancelDialog,
     cancelReservation,
+    markNoShow,
     performCheckIn,
     performCheckOut,
     enterEditMode,
     exitEditMode,
     isProcessing,
   } = useReservationDetails({ reservationId, enabled: isOpen, initialEditMode });
+  const travelAgency = useTravelAgency(reservation?.travel_agency_id ?? null);
 
   const lastNotifiedUpdateRef = useRef<string | null>(null);
 
@@ -83,10 +86,6 @@ export function ReservationDetailsView({
   const handleEditSubmit = async (data: EditReservationFormData) => {
     if (!reservation) return;
 
-    const datesChanged =
-      data.checkInDate.toISOString() !== new Date(reservation.planned_check_in).toISOString() ||
-      data.checkOutDate.toISOString() !== new Date(reservation.planned_check_out).toISOString();
-
     const payload: Parameters<typeof updateReservation>[0] = {
       last_name: data.lastName.trim(),
       first_name: data.firstName?.trim() || "",
@@ -103,24 +102,12 @@ export function ReservationDetailsView({
     if (editRules.canEditCheckOut) {
       payload.planned_check_out = data.checkOutDate.toISOString();
     }
-
-    if (datesChanged && (editRules.canEditCheckIn || editRules.canEditCheckOut)) {
-      try {
-        const params = new URLSearchParams({
-          check_in: data.checkInDate.toISOString(),
-          check_out: data.checkOutDate.toISOString(),
-        });
-        const costRes = await fetch(`/api/calculate-cost?${params.toString()}`);
-        if (costRes.ok) {
-          const costData = (await costRes.json()) as { totalCost?: number };
-          if (typeof costData.totalCost === "number" && costData.totalCost > 0) {
-            payload.total_cost = costData.totalCost;
-          }
-        }
-      } catch {
-        // Keep existing cost if recalculation fails
-      }
+    if (editRules.canEditTravelAgency) {
+      const nextAgencyId = data.travelAgencyId || null;
+      if (nextAgencyId !== (reservation.travel_agency_id ?? null)) payload.travel_agency_id = nextAgencyId;
     }
+
+    // total_cost is re-priced by the DB trigger (price list + parking type) when dates change.
 
     try {
       await updateReservation(payload);
@@ -170,6 +157,22 @@ export function ReservationDetailsView({
       toast.error("Nie udało się anulować rezerwacji");
       // eslint-disable-next-line no-console
       console.error("Cancel reservation error:", err);
+    }
+  };
+
+  const handleNoShow = async () => {
+    if (
+      !window.confirm("Oznaczyć rezerwację jako „nie przyjechał”? Tej zmiany nie da się cofnąć z poziomu aplikacji.")
+    ) {
+      return;
+    }
+    try {
+      await markNoShow();
+      toast.success("Rezerwacja oznaczona: nie przyjechał");
+    } catch (err) {
+      toast.error("Nie udało się oznaczyć rezerwacji");
+      // eslint-disable-next-line no-console
+      console.error("No-show error:", err);
     }
   };
 
@@ -244,6 +247,8 @@ export function ReservationDetailsView({
                           : null
                       }
                       source={reservation.source}
+                      travelAgencyName={reservation.travel_agency_id ? (travelAgency?.name ?? "Biuro podróży") : null}
+                      agencyDiscountPct={reservation.agency_discount_pct}
                     />
 
                     <NotesSection
@@ -266,8 +271,10 @@ export function ReservationDetailsView({
                   onCheckOut={openCheckOutModal}
                   onEdit={enterEditMode}
                   onCancel={openCancelDialog}
+                  onNoShow={handleNoShow}
                   isProcessing={isProcessing}
                   existingInvoiceId={existingInvoice?.id ?? null}
+                  isAgencyReservation={reservation.travel_agency_id !== null}
                 />
               )}
             </>

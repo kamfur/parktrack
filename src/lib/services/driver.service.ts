@@ -21,13 +21,30 @@ export class DriverServiceError extends Error {
 }
 
 const DRIVER_LIST_SELECT =
-  "id, last_name, first_name, license_plate, planned_check_in, planned_check_out, flight_direction, passenger_count, parking_sector, paid_at_arrival, paid_at_departure, surcharge_amount, notes, status, is_paid, actual_check_in, actual_check_out";
+  "id, last_name, first_name, license_plate, planned_check_in, planned_check_out, flight_direction, passenger_count, parking_sector, paid_at_arrival, paid_at_departure, surcharge_amount, total_cost, notes, status, is_paid, actual_check_in, actual_check_out, travel_agency_id";
 
 /**
  * Sync rule: is_paid is true when either driver payment flag is true.
  */
 export function syncIsPaid(paidAtArrival: boolean, paidAtDeparture: boolean): boolean {
   return paidAtArrival || paidAtDeparture;
+}
+
+/**
+ * Agency stays are paid by the agency: never write driver payment fields for them
+ * (the DB pricing trigger enforces the same; this keeps the request honest).
+ */
+export function withoutPaymentForAgency<T extends Record<string, unknown>>(
+  current: Pick<ReservationDto, "travel_agency_id">,
+  updateData: T
+): Partial<T> {
+  if (current.travel_agency_id == null) return updateData;
+  const rest: Partial<T> = { ...updateData };
+  delete rest.is_paid;
+  delete rest.paid_at_arrival;
+  delete rest.paid_at_departure;
+  delete rest.surcharge_amount;
+  return rest;
 }
 
 export class DriverService {
@@ -157,7 +174,7 @@ export class DriverService {
       is_paid: syncIsPaid(paidAtArrival, paidAtDeparture),
     };
 
-    return this.applyUpdate(id, updateData);
+    return this.applyUpdate(id, withoutPaymentForAgency(current, updateData));
   }
 
   async completeDeparture(id: string, command: DriverDepartureUpdate): Promise<ReservationDto> {
@@ -182,7 +199,7 @@ export class DriverService {
       is_paid: syncIsPaid(paidAtArrival, paidAtDeparture),
     };
 
-    return this.applyUpdate(id, updateData);
+    return this.applyUpdate(id, withoutPaymentForAgency(current, updateData));
   }
 
   private async getById(id: string): Promise<ReservationDto> {

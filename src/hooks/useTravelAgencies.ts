@@ -96,3 +96,29 @@ export function useTravelAgencies({ includeArchived = false }: { includeArchived
 
   return { agencies, isLoading, isSaving, error, refetch, saveAgency, setArchived, deleteAgency };
 }
+
+/** One agency by id (archived included) — e.g. to label an assigned agency. `null` id → nothing fetched. */
+export function useTravelAgency(id: string | null | undefined) {
+  const [agency, setAgency] = useState<TravelAgencyDto | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setAgency(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/travel-agencies/${id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: TravelAgencyDto | null) => {
+        if (!cancelled) setAgency(data);
+      })
+      .catch(() => {
+        if (!cancelled) setAgency(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return agency;
+}

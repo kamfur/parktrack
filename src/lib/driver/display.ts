@@ -1,5 +1,6 @@
 import { warsawDateKey } from "@/lib/driver/operating-window";
 import type { ReservationDto } from "@/types";
+import { isCoveredParkingType, parkingTypeLabel } from "@/lib/pricing/parking-type";
 
 /** Planned timestamp is on a Warsaw calendar day before today. */
 export function isOverdue(plannedIso: string, now: Date = new Date()): boolean {
@@ -43,6 +44,21 @@ export function garageSpotLabel(
   parkingType: ReservationDto["parking_type"] | null | undefined,
   garageSpotName: string | null | undefined
 ): string | null {
-  if (parkingType !== "garage" || !garageSpotName) return null;
-  return `Garaż: ${garageSpotName}`;
+  if (!isCoveredParkingType(parkingType) || !garageSpotName) return null;
+  return `${parkingTypeLabel(parkingType)}: ${garageSpotName}`;
+}
+
+/**
+ * Amount to collect from the customer, or null when the reservation is already paid
+ * (at arrival or earlier) or there is nothing to collect.
+ */
+export function amountDue(r: Pick<ReservationDto, "is_paid" | "total_cost" | "surcharge_amount">): number | null {
+  if (r.is_paid) return null;
+  const amount = (r.total_cost ?? 0) + (r.surcharge_amount ?? 0);
+  return amount > 0 ? amount : null;
+}
+
+/** Stay paid by a travel agency — the driver collects nothing (no payment checkboxes, no surcharge). */
+export function isAgencyPaid(r: Pick<ReservationDto, "travel_agency_id">): boolean {
+  return r.travel_agency_id != null;
 }
