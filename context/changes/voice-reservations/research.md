@@ -106,6 +106,30 @@ Recommendation: **EU-only processing.** It costs nothing extra at this budget.
 - **PoC: 1 evening.** Record 10–15 dictations and measure plate and date accuracy in the Soniox playground. This is the main risk, so validate it first.
 - **MVP: ~6–9 evenings.** Covers the token endpoint, the extract endpoint with Zod, the hook and component, integration into both forms, unit tests for date and plate normalization, and one E2E test with a mocked STT.
 
+## PoC results (2026-10-01)
+
+Ran `scripts/soniox-poc` on 15 recorded dictations (one speaker, laptop mic), `stt-rt-v5`. The run used the global endpoint because the PoC key belongs to a global project. Production needs an EU project key.
+
+| Metric (`context` mode) | Result |
+|---|---|
+| Surname (loose) | 14/15 (93%) |
+| Date | 25/27 (93%). Both misses come from one slurred recording (s15). |
+| License plate | **11/15 (73%)**. This is the weak spot. |
+| Phone | 3/4. The miss was the noisy recording: `512 300 45 678`. |
+| Parking type / flight / email / passengers | 4/4, 5/5, 1/1, 4/4 |
+| Partial (live) latency p50 | 667 ms |
+| Final latency p50 / p95 | **~4.9 s / ~6.4 s**. Continuous reading with no pauses, so automatic endpoint detection finalized late. |
+| Cost | $0.0077 for 3.9 min (matches ~$0.12/h) |
+
+Findings that shape the design:
+
+1. **Soniox does its own inverse text normalization**: `604 123 987`, `KR 7HX29`, `22:00`, `04:40`. The LLM gets near-structured text. Raw WER (~37%) is inflated by the PoC normalizer, not by recognition errors.
+2. **The `context` hints help**: phone grouping (790 vs 700 90), "wiata" recognized, compact plates. Keep them.
+3. **Plate errors** have two patterns. Repeated digits collapse ("zero zero siedem" → `07`, "dwa dwa dwa" → `22`), usually with low confidence. Occasional substitutions or swaps happen at high confidence (`SI`→`SK`, `7142`→`7124`). So the plate needs dedicated UI verification (prominent display, low-confidence highlight, easy manual fix). Confidence alone is not enough.
+4. **Final latency** must be driven manually: client VAD detects ~200 ms of silence, then the client sends `{"type":"finalize"}`, and Soniox returns finals followed by a `<fin>` token. Partial tokens (~0.7 s) can drive a live preview.
+5. **The LLM extraction step must re-join split number groups** (`512 300 45 678` → `512 345 678`) and validate phone length (9 digits).
+6. Surname errors (Grzegorczyk → Gregorczyk) came with low token confidence, which makes it a usable highlight signal.
+
 ## Sources
 
 - [Deepgram pricing (smallest.ai)](https://smallest.ai/blog/deepgram-pricing-plans-cost-what-you-get-in-2026), [Deepgram EU endpoint](https://deepgram.com/learn/deepgram-eu-endpoint-now-generally-available)
