@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { KeyRound } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { eventDisplayName, formatDayHeading, groupEventsByHour, layoutShiftsForDay } from "@/lib/calendar/view-model";
 import { warsawDateKey, warsawHour, warsawTimeLabel } from "@/lib/calendar/warsaw-time";
 import type { CalendarDriverDto, CalendarEventDto, DriverShiftDto } from "@/types";
 import { cn } from "@/lib/utils";
+import { isCoveredParkingType, parkingTypeLabel } from "@/lib/pricing/parking-type";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
@@ -42,10 +44,45 @@ export function CalendarGrid({
   const now = new Date();
   const currentDateKey = warsawDateKey(now);
   const currentHour = warsawHour(now);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const scrolledRangeRef = useRef<string | null>(null);
+  const rangeKey = dateKeys.join(",");
+
+  // Once per range, bring the relevant hour into view instead of always opening at 00:00 —
+  // on small screens only a few hours fit. Background refetches don't move the scroll.
+  useEffect(() => {
+    // The skeleton replaces the grid while loading, so the fresh grid must be scrolled again.
+    if (isLoading) {
+      scrolledRangeRef.current = null;
+      return;
+    }
+    if (scrolledRangeRef.current === rangeKey) return;
+    const container = scrollRef.current;
+    if (!container) return;
+    scrolledRangeRef.current = rangeKey;
+    let targetHour = 0;
+    if (dateKeys.includes(currentDateKey)) {
+      targetHour = Math.max(currentHour - 1, 0);
+    } else {
+      const busyHours = dateKeys.flatMap((dateKey) => [
+        ...Object.entries(eventsByDay[dateKey] ?? {})
+          .filter(([, list]) => list.length > 0)
+          .map(([hour]) => Number(hour)),
+        ...(shiftsByDay[dateKey] ?? []).map((layout) => Math.floor(layout.startHour)),
+      ]);
+      if (busyHours.length > 0) targetHour = Math.min(...busyHours);
+    }
+    const row = container.querySelector<HTMLElement>(`[data-hour="${targetHour}"]`);
+    if (row) container.scrollTop = row.offsetTop - (headerRef.current?.offsetHeight ?? 0);
+    // Week view on a phone shows ~2 days — start at today's column.
+    const todayColumn = container.querySelector<HTMLElement>(`[data-date="${currentDateKey}"]`);
+    container.scrollLeft = todayColumn ? todayColumn.offsetLeft - (headerRef.current?.offsetWidth ?? 0) : 0;
+  }, [isLoading, rangeKey, dateKeys, currentDateKey, currentHour, eventsByDay, shiftsByDay]);
 
   if (isLoading) {
     return (
-      <div className="space-y-2 rounded-lg border bg-card p-4">
+      <div className="min-h-0 flex-1 space-y-2 overflow-hidden rounded-lg border bg-card p-2 sm:p-4">
         <Skeleton className="h-8 w-full" />
         {Array.from({ length: 8 }, (_, index) => (
           <Skeleton key={index} className="h-12 w-full" />
@@ -55,19 +92,27 @@ export function CalendarGrid({
   }
 
   return (
-    <div className="overflow-auto rounded-lg border bg-card">
+    <div
+      ref={scrollRef}
+      className="relative min-h-0 flex-1 overflow-auto rounded-lg border bg-card [--day-col:7.5rem] [--hour-col:2.75rem] [--hour-row:3rem] sm:[--hour-col:3.5rem] md:[--hour-row:3.5rem] lg:[--day-col:9rem]"
+    >
       <div
-        className="grid min-w-[36rem]"
+        className="grid"
         style={{
-          gridTemplateColumns: `3.5rem repeat(${dateKeys.length}, minmax(9rem, 1fr))`,
-          gridTemplateRows: "auto repeat(24, minmax(3.5rem, auto))",
+          gridTemplateColumns: `var(--hour-col) repeat(${dateKeys.length}, minmax(var(--day-col), 1fr))`,
+          gridTemplateRows: "auto repeat(24, minmax(var(--hour-row), auto))",
         }}
       >
-        <div className="sticky top-0 z-20 border-b bg-card" style={{ gridColumn: 1, gridRow: 1 }} />
+        <div
+          ref={headerRef}
+          className="sticky top-0 left-0 z-30 border-b bg-card"
+          style={{ gridColumn: 1, gridRow: 1 }}
+        />
         {dateKeys.map((dateKey, index) => (
           <div
             key={dateKey}
-            className="sticky top-0 z-20 border-b bg-card px-2 py-2 text-center text-sm font-medium capitalize"
+            data-date={dateKey}
+            className="sticky top-0 z-20 border-b bg-card px-1 py-1.5 text-center text-xs font-medium capitalize sm:px-2 sm:py-2 sm:text-sm"
             style={{ gridColumn: index + 2, gridRow: 1 }}
           >
             {formatDayHeading(dateKey)}
@@ -77,9 +122,10 @@ export function CalendarGrid({
         {HOURS.map((hour) => (
           <div
             key={hour}
+            data-hour={hour}
             className={cn(
-              "border-b px-2 py-2 text-right text-xs text-muted-foreground",
-              hour === currentHour && "bg-accent/40 font-medium text-foreground"
+              "sticky left-0 z-10 border-b bg-card px-1 py-1.5 text-right text-[11px] text-muted-foreground sm:px-2 sm:py-2 sm:text-xs",
+              hour === currentHour && "bg-accent font-medium text-foreground"
             )}
             style={{ gridColumn: 1, gridRow: hour + 2 }}
           >
@@ -93,7 +139,7 @@ export function CalendarGrid({
             return (
               <div
                 key={`${dateKey}-${hour}-slot`}
-                className={cn("min-h-14 border-b border-l", isNow && "bg-accent/40")}
+                className={cn("border-b border-l", isNow && "bg-accent/40")}
                 style={{ gridColumn: dayIndex + 2, gridRow: hour + 2 }}
               />
             );
@@ -138,7 +184,7 @@ export function CalendarGrid({
             return (
               <div
                 key={`${dateKey}-${hour}-events`}
-                className="pointer-events-none z-[2] flex min-h-14 flex-col justify-end gap-1 px-1.5 py-1"
+                className="pointer-events-none z-[2] flex flex-col justify-end gap-1 px-1 py-1 sm:px-1.5"
                 style={{ gridColumn: dayIndex + 2, gridRow: hour + 2 }}
               >
                 {cellEvents.map((calendarEvent) => (
@@ -160,14 +206,20 @@ export function CalendarGrid({
 function EventChip({ event, onClick }: { event: CalendarEventDto; onClick: (event: CalendarEventDto) => void }) {
   const isArrival = event.kind === "arrival";
   const kindLabel = isArrival ? "Przyjazd" : "Wyjazd";
-  const garageSuffix =
-    event.parkingType === "garage" ? `Garaż${event.garageSpotName ? `: ${event.garageSpotName}` : ""}` : null;
+  const garageSuffix = isCoveredParkingType(event.parkingType)
+    ? `${parkingTypeLabel(event.parkingType)}${event.garageSpotName ? `: ${event.garageSpotName}` : ""}`
+    : null;
+  // Departures: the flight the client returns from — helps plan the pickup.
+  const flightDirection = !isArrival && event.flightDirection ? event.flightDirection : null;
+  const keysLeft = !isArrival && event.keysLeft;
   const summary = [
     kindLabel,
     warsawTimeLabel(new Date(event.at)),
     eventDisplayName(event),
     event.licensePlate,
+    flightDirection ? `✈ ${flightDirection}` : null,
     garageSuffix,
+    keysLeft ? "· zostawił kluczyki" : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -186,8 +238,10 @@ function EventChip({ event, onClick }: { event: CalendarEventDto; onClick: (even
       title={event.handled ? `${summary} · obsłużone` : summary}
       aria-label={event.handled ? `${summary}, obsłużone` : summary}
     >
+      {keysLeft ? <KeyRound className="mr-0.5 inline h-3 w-3 align-[-2px] text-amber-600" aria-hidden /> : null}
       <span className="font-medium">{warsawTimeLabel(new Date(event.at))}</span> {eventDisplayName(event)}
       {event.licensePlate ? ` · ${event.licensePlate}` : ""}
+      {flightDirection ? ` · ✈ ${flightDirection}` : ""}
       {garageSuffix ? ` · ${garageSuffix}` : ""}
     </button>
   );

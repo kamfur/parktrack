@@ -18,6 +18,8 @@ import { DriverArrivalDialog } from "@/components/driver/DriverArrivalDialog";
 import { DriverDepartureDialog } from "@/components/driver/DriverDepartureDialog";
 import { useReservationDetails } from "@/hooks/useReservationDetails";
 import { useTravelAgency } from "@/hooks/useTravelAgencies";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import { cn } from "@/lib/utils";
 
 /**
  * Główny kontener widoku szczegółów rezerwacji.
@@ -40,6 +42,7 @@ export function ReservationDetailsView({
     isEditMode,
     isUpdating,
     editRules,
+    garageSpotId,
     updateNotes,
     updateReservation,
     showCheckInModal,
@@ -53,6 +56,7 @@ export function ReservationDetailsView({
     closeCancelDialog,
     cancelReservation,
     markNoShow,
+    restoreReservation,
     performCheckIn,
     performCheckOut,
     enterEditMode,
@@ -106,15 +110,31 @@ export function ReservationDetailsView({
       const nextAgencyId = data.travelAgencyId || null;
       if (nextAgencyId !== (reservation.travel_agency_id ?? null)) payload.travel_agency_id = nextAgencyId;
     }
+    if (editRules.canEditParkingType && data.parkingType !== reservation.parking_type) {
+      payload.parking_type = data.parkingType;
+    }
+    if (editRules.canEditKeysLeft && data.keysLeft !== reservation.keys_left) {
+      payload.keys_left = data.keysLeft;
+    }
+    if (
+      editRules.canEditParkingType &&
+      (data.parkingType === "garage" || data.parkingType === "carport") &&
+      data.garageSpotId &&
+      data.garageSpotId !== garageSpotId
+    ) {
+      payload.garage_spot_id = data.garageSpotId;
+    }
 
-    // total_cost is re-priced by the DB trigger (price list + parking type) when dates change.
+    // total_cost is re-priced by the DB trigger (price list + parking type) when dates or type change.
 
     try {
       await updateReservation(payload);
       exitEditMode();
       toast.success("Rezerwacja została zaktualizowana");
     } catch (err) {
-      toast.error("Nie udało się zapisać zmian");
+      toast.error("Nie udało się zapisać zmian", {
+        description: err instanceof Error && err.message !== "Failed to update reservation" ? err.message : undefined,
+      });
       // eslint-disable-next-line no-console
       console.error("Update reservation error:", err);
     }
@@ -160,6 +180,17 @@ export function ReservationDetailsView({
     }
   };
 
+  const handleRestore = async () => {
+    try {
+      await restoreReservation();
+      toast.success("Rezerwacja przywrócona");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Nie udało się przywrócić rezerwacji");
+      // eslint-disable-next-line no-console
+      console.error("Restore reservation error:", err);
+    }
+  };
+
   const handleNoShow = async () => {
     if (
       !window.confirm("Oznaczyć rezerwację jako „nie przyjechał”? Tej zmiany nie da się cofnąć z poziomu aplikacji.")
@@ -186,7 +217,12 @@ export function ReservationDetailsView({
   return (
     <ReservationDetailsErrorBoundary>
       <Dialog open={isOpen} onOpenChange={handleDialogChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] md:max-h-[90vh] overflow-hidden flex flex-col p-0 sm:rounded-lg gap-0">
+        <DialogContent
+          className={cn(
+            MOBILE_FULLSCREEN_DIALOG,
+            "max-w-3xl max-h-[90vh] md:max-h-[90vh] overflow-hidden flex flex-col p-0 sm:rounded-lg gap-0"
+          )}
+        >
           {isLoading && <LoadingSkeleton />}
 
           {error && (
@@ -216,6 +252,7 @@ export function ReservationDetailsView({
                   <EditReservationForm
                     reservation={reservation}
                     editRules={editRules}
+                    currentGarageSpotId={garageSpotId}
                     onSubmit={handleEditSubmit}
                     onCancel={exitEditMode}
                     isSubmitting={isUpdating || isProcessing}
@@ -233,6 +270,7 @@ export function ReservationDetailsView({
                       plannedCheckOut={reservation.planned_check_out}
                       flightDirection={reservation.flight_direction}
                       garageSpotLabel={viewModel.garageSpotLabel}
+                      keysLeft={reservation.keys_left && reservation.actual_check_in != null}
                     />
 
                     <FinancialSection
@@ -272,6 +310,7 @@ export function ReservationDetailsView({
                   onEdit={enterEditMode}
                   onCancel={openCancelDialog}
                   onNoShow={handleNoShow}
+                  onRestore={handleRestore}
                   isProcessing={isProcessing}
                   existingInvoiceId={existingInvoice?.id ?? null}
                   isAgencyReservation={reservation.travel_agency_id !== null}

@@ -12,7 +12,8 @@ interface GarageOccupancyGridProps {
   monthAnchor: string;
   isLoading: boolean;
   onMonthChange: (nextAnchor: string) => void;
-  onSelectEntry: (entry: GarageOccupancyEntryDto) => void;
+  /** Omitted = read-only grid: occupied cells show the name but are not clickable. */
+  onSelectEntry?: (entry: GarageOccupancyEntryDto) => void;
 }
 
 function monthLabel(monthAnchor: string): string {
@@ -105,22 +106,27 @@ export function GarageOccupancyGrid({
                   <td className="sticky left-0 z-10 border-b bg-card px-2 py-1 font-medium">{spot.name}</td>
                   {dateKeys.map((dateKey) => {
                     const entry = entryForDay(entriesBySpot.get(spot.id), dateKey);
+                    const cellClass = cn(
+                      "block h-8 w-8 truncate rounded text-center leading-8",
+                      entry ? "bg-rose-200 text-rose-900" : "bg-emerald-100 text-emerald-800"
+                    );
                     return (
                       <td key={dateKey} className="border-b p-0.5">
-                        <button
-                          type="button"
-                          disabled={!entry}
-                          onClick={() => entry && onSelectEntry(entry)}
-                          title={entry ? entry.lastName : "Dostępne"}
-                          className={cn(
-                            "block h-8 w-8 truncate rounded text-center leading-8",
-                            entry
-                              ? "cursor-pointer bg-rose-200 text-rose-900 hover:bg-rose-300"
-                              : "bg-emerald-100 text-emerald-800"
-                          )}
-                        >
-                          {entry ? entry.lastName.slice(0, 3) : ""}
-                        </button>
+                        {onSelectEntry ? (
+                          <button
+                            type="button"
+                            disabled={!entry}
+                            onClick={() => entry && onSelectEntry(entry)}
+                            title={entry ? entry.lastName : "Dostępne"}
+                            className={cn(cellClass, entry && "cursor-pointer hover:bg-rose-300")}
+                          >
+                            {entry ? entry.lastName.slice(0, 3) : ""}
+                          </button>
+                        ) : (
+                          <span title={entry ? entry.lastName : "Dostępne"} className={cellClass}>
+                            {entry ? entry.lastName.slice(0, 3) : ""}
+                          </span>
+                        )}
                       </td>
                     );
                   })}

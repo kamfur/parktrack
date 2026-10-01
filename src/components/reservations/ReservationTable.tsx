@@ -19,6 +19,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Skeleton } from "../ui/skeleton";
 import { cn } from "@/lib/utils";
+import { isCoveredParkingType, parkingTypeLabel } from "@/lib/pricing/parking-type";
 
 export interface ReservationTableProps {
   /** Lista rezerwacji do wyświetlenia */
@@ -201,8 +202,8 @@ export function ReservationTable({
                     <Badge className={getStatusBadgeClasses(reservation.status)}>
                       {getStatusLabel(reservation.status)}
                     </Badge>
-                    {reservation.parking_type === "garage" ? (
-                      <Badge variant="outline" className="gap-1" title="Garaż/wiata">
+                    {isCoveredParkingType(reservation.parking_type) ? (
+                      <Badge variant="outline" className="gap-1" title={parkingTypeLabel(reservation.parking_type)}>
                         <Warehouse className="h-3 w-3" aria-hidden />
                       </Badge>
                     ) : null}

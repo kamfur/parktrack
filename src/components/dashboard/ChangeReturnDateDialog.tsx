@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
 
 interface ChangeReturnDateDialogProps {
   reservation: ReservationDto | null;
@@ -68,7 +69,7 @@ export function ChangeReturnDateDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent>
+      <DialogContent className={MOBILE_FULLSCREEN_DIALOG}>
         <DialogHeader>
           <DialogTitle>Zmień datę powrotu</DialogTitle>
           <DialogDescription>

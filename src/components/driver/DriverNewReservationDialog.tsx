@@ -7,6 +7,7 @@ import { PARKING_TYPES, PARKING_TYPE_LABELS } from "@/lib/pricing/parking-type";
 import { useNewStayQuote } from "@/hooks/useCheckoutQuote";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
+import { GarageSpotSelect } from "@/components/reservations/GarageSpotSelect";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import { cn } from "@/lib/utils";
 
 interface DriverNewReservationDialogProps {
   open: boolean;
@@ -30,6 +33,8 @@ interface FormValues {
   checkIn: string;
   checkOut: string;
   parkingType: ParkingType;
+  /** "" = auto-assign the first free garage/carport spot. */
+  garageSpotId: string;
   flightDirection: string;
   notes: string;
 }
@@ -43,6 +48,7 @@ function emptyForm(): FormValues {
     checkIn: isoToDatetimeLocal(new Date().toISOString()),
     checkOut: "",
     parkingType: "open_air",
+    garageSpotId: "",
     flightDirection: "",
     notes: "",
   };
@@ -65,7 +71,8 @@ export function DriverNewReservationDialog({
 
   const checkInIso = datetimeLocalToIso(form.watch("checkIn")) ?? null;
   const checkOutIso = datetimeLocalToIso(form.watch("checkOut")) ?? null;
-  const quote = useNewStayQuote(checkInIso, checkOutIso, form.watch("parkingType"));
+  const parkingType = form.watch("parkingType");
+  const quote = useNewStayQuote(checkInIso, checkOutIso, parkingType);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     setError(null);
@@ -79,6 +86,7 @@ export function DriverNewReservationDialog({
       planned_check_in: checkInIso ?? "",
       planned_check_out: checkOutIso ?? "",
       parking_type: values.parkingType,
+      garage_spot_id: values.parkingType !== "open_air" && values.garageSpotId ? values.garageSpotId : undefined,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Nieprawidłowe dane");
@@ -95,7 +103,7 @@ export function DriverNewReservationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
+      <DialogContent className={cn(MOBILE_FULLSCREEN_DIALOG, "max-h-[90dvh] max-w-md overflow-y-auto")}>
         <DialogHeader>
           <DialogTitle>Nowa rezerwacja</DialogTitle>
         </DialogHeader>
@@ -202,6 +210,25 @@ export function DriverNewReservationDialog({
                 </FormItem>
               )}
             />
+            {parkingType === "garage" || parkingType === "carport" ? (
+              <FormField
+                control={form.control}
+                name="garageSpotId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{parkingType === "garage" ? "Garaż" : "Wiata"}</FormLabel>
+                    <GarageSpotSelect
+                      parkingType={parkingType}
+                      checkIn={checkInIso}
+                      checkOut={checkOutIso}
+                      value={field.value}
+                      onChange={field.onChange}
+                      emptyLabel="Automatycznie (pierwsze wolne)"
+                    />
+                  </FormItem>
+                )}
+              />
+            ) : null}
             <FormField
               control={form.control}
               name="flightDirection"
@@ -234,11 +261,16 @@ export function DriverNewReservationDialog({
             />
             {checkInIso && checkOutIso ? <PaymentQuote {...quote} /> : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 flex-row gap-2 border-t bg-white px-6 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 flex-1 sm:flex-none"
+                onClick={() => onOpenChange(false)}
+              >
                 Anuluj
               </Button>
-              <Button type="submit" className="min-h-11" disabled={isProcessing}>
+              <Button type="submit" className="min-h-11 flex-[2] sm:flex-none" disabled={isProcessing}>
                 {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Dodaj rezerwację
               </Button>

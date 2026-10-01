@@ -11,12 +11,16 @@ vi.mock("./garage-allocation.service", () => ({
 
 import {
   ReservationService,
+  KeysLeftNotEditableError,
   NoGarageAvailableError,
   NoPriceListError,
+  ReservationInvoicedError,
   TravelAgencyUnavailableError,
 } from "./reservation.service";
 import { createSupabaseAdminClient } from "../supabase-admin";
 import { GarageAllocationService, GarageBufferViolationError } from "./garage-allocation.service";
+
+const SPOT_B = "22222222-2222-4222-8222-222222222222";
 
 function mockListClient() {
   const result = { data: [{ id: "r1" }], error: null };
@@ -123,10 +127,10 @@ describe("ReservationService.createReservation — garage auto-assign", () => {
   it("auto-assigns a garage spot when parking_type is 'garage'", async () => {
     vi.mocked(createSupabaseAdminClient).mockReturnValue(mockAdminClient() as never);
 
-    const findAvailableSpot = vi.fn().mockResolvedValue({ id: "spot-1" });
+    const listAvailableSpots = vi.fn().mockResolvedValue([{ id: "spot-1" }]);
     const assign = vi.fn().mockResolvedValue({ id: "assignment-1" });
     vi.mocked(GarageAllocationService).mockImplementation(function () {
-      return { findAvailableSpot, assign };
+      return { listAvailableSpots, assign };
     } as never);
 
     const service = new ReservationService({} as never);
@@ -142,22 +146,75 @@ describe("ReservationService.createReservation — garage auto-assign", () => {
       "user-1"
     );
 
-    expect(findAvailableSpot).toHaveBeenCalledWith(
+    expect(listAvailableSpots).toHaveBeenCalledWith(
       insertedReservation.planned_check_in,
       insertedReservation.planned_check_out,
-      "garage"
+      "garage",
+      undefined
     );
     expect(assign).toHaveBeenCalledWith("r1", "spot-1", "system");
     expect(result).toEqual(insertedReservation);
   });
 
+  it("assigns the chosen garage spot when it is free", async () => {
+    vi.mocked(createSupabaseAdminClient).mockReturnValue(mockAdminClient() as never);
+
+    const listAvailableSpots = vi.fn().mockResolvedValue([{ id: "spot-1" }, { id: SPOT_B }]);
+    const assign = vi.fn().mockResolvedValue({ id: "assignment-1" });
+    vi.mocked(GarageAllocationService).mockImplementation(function () {
+      return { listAvailableSpots, assign };
+    } as never);
+
+    await new ReservationService({} as never).createReservation(
+      {
+        last_name: "Kowalski",
+        planned_check_in: "2026-09-02T00:00:00Z",
+        planned_check_out: "2026-09-02T08:00:00Z",
+        source: "phone",
+        total_cost: 100,
+        parking_type: "garage",
+        garage_spot_id: SPOT_B,
+      },
+      "user-1"
+    );
+
+    expect(assign).toHaveBeenCalledWith("r1", SPOT_B, "staff");
+  });
+
+  it("rejects a chosen spot that is taken, and deletes the orphaned reservation", async () => {
+    const adminClient = mockAdminClient();
+    vi.mocked(createSupabaseAdminClient).mockReturnValue(adminClient as never);
+
+    const assign = vi.fn();
+    vi.mocked(GarageAllocationService).mockImplementation(function () {
+      return { listAvailableSpots: vi.fn().mockResolvedValue([{ id: "spot-1" }]), assign };
+    } as never);
+
+    await expect(
+      new ReservationService({} as never).createReservation(
+        {
+          last_name: "Kowalski",
+          planned_check_in: "2026-09-02T00:00:00Z",
+          planned_check_out: "2026-09-02T08:00:00Z",
+          source: "phone",
+          total_cost: 100,
+          parking_type: "carport",
+          garage_spot_id: SPOT_B,
+        },
+        "user-1"
+      )
+    ).rejects.toThrow("Wybrana wiata jest zajęta w tym terminie");
+    expect(assign).not.toHaveBeenCalled();
+    expect(adminClient.deleteEq).toHaveBeenCalledWith("id", "r1");
+  });
+
   it("auto-assigns only a carport spot when parking_type is 'carport'", async () => {
     vi.mocked(createSupabaseAdminClient).mockReturnValue(mockAdminClient() as never);
 
-    const findAvailableSpot = vi.fn().mockResolvedValue({ id: "spot-2" });
+    const listAvailableSpots = vi.fn().mockResolvedValue([{ id: "spot-2" }]);
     const assign = vi.fn().mockResolvedValue({ id: "assignment-2" });
     vi.mocked(GarageAllocationService).mockImplementation(function () {
-      return { findAvailableSpot, assign };
+      return { listAvailableSpots, assign };
     } as never);
 
     const service = new ReservationService({} as never);
@@ -173,7 +230,7 @@ describe("ReservationService.createReservation — garage auto-assign", () => {
       "user-1"
     );
 
-    expect(findAvailableSpot).toHaveBeenCalledWith(expect.any(String), expect.any(String), "carport");
+    expect(listAvailableSpots).toHaveBeenCalledWith(expect.any(String), expect.any(String), "carport", undefined);
     expect(assign).toHaveBeenCalledWith("r1", "spot-2", "system");
   });
 
@@ -181,10 +238,10 @@ describe("ReservationService.createReservation — garage auto-assign", () => {
     const adminClient = mockAdminClient();
     vi.mocked(createSupabaseAdminClient).mockReturnValue(adminClient as never);
 
-    const findAvailableSpot = vi.fn().mockResolvedValue(null);
+    const listAvailableSpots = vi.fn().mockResolvedValue([]);
     const assign = vi.fn();
     vi.mocked(GarageAllocationService).mockImplementation(function () {
-      return { findAvailableSpot, assign };
+      return { listAvailableSpots, assign };
     } as never);
 
     const service = new ReservationService({} as never);
@@ -239,7 +296,7 @@ describe("ReservationService pricing", () => {
     } as never);
     const rpc = vi.fn().mockResolvedValue({ data: 180, error: null });
     vi.mocked(GarageAllocationService).mockImplementation(function () {
-      return { findAvailableSpot: vi.fn().mockResolvedValue({ id: "spot-1" }), assign: vi.fn() };
+      return { listAvailableSpots: vi.fn().mockResolvedValue([{ id: "spot-1" }]), assign: vi.fn() };
     } as never);
 
     const service = new ReservationService({ rpc } as never);
@@ -343,6 +400,157 @@ describe("ReservationService.updateReservation — garage buffer revalidation", 
 
     expect(GarageAllocationService).not.toHaveBeenCalled();
   });
+
+  describe("parking type change", () => {
+    const current = {
+      planned_check_in: "2026-09-02T00:00:00Z",
+      planned_check_out: "2026-09-05T00:00:00Z",
+      parking_type: "open_air",
+      status: "in_progress",
+    };
+
+    function mockAllocation(spot: { id: string } | null) {
+      const allocation = {
+        listAvailableSpots: vi.fn().mockResolvedValue(spot ? [spot] : []),
+        release: vi.fn().mockResolvedValue("old-spot"),
+        assign: vi.fn().mockResolvedValue({}),
+        revalidateAssignment: vi.fn(),
+        activeSpotId: vi.fn().mockResolvedValue(null),
+      };
+      vi.mocked(GarageAllocationService).mockImplementation(function () {
+        return allocation;
+      } as never);
+      return allocation;
+    }
+
+    it("assigns a spot of the new covered type, even for an in-progress stay", async () => {
+      const client = mockClient(current, { id: "r1", parking_type: "garage" });
+      const allocation = mockAllocation({ id: "g1" });
+
+      await new ReservationService(client as never).updateReservation("r1", { parking_type: "garage" });
+
+      expect(allocation.listAvailableSpots).toHaveBeenCalledWith(
+        current.planned_check_in,
+        current.planned_check_out,
+        "garage",
+        "r1"
+      );
+      expect(allocation.release).toHaveBeenCalledWith("r1");
+      expect(allocation.assign).toHaveBeenCalledWith("r1", "g1", "staff");
+      expect(allocation.revalidateAssignment).not.toHaveBeenCalled();
+    });
+
+    it("rejects before writing when no spot of the new type is free", async () => {
+      const client = mockClient(current, {});
+      const allocation = mockAllocation(null);
+
+      await expect(
+        new ReservationService(client as never).updateReservation("r1", { parking_type: "carport" })
+      ).rejects.toBeInstanceOf(NoGarageAvailableError);
+      expect(allocation.release).not.toHaveBeenCalled();
+    });
+
+    it("only releases the old spot when switching to open air", async () => {
+      const client = mockClient({ ...current, parking_type: "garage" }, { id: "r1", parking_type: "open_air" });
+      const allocation = mockAllocation(null);
+
+      await new ReservationService(client as never).updateReservation("r1", { parking_type: "open_air" });
+
+      expect(allocation.listAvailableSpots).not.toHaveBeenCalled();
+      expect(allocation.release).toHaveBeenCalledWith("r1");
+      expect(allocation.assign).not.toHaveBeenCalled();
+    });
+
+    it("uses the chosen spot of the new type", async () => {
+      const client = mockClient(current, { id: "r1", parking_type: "carport" });
+      const allocation = mockAllocation({ id: SPOT_B });
+
+      await new ReservationService(client as never).updateReservation("r1", {
+        parking_type: "carport",
+        garage_spot_id: SPOT_B,
+      });
+
+      expect(allocation.assign).toHaveBeenCalledWith("r1", SPOT_B, "staff");
+    });
+
+    it("moves a garage stay to another chosen garage without changing the type", async () => {
+      const client = mockClient({ ...current, parking_type: "garage" }, { id: "r1" });
+      const allocation = mockAllocation({ id: SPOT_B });
+      allocation.activeSpotId = vi.fn().mockResolvedValue("old-spot");
+
+      await new ReservationService(client as never).updateReservation("r1", { garage_spot_id: SPOT_B });
+
+      expect(allocation.release).toHaveBeenCalledWith("r1");
+      expect(allocation.assign).toHaveBeenCalledWith("r1", SPOT_B, "staff");
+    });
+
+    it("keeps the assignment when the chosen spot is the current one", async () => {
+      const client = mockClient({ ...current, parking_type: "garage" }, { id: "r1" });
+      const allocation = mockAllocation({ id: SPOT_B });
+      allocation.activeSpotId = vi.fn().mockResolvedValue(SPOT_B);
+
+      await new ReservationService(client as never).updateReservation("r1", { garage_spot_id: SPOT_B });
+
+      expect(allocation.release).not.toHaveBeenCalled();
+      expect(allocation.assign).not.toHaveBeenCalled();
+    });
+
+    it("does not look for a spot for a finished stay", async () => {
+      const client = mockClient({ ...current, status: "completed" }, { id: "r1", parking_type: "garage" });
+      const allocation = mockAllocation(null);
+
+      await new ReservationService(client as never).updateReservation("r1", { parking_type: "garage" });
+
+      expect(allocation.listAvailableSpots).not.toHaveBeenCalled();
+      expect(allocation.release).toHaveBeenCalledWith("r1");
+      expect(allocation.assign).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("ReservationService.updateReservation — keys left", () => {
+  function mockClient(currentReservation: unknown) {
+    const update = vi.fn().mockReturnThis();
+    const single = vi
+      .fn()
+      .mockResolvedValueOnce({ data: currentReservation, error: null })
+      .mockResolvedValueOnce({ data: { id: "r1", keys_left: true }, error: null });
+    return {
+      client: {
+        from: vi
+          .fn()
+          .mockReturnValue({ select: vi.fn().mockReturnThis(), update, eq: vi.fn().mockReturnThis(), single }),
+      },
+      update,
+    };
+  }
+
+  it("saves the flag while the car is on the parking", async () => {
+    const { client, update } = mockClient({ status: "in_progress", keys_left: false });
+
+    await new ReservationService(client as never).updateReservation("r1", { keys_left: true });
+
+    expect(update).toHaveBeenCalledWith({ keys_left: true });
+  });
+
+  it("rejects a change before arrival or after departure", async () => {
+    for (const status of ["confirmed", "completed"]) {
+      const { client, update } = mockClient({ status, keys_left: false });
+
+      await expect(
+        new ReservationService(client as never).updateReservation("r1", { keys_left: true })
+      ).rejects.toBeInstanceOf(KeysLeftNotEditableError);
+      expect(update).not.toHaveBeenCalled();
+    }
+  });
+
+  it("accepts an unchanged flag in any status (full-form resubmits)", async () => {
+    const { client, update } = mockClient({ status: "completed", keys_left: true });
+
+    await new ReservationService(client as never).updateReservation("r1", { keys_left: true });
+
+    expect(update).toHaveBeenCalled();
+  });
 });
 
 describe("ReservationService — travel agency pricing", () => {
@@ -432,5 +640,42 @@ describe("ReservationService — travel agency pricing", () => {
         "user-1"
       )
     ).rejects.toBeInstanceOf(TravelAgencyUnavailableError);
+  });
+});
+
+describe("ReservationService.updateReservation — invoice locks", () => {
+  function failingUpdate(message: string, currentRow?: Record<string, unknown>) {
+    const single = vi.fn();
+    // A status change first reads the current row (garage spot bookkeeping), then writes.
+    if (currentRow) single.mockResolvedValueOnce({ data: currentRow, error: null });
+    single.mockResolvedValue({ data: null, error: { message, code: "P0001" } });
+    return {
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single,
+      }),
+    };
+  }
+
+  it("maps RESERVATION_INVOICED to a Polish ReservationInvoicedError naming the invoice", async () => {
+    const service = new ReservationService(
+      failingUpdate("RESERVATION_INVOICED: FV/2026/09/004", {
+        planned_check_in: "2026-09-02T00:00:00Z",
+        planned_check_out: "2026-09-05T00:00:00Z",
+        parking_type: "open_air",
+        status: "confirmed",
+        keys_left: false,
+      }) as never
+    );
+    const promise = service.updateReservation("r1", { status: "cancelled" });
+    await expect(promise).rejects.toBeInstanceOf(ReservationInvoicedError);
+    await expect(promise).rejects.toThrow("FV/2026/09/004");
+  });
+
+  it("maps AGENCY_MONTH_INVOICED to ReservationInvoicedError naming the month", async () => {
+    const service = new ReservationService(failingUpdate("AGENCY_MONTH_INVOICED: 08/2026") as never);
+    await expect(service.updateReservation("r1", { travel_agency_id: null })).rejects.toThrow("08/2026");
   });
 });

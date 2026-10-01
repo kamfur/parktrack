@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { QuickReservationForm } from "./QuickReservationForm";
 import { FullReservationForm } from "./FullReservationForm";
 import { useCreateReservation } from "@/hooks/useCreateReservation";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import { cn } from "@/lib/utils";
 
 /**
  * Główny kontener modala nowej rezerwacji.
@@ -55,6 +57,7 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
       planned_check_out: data.checkOutDate.toISOString(),
       source: "phone",
       parking_type: data.parkingType ?? "open_air",
+      garage_spot_id: data.garageSpotId || undefined,
       travel_agency_id: data.travelAgencyId || null,
     };
 
@@ -131,7 +134,7 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
+      <DialogContent className={cn(MOBILE_FULLSCREEN_DIALOG, "max-h-[90vh] overflow-y-auto sm:max-w-[600px]")}>
         <DialogHeader>
           <DialogTitle>Nowa rezerwacja</DialogTitle>
           <DialogDescription>

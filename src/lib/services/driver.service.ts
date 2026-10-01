@@ -21,7 +21,7 @@ export class DriverServiceError extends Error {
 }
 
 const DRIVER_LIST_SELECT =
-  "id, last_name, first_name, phone, email, license_plate, parking_type, planned_check_in, planned_check_out, flight_direction, passenger_count, parking_sector, paid_at_arrival, paid_at_departure, surcharge_amount, total_cost, notes, status, is_paid, actual_check_in, actual_check_out, travel_agency_id";
+  "id, last_name, first_name, phone, email, license_plate, parking_type, planned_check_in, planned_check_out, flight_direction, passenger_count, parking_sector, paid_at_arrival, paid_at_departure, keys_left, surcharge_amount, total_cost, notes, status, is_paid, actual_check_in, actual_check_out, travel_agency_id";
 
 /**
  * Sync rule: is_paid is true when either driver payment flag is true.
@@ -170,6 +170,7 @@ export class DriverService {
       passenger_count: validated.passenger_count === undefined ? current.passenger_count : validated.passenger_count,
       parking_sector: validated.parking_sector === undefined ? current.parking_sector : validated.parking_sector,
       license_plate: validated.license_plate === undefined ? current.license_plate : validated.license_plate,
+      keys_left: validated.keys_left ?? current.keys_left ?? false,
       paid_at_arrival: paidAtArrival,
       is_paid: syncIsPaid(paidAtArrival, paidAtDeparture),
     };

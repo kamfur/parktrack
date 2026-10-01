@@ -12,7 +12,6 @@ export const createGarageSpotSchema = z.object({
   capacity_label: z.enum(["single", "double"], {
     errorMap: () => ({ message: "Capacity label must be one of: single, double" }),
   }),
-  price_per_day: z.number().positive("Price per day must be a positive number"),
   is_available: z.boolean().optional(),
 });
 
@@ -39,7 +38,6 @@ export const updateGarageSpotSchema = z.object({
       errorMap: () => ({ message: "Capacity label must be one of: single, double" }),
     })
     .optional(),
-  price_per_day: z.number().positive("Price per day must be a positive number").optional(),
   is_available: z.boolean().optional(),
 });
 

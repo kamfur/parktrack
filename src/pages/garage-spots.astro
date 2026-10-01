@@ -1,10 +1,4 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import { GarageSpotConfigurator } from "../components/garage/GarageSpotConfigurator";
+// Konfiguracja miejsc garażowych przeniesiona do /ustawienia — stary adres przekierowuje.
+return Astro.redirect("/ustawienia#miejsca-garazowe", 301);
 ---
-
-<Layout title="Miejsca garażowe - ParkTrack">
-  <div class="p-6">
-    <GarageSpotConfigurator client:load />
-  </div>
-</Layout>

@@ -22,6 +22,8 @@ function event(overrides: Partial<CalendarEventDto>): CalendarEventDto {
     status: "confirmed",
     handled: false,
     parkingType: "open_air",
+    flightDirection: null,
+    keysLeft: false,
     ...overrides,
   };
 }

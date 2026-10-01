@@ -1,4 +1,5 @@
-import type { ReservationDto } from "@/types";
+import type { DepartureListItem, ReservationDto } from "@/types";
+import { HandledSection } from "./HandledSection";
 import { ReservationCard } from "./ReservationCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Calendar, Plus } from "lucide-react";
@@ -6,6 +7,8 @@ import { Button } from "@/components/ui/button";
 
 interface DeparturesColumnProps {
   departures: ReservationDto[];
+  /** Auta już obsłużone (dziś lub w ostatnich 12h) — zwijana sekcja pod listą. */
+  handled?: DepartureListItem[];
   onCheckOut: (reservation: ReservationDto) => void;
   onChangeReturnDate: (reservation: ReservationDto) => void;
   /** TYMCZASOWE: dodanie wyjazdu dla auta stojącego przed wdrożeniem systemu. */
@@ -18,6 +21,7 @@ interface DeparturesColumnProps {
  */
 export function DeparturesColumn({
   departures,
+  handled = [],
   onCheckOut,
   onChangeReturnDate,
   onAddLegacyDeparture,
@@ -65,11 +69,14 @@ export function DeparturesColumn({
             <span className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">0</span>
           </div>
         </div>
-        <EmptyState
-          icon={Calendar}
-          title="Brak wyjazdów do obsługi"
-          description="Nie ma powrotów na dziś ani opóźnionych, które czekają na wydanie"
-        />
+        <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+          <EmptyState
+            icon={Calendar}
+            title="Brak wyjazdów do obsługi"
+            description="Nie ma powrotów na dziś ani opóźnionych, które czekają na wydanie"
+          />
+          <HandledSection items={handled} mode="departure" />
+        </div>
       </div>
     );
   }
@@ -93,17 +100,20 @@ export function DeparturesColumn({
           </span>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto space-y-3 pr-2" role="list" aria-labelledby="departures-heading">
-        {departures.map((departure) => (
-          <div key={departure.id} role="listitem">
-            <ReservationCard
-              reservation={departure}
-              actionType="check-out"
-              onAction={onCheckOut}
-              onChangeReturnDate={onChangeReturnDate}
-            />
-          </div>
-        ))}
+      <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+        <div className="space-y-3" role="list" aria-labelledby="departures-heading">
+          {departures.map((departure) => (
+            <div key={departure.id} role="listitem">
+              <ReservationCard
+                reservation={departure}
+                actionType="check-out"
+                onAction={onCheckOut}
+                onChangeReturnDate={onChangeReturnDate}
+              />
+            </div>
+          ))}
+        </div>
+        <HandledSection items={handled} mode="departure" />
       </div>
     </div>
   );

@@ -10,11 +10,22 @@ import type {
 import { fetchGarageSpotNameMap, type GarageSpotNameMap } from "@/lib/garage/spot-names";
 import { isCoveredParkingType } from "@/lib/pricing/parking-type";
 import type { CreateLegacyDepartureCommand } from "@/lib/schemas/reservation.schema";
+import type { DriverWalkInArrival } from "@/lib/schemas/driver.schema";
 
 function withGarageSpotName(items: DepartureListItem[], spotNames: GarageSpotNameMap): DepartureListItem[] {
   return items.map((item) =>
     isCoveredParkingType(item.parking_type) ? { ...item, garage_spot_name: spotNames[item.id] ?? null } : item
   );
+}
+
+/** Fail-soft: the handled lists are secondary — a failed fetch must not break the dashboard. */
+async function readHandled(res: Response): Promise<DepartureListItem[]> {
+  if (!res.ok) {
+    console.warn(`Failed to fetch handled list (status: ${res.status})`);
+    return [];
+  }
+  const payload = (await res.json()) as { handled?: DepartureListItem[] };
+  return payload.handled ?? [];
 }
 
 function calculateMetrics(
@@ -45,12 +56,23 @@ export function useDashboard() {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      const [arrivalsRes, departuresRes, settingsRes, statsRes, garageSpotNames] = await Promise.all([
+      const [
+        arrivalsRes,
+        departuresRes,
+        settingsRes,
+        statsRes,
+        garageSpotNames,
+        handledArrivalsRes,
+        handledDeparturesRes,
+      ] = await Promise.all([
         fetch("/api/rpc/get_todays_arrivals", { method: "POST" }),
         fetch("/api/reservations/departures", { method: "POST" }),
         fetch("/api/settings?key=eq.total_parking_spots"),
         fetch(`/api/stats?period=${activePeriod}`),
         fetchGarageSpotNameMap("/api/garage-assignments"),
+        // Driver list routes (driver + staff) also return the "handled" window.
+        fetch("/api/driver/arrivals"),
+        fetch("/api/driver/departures"),
       ]);
 
       if (!arrivalsRes.ok || !departuresRes.ok) {
@@ -59,6 +81,8 @@ export function useDashboard() {
 
       const arrivals = withGarageSpotName(await arrivalsRes.json(), garageSpotNames);
       const departures = withGarageSpotName(await departuresRes.json(), garageSpotNames);
+      const handledArrivals = withGarageSpotName(await readHandled(handledArrivalsRes), garageSpotNames);
+      const handledDepartures = withGarageSpotName(await readHandled(handledDeparturesRes), garageSpotNames);
 
       let totalSpots = 100;
       if (settingsRes.ok) {
@@ -91,6 +115,8 @@ export function useDashboard() {
         data: {
           todaysArrivals: arrivals,
           todaysDepartures: departures,
+          handledArrivals,
+          handledDepartures,
           metrics,
           stats,
         },
@@ -198,6 +224,26 @@ export function useDashboard() {
     }
   };
 
+  /** Client arrived without a reservation — create it and confirm the arrival in one call. */
+  const handleWalkInArrival = async (command: DriverWalkInArrival) => {
+    setState((prev) => ({ ...prev, isProcessing: true }));
+    try {
+      const response = await fetch("/api/driver/walk-in-arrivals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(command),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Nie udało się dodać przyjazdu");
+      }
+    } finally {
+      // Refetch on failure too: the reservation may exist even if the arrival was not confirmed.
+      await fetchDashboardData(period);
+      setState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
 
@@ -226,5 +272,6 @@ export function useDashboard() {
     handleCancel,
     handleChangeReturnDate,
     handleCreateLegacyDeparture,
+    handleWalkInArrival,
   };
 }

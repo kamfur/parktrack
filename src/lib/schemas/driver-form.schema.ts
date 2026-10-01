@@ -8,6 +8,7 @@ export const driverArrivalFormSchema = z.object({
   parking_sector: z.string().max(50).optional(),
   license_plate: z.string().max(15).optional(),
   paid_at_arrival: z.boolean(),
+  keys_left: z.boolean(),
 });
 
 export type DriverArrivalFormData = z.infer<typeof driverArrivalFormSchema>;

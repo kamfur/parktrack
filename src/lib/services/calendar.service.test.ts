@@ -53,6 +53,19 @@ describe("buildMonthCounts", () => {
 });
 
 describe("toCalendarEvent", () => {
+  it("carries the keys-left flag, defaulting to false", () => {
+    expect(toCalendarEvent(reservation({ keys_left: true }), "departure").keysLeft).toBe(true);
+    expect(toCalendarEvent(reservation({}), "departure").keysLeft).toBe(false);
+  });
+
+  it("carries the flight direction, trimmed, and null when blank", () => {
+    expect(toCalendarEvent(reservation({ flight_direction: " Londyn, LO 392 " }), "departure").flightDirection).toBe(
+      "Londyn, LO 392"
+    );
+    expect(toCalendarEvent(reservation({ flight_direction: "  " }), "departure").flightDirection).toBeNull();
+    expect(toCalendarEvent(reservation({ flight_direction: null }), "departure").flightDirection).toBeNull();
+  });
+
   it("classifies arrivals and departures using their planned timestamp", () => {
     const row = reservation({});
     expect(toCalendarEvent(row, "arrival")).toMatchObject({

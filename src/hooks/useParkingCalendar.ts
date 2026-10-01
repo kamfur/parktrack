@@ -19,6 +19,7 @@ import type {
   DriverShiftWrite,
 } from "@/types";
 import { fetchGarageSpotNameMap } from "@/lib/garage/spot-names";
+import { isCoveredParkingType } from "@/lib/pricing/parking-type";
 
 async function readData<T>(response: Response, fallback: T): Promise<T> {
   if (!response.ok) {
@@ -80,7 +81,7 @@ export function useParkingCalendar(options: { pauseRefresh?: boolean } = {}) {
 
         setEvents(
           nextEvents.map((event) =>
-            event.parkingType === "garage"
+            isCoveredParkingType(event.parkingType)
               ? { ...event, garageSpotName: garageSpotNames[event.reservationId] ?? null }
               : event
           )

@@ -21,6 +21,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Skeleton } from "../ui/skeleton";
 import { cn } from "@/lib/utils";
+import { isCoveredParkingType, parkingTypeLabel } from "@/lib/pricing/parking-type";
 
 export interface ReservationCardsProps {
   /** Lista rezerwacji do wyświetlenia */
@@ -118,10 +119,10 @@ export function ReservationCards({ reservations, isLoading, onCardClick, onActio
                   <h3 className="font-semibold text-base leading-none truncate">{fullName}</h3>
                   <div className="flex flex-wrap items-center gap-1">
                     <Badge className={cn(getStatusBadgeClasses(reservation.status), "w-fit")}>{statusLabel}</Badge>
-                    {reservation.parking_type === "garage" ? (
+                    {isCoveredParkingType(reservation.parking_type) ? (
                       <Badge variant="outline" className="w-fit gap-1">
                         <Warehouse className="h-3 w-3" aria-hidden />
-                        Garaż
+                        {parkingTypeLabel(reservation.parking_type)}
                       </Badge>
                     ) : null}
                   </div>

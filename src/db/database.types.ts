@@ -404,6 +404,7 @@ export type Database = {
           parking_sector: string | null
           parking_type: string
           passenger_count: number | null
+          keys_left: boolean
           phone: string | null
           planned_check_in: string
           planned_check_out: string
@@ -434,6 +435,7 @@ export type Database = {
           parking_sector?: string | null
           parking_type?: string
           passenger_count?: number | null
+          keys_left?: boolean
           phone?: string | null
           planned_check_in: string
           planned_check_out: string
@@ -464,6 +466,7 @@ export type Database = {
           parking_sector?: string | null
           parking_type?: string
           passenger_count?: number | null
+          keys_left?: boolean
           phone?: string | null
           planned_check_in?: string
           planned_check_out?: string
@@ -594,6 +597,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agency_month_summary: {
+        Args: { p_agency_id: string; p_month: number; p_year: number }
+        Returns: {
+          actual_check_in: string
+          actual_check_out: string
+          category: string
+          first_name: string
+          gross_amount: number
+          invoice_id: string
+          invoice_number: string
+          last_name: string
+          license_plate: string
+          net_amount: number
+          parking_type: string
+          planned_check_in: string
+          planned_check_out: string
+          reservation_id: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          total_cost: number
+          vat_amount: number
+        }[]
+      }
       assign_garage_spot: {
         Args: {
           p_assigned_by: string
@@ -623,6 +648,10 @@ export type Database = {
           p_parking_type?: string
         }
         Returns: number
+      }
+      create_agency_invoice: {
+        Args: { p_agency_id: string; p_month: number; p_year: number }
+        Returns: string
       }
       create_invoice: {
         Args: {
@@ -663,6 +692,14 @@ export type Database = {
       vat_net_from_gross: {
         Args: { p_gross: number; p_rate: number }
         Returns: number
+      }
+      warsaw_month_end: {
+        Args: { p_month: number; p_year: number }
+        Returns: string
+      }
+      warsaw_month_start: {
+        Args: { p_month: number; p_year: number }
+        Returns: string
       }
     }
     Enums: {

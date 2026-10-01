@@ -7,6 +7,29 @@ export function isOverdue(plannedIso: string, now: Date = new Date()): boolean {
   return warsawDateKey(new Date(plannedIso)) < warsawDateKey(now);
 }
 
+/**
+ * Driver list search: matches name, license plate or phone. Case-insensitive; spaces and
+ * dashes are ignored so "kr12345" finds "KR 12345".
+ */
+export function matchesDriverSearch(
+  r: Pick<ReservationDto, "first_name" | "last_name" | "license_plate" | "phone">,
+  query: string
+): boolean {
+  const normalize = (value: string) => value.toLowerCase().replace(/[\s-]/g, "");
+  const needle = normalize(query);
+  if (!needle) return true;
+  return [
+    r.last_name,
+    r.first_name,
+    r.license_plate,
+    r.phone,
+    `${r.first_name ?? ""}${r.last_name}`,
+    `${r.last_name}${r.first_name ?? ""}`,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .some((value) => normalize(value).includes(needle));
+}
+
 /** Planned timestamp is on a Warsaw calendar day after today (shown in the 12h look-ahead). */
 export function isAfterToday(plannedIso: string, now: Date = new Date()): boolean {
   return warsawDateKey(new Date(plannedIso)) > warsawDateKey(now);

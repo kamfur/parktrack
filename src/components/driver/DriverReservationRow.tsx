@@ -1,5 +1,6 @@
 import type { DepartureListItem } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { KeysLeftBadge } from "@/components/shared/KeysLeftBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,7 @@ export function DriverReservationRow({
   return (
     <Card
       className={cn(
-        "border-l-4",
+        "gap-0 border-l-4 py-0",
         handled && "border-l-emerald-500 bg-emerald-50/50",
         overdue && "border-l-amber-500 bg-amber-50/60",
         nearCheckout && !overdue && "border-l-sky-500 bg-sky-50/60",
@@ -68,6 +69,8 @@ export function DriverReservationRow({
             {isAgencyPaid(reservation) ? (
               <Badge className="bg-sky-100 text-sky-800 hover:bg-sky-100">Biuro podróży – opłacone</Badge>
             ) : null}
+            {/* Only once the car is in: handled arrivals, cars on the parking and returns. */}
+            {reservation.keys_left && reservation.actual_check_in ? <KeysLeftBadge /> : null}
           </div>
           <div className="space-y-1 text-sm text-muted-foreground">
             {due != null ? (

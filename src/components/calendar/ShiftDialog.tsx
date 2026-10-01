@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
 
 export type ShiftDialogState = { mode: "create"; dateKey: string } | { mode: "edit"; shift: DriverShiftDto };
 
@@ -57,7 +58,7 @@ export function ShiftDialog({ state, drivers, isProcessing, onOpenChange, onSave
 
   return (
     <Dialog open={state !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className={MOBILE_FULLSCREEN_DIALOG}>
         <DialogHeader>
           <DialogTitle>{state?.mode === "edit" ? "Edytuj zmianę" : "Nowa zmiana"}</DialogTitle>
         </DialogHeader>

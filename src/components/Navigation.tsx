@@ -9,8 +9,8 @@ import {
   X,
   Car,
   Truck,
-  Warehouse,
   LayoutGrid,
+  Plane,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
@@ -21,7 +21,7 @@ const navItems = [
   { href: "/kalendarz", label: "Kalendarz", icon: CalendarClock, staffOnly: true },
   { href: "/rezerwacje", label: "Rezerwacje", icon: CalendarDays },
   { href: "/faktury", label: "Faktury", icon: FileText, staffOnly: true },
-  { href: "/garage-spots", label: "Garaże", icon: Warehouse, staffOnly: true },
+  { href: "/biura-podrozy", label: "Biura podróży", icon: Plane, staffOnly: true },
   { href: "/garage-occupancy", label: "Obłożenie garaży", icon: LayoutGrid, staffOnly: true },
   { href: "/kierowca", label: "Kierowca", icon: Truck },
   { href: "/ustawienia", label: "Ustawienia", icon: Settings },

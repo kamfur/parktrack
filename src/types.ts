@@ -94,6 +94,46 @@ export interface PriceListDto {
 /** Travel agency billed monthly for its clients; `archived_at` set = hidden from reservation pickers. */
 export type TravelAgencyDto = Tables<"travel_agencies">;
 
+/**
+ * How a reservation counts for the agency's billing month:
+ * invoiceable (arrived) · blocking (arrival not confirmed) · excluded (cancelled / no-show) · invoiced.
+ */
+export type AgencyMonthCategory = "invoiceable" | "blocking" | "excluded" | "invoiced";
+
+/** Row of `agency_month_summary` (net/VAT/gross null for blocking and excluded rows). */
+export interface AgencyMonthRowDto {
+  reservation_id: string;
+  last_name: string;
+  first_name: string | null;
+  license_plate: string | null;
+  planned_check_in: string;
+  planned_check_out: string;
+  status: ReservationStatus;
+  actual_check_in: string | null;
+  actual_check_out: string | null;
+  parking_type: string;
+  total_cost: number;
+  category: AgencyMonthCategory;
+  invoice_id: string | null;
+  invoice_number: string | null;
+  net_amount: number | null;
+  vat_amount: number | null;
+  gross_amount: number | null;
+}
+
+export interface AgencyMonthSummaryDto {
+  /** `YYYY-MM` */
+  month: string;
+  rows: AgencyMonthRowDto[];
+  /** Amount to invoice (invoiceable rows only) */
+  totals: { net: number; vat: number; gross: number };
+  counts: Record<AgencyMonthCategory, number>;
+  /** The Warsaw month has ended — invoicing is possible */
+  monthClosed: boolean;
+  /** The agency's invoice for this month, if already issued */
+  invoice: { id: string; invoice_number: string } | null;
+}
+
 /** A reservation-to-garage-spot assignment; `superseded_at: null` means it is the currently active one. */
 export type GarageAssignmentDto = Tables<"garage_assignments">;
 
@@ -124,6 +164,10 @@ export interface CalendarEventDto {
   status: "confirmed" | "in_progress" | "completed";
   handled: boolean;
   parkingType: ParkingType;
+  /** Free-text flight direction (e.g. "Londyn, LO 392"); shown on departure chips. */
+  flightDirection: string | null;
+  /** Client left the car keys at arrival; shown on departure chips. */
+  keysLeft: boolean;
   /** Assigned garage/carport spot name, resolved client-side (not part of the API response). */
   garageSpotName?: string | null;
 }
@@ -179,6 +223,8 @@ export type CreateReservationCommand = Omit<
 > & {
   /** Optional — server calculates when omitted */
   total_cost?: number;
+  /** Chosen garage/carport spot (covered types); omitted = auto-assign. Not a reservations column. */
+  garage_spot_id?: string;
 };
 
 /**
@@ -198,7 +244,10 @@ export type UpdateGarageSpotCommand = TablesUpdate<"garage_spots">;
  * It uses the auto-generated `TablesUpdate` type, where all fields are optional,
  * allowing for partial updates.
  */
-export type UpdateReservationCommand = TablesUpdate<"reservations">;
+export type UpdateReservationCommand = TablesUpdate<"reservations"> & {
+  /** Move to this garage/carport spot — handled via garage_assignments, not a reservations column. */
+  garage_spot_id?: string;
+};
 /**
  * Command model for creating a reservation from an external source (e.g., public website).
  * Note the use of camelCase to match the external API's contract.
@@ -229,6 +278,13 @@ export interface StatsData {
   freeSpots: number;
   totalSpots: number;
   revenue: number;
+  /** Nie-anulowane rezerwacje utworzone w okresie */
+  reservationsCount: number;
+  /** Miejsca garażowe zajęte teraz (aktywny przydział + auto na parkingu) */
+  garageOccupiedSpots: number;
+  /** Dostępne miejsca garażowe */
+  garageTotalSpots: number;
+  garageOccupancyPct: number;
   period: StatsPeriod;
 }
 
@@ -258,6 +314,10 @@ export interface DashboardData {
   todaysArrivals: ReservationDto[];
   /** Wyjazdy na dziś (Warsaw) oraz opóźnione powroty bez check-out */
   todaysDepartures: DepartureListItem[];
+  /** Przyjęte auta: dziś (Warsaw) lub w ostatnich 12h — jak "Obsłużone" w panelu kierowcy */
+  handledArrivals: DepartureListItem[];
+  /** Wydane auta: dziś (Warsaw) lub w ostatnich 12h */
+  handledDepartures: DepartureListItem[];
   /** Statystyki z endpointu /api/stats */
   stats: StatsData | null;
 }
@@ -313,7 +373,7 @@ export interface MetricCardProps {
   /** Etykieta opisowa */
   label: string;
   /** Kolor akcentu dla border-left */
-  accentColor: "green" | "blue" | "orange" | "purple";
+  accentColor: "green" | "blue" | "orange" | "purple" | "teal" | "indigo";
   /** Czy karta jest w stanie ładowania */
   isLoading?: boolean;
   /** Opcjonalny podtytuł wyświetlany pod wartością */
@@ -544,6 +604,8 @@ export interface FullReservationFormProps {
 export interface EditReservationFormProps {
   reservation: ReservationDto;
   editRules: ConditionalEditRules;
+  /** Currently assigned garage/carport spot, preselected in the spot picker. */
+  currentGarageSpotId?: string | null;
   onSubmit: (data: EditReservationFormData) => Promise<void>;
   onCancel: () => void;
   isSubmitting: boolean;
@@ -794,6 +856,12 @@ export interface ConditionalEditRules {
   canEditNotes: boolean;
   /** Czy można zmienić biuro podróży (płatnika) */
   canEditTravelAgency: boolean;
+  /** Czy można zmienić typ miejsca (parking / wiata / garaż) — w każdym statusie, poza fakturą */
+  canEditParkingType: boolean;
+  /** Czy można zmienić „Zostawił kluczyki” — tylko gdy auto stoi na parkingu (in_progress) */
+  canEditKeysLeft: boolean;
+  /** Numer faktury, na której jest rezerwacja — pola rozliczeniowe są wtedy zablokowane */
+  lockedByInvoiceNumber: string | null;
 }
 
 /**
@@ -823,6 +891,8 @@ export interface ReservationDetailsCardProps {
   plannedCheckOut: string;
   flightDirection: string | null;
   garageSpotLabel?: string | null;
+  /** Klient zostawił kluczyki — widoczne, gdy auto jest przyjęte */
+  keysLeft?: boolean;
 }
 
 /**
@@ -876,6 +946,8 @@ export interface ActionFooterProps {
   onCancel: () => void;
   /** Marks a confirmed reservation as no-show (client never arrived) */
   onNoShow: () => void;
+  /** Reverts a cancelled reservation back to confirmed (re-assigning a free garage spot if needed) */
+  onRestore: () => void;
   isProcessing: boolean;
   existingInvoiceId: string | null;
   /** Agency reservations are billed on the agency's monthly invoice, never individually */

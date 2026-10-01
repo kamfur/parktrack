@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DepartureListItem, ReservationDto } from "@/types";
+import type { DriverWalkInArrival } from "@/lib/schemas/driver.schema";
 import { fetchGarageSpotNameMap, type GarageSpotNameMap } from "@/lib/garage/spot-names";
+import { isCoveredParkingType } from "@/lib/pricing/parking-type";
 
 function withGarageSpotName<T extends ReservationDto>(items: T[], spotNames: GarageSpotNameMap): T[] {
   return items.map((item) =>
-    item.parking_type === "garage" ? { ...item, garage_spot_name: spotNames[item.id] ?? null } : item
+    isCoveredParkingType(item.parking_type) ? { ...item, garage_spot_name: spotNames[item.id] ?? null } : item
   );
 }
 
@@ -20,6 +22,8 @@ interface DriverOpsState {
   error: string | null;
   isProcessing: boolean;
   tab: DriverTab;
+  /** When the lists were last fetched successfully (shown next to the refresh button). */
+  lastUpdated: Date | null;
 }
 
 async function readList(res: Response): Promise<ReservationDto[]> {
@@ -51,6 +55,7 @@ export function useDriverOps() {
     error: null,
     isProcessing: false,
     tab: "arrivals",
+    lastUpdated: null,
   });
   const initialized = useRef(false);
   const fetchGen = useRef(0);
@@ -80,6 +85,7 @@ export function useDriverOps() {
         occupancy: withGarageSpotName(occupancy, garageSpotNames),
         isLoading: false,
         error: null,
+        lastUpdated: new Date(),
       }));
     } catch (error) {
       if (gen !== fetchGen.current) return;
@@ -160,6 +166,26 @@ export function useDriverOps() {
     }
   };
 
+  /** Client arrived without a reservation — create it and confirm the arrival in one call. */
+  const createWalkInArrival = async (body: DriverWalkInArrival) => {
+    setState((prev) => ({ ...prev, isProcessing: true, error: null }));
+    try {
+      const res = await fetch("/api/driver/walk-in-arrivals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? `Błąd dodawania przyjazdu (${res.status})`);
+      }
+    } finally {
+      // Refetch on failure too: the reservation may exist even if the arrival was not confirmed.
+      await refetch();
+      setState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
   return {
     ...state,
     setTab,
@@ -167,6 +193,7 @@ export function useDriverOps() {
     confirmArrival,
     completeDeparture,
     createReservation,
+    createWalkInArrival,
   };
 }
 

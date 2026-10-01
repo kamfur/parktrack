@@ -12,6 +12,8 @@ export function MetricCard({ icon, value, label, accentColor, isLoading = false,
     blue: "border-l-blue-500",
     orange: "border-l-orange-500",
     purple: "border-l-purple-500",
+    teal: "border-l-teal-500",
+    indigo: "border-l-indigo-500",
   };
 
   const iconColorClasses = {
@@ -19,6 +21,8 @@ export function MetricCard({ icon, value, label, accentColor, isLoading = false,
     blue: "text-blue-500",
     orange: "text-orange-500",
     purple: "text-purple-500",
+    teal: "text-teal-500",
+    indigo: "text-indigo-500",
   };
 
   const displayValue = typeof value === "number" && value < 0 ? "N/A" : value;

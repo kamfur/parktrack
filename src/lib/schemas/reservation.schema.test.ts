@@ -166,6 +166,8 @@ describe("editReservationSchema", () => {
     checkOutDate: new Date("2025-01-12T12:00:00.000Z"),
     flightDirection: "Londyn",
     notes: "Uwagi",
+    parkingType: "open_air" as const,
+    keysLeft: false,
   };
 
   it("accepts a past check-in date for an existing reservation", () => {
@@ -184,6 +186,13 @@ describe("editReservationSchema", () => {
 
   it("rejects a last name shorter than 2 characters", () => {
     expect(editReservationSchema.safeParse({ ...validEdit, lastName: "K" }).success).toBe(false);
+  });
+
+  it("accepts every parking type and rejects an unknown one", () => {
+    for (const parkingType of ["open_air", "carport", "garage"]) {
+      expect(editReservationSchema.safeParse({ ...validEdit, parkingType }).success).toBe(true);
+    }
+    expect(editReservationSchema.safeParse({ ...validEdit, parkingType: "roof" }).success).toBe(false);
   });
 });
 
@@ -271,7 +280,8 @@ describe("travel agency fields", () => {
     const later = new Date(Date.now() + 3 * 86_400_000);
     const form = { lastName: "Kowalski", checkInDate: tomorrow, checkOutDate: later };
     expect(fullReservationSchema.safeParse({ ...form, travelAgencyId: "" }).success).toBe(true);
-    expect(editReservationSchema.safeParse({ ...form, travelAgencyId: AGENCY_ID }).success).toBe(true);
-    expect(editReservationSchema.safeParse({ ...form, travelAgencyId: "x" }).success).toBe(false);
+    const editForm = { ...form, parkingType: "open_air", keysLeft: false };
+    expect(editReservationSchema.safeParse({ ...editForm, travelAgencyId: AGENCY_ID }).success).toBe(true);
+    expect(editReservationSchema.safeParse({ ...editForm, travelAgencyId: "x" }).success).toBe(false);
   });
 });

@@ -18,8 +18,11 @@ import { pendingWindowEndIso } from "../driver/operating-window";
 import { uniqueFlightDirections } from "../reservations/flight-directions";
 import { enrichDepartures } from "./ktw-arrival-hours.service";
 import { GarageAllocationService } from "./garage-allocation.service";
-import { isCoveredParkingType, type ParkingType } from "../pricing/parking-type";
+import { isCoveredParkingType, type CoveredParkingType, type ParkingType } from "../pricing/parking-type";
 import { applyAgencyDiscount } from "../pricing/agency-discount";
+
+/** Statuses whose stay still needs a physical spot (a garage/carport assignment). */
+const ACTIVE_STAY_STATUSES: readonly string[] = ["pending", "confirmed", "in_progress"];
 
 export class NoGarageAvailableError extends Error {
   constructor(message = "No garage/carport spot is available within the required buffer") {
@@ -43,6 +46,53 @@ export class TravelAgencyUnavailableError extends Error {
   }
 }
 
+/** "Zostawił kluczyki" changed on a reservation whose car is not on the parking. */
+export class KeysLeftNotEditableError extends Error {
+  constructor(message = "Kluczyki można oznaczyć tylko dla auta stojącego na parkingu") {
+    super(message);
+    this.name = "KeysLeftNotEditableError";
+  }
+}
+
+/** Reservation is on an issued invoice (billing fields locked) or would enter an invoiced agency-month. */
+export class ReservationInvoicedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ReservationInvoicedError";
+  }
+}
+
+/**
+ * The spot to assign for a covered stay: the requested one if it is free for the window
+ * (and of the right type), otherwise — when none was requested — the first free one.
+ */
+async function pickGarageSpot(
+  allocationService: GarageAllocationService,
+  parkingType: CoveredParkingType,
+  checkIn: string,
+  checkOut: string,
+  requestedSpotId?: string,
+  excludeReservationId?: string
+): Promise<string> {
+  const available = await allocationService.listAvailableSpots(checkIn, checkOut, parkingType, excludeReservationId);
+  if (requestedSpotId) {
+    if (!available.some((spot) => spot.id === requestedSpotId)) {
+      throw new NoGarageAvailableError(
+        parkingType === "garage"
+          ? "Wybrany garaż jest zajęty w tym terminie"
+          : "Wybrana wiata jest zajęta w tym terminie"
+      );
+    }
+    return requestedSpotId;
+  }
+  if (available.length === 0) {
+    throw new NoGarageAvailableError(
+      parkingType === "garage" ? "Brak wolnego garażu w tym terminie" : "Brak wolnej wiaty w tym terminie"
+    );
+  }
+  return available[0].id;
+}
+
 /** Translates the DB's NO_PRICE_LIST exception (calculate_total_cost / cost trigger) into a typed error. */
 function asPriceListError(message: string | undefined): NoPriceListError | null {
   return message?.includes("NO_PRICE_LIST") ? new NoPriceListError() : null;
@@ -50,6 +100,18 @@ function asPriceListError(message: string | undefined): NoPriceListError | null 
 
 /** Typed error for DB exceptions raised by the pricing trigger (price list, agency). */
 function asPricingError(message: string | undefined): Error | null {
+  const invoiced = message?.match(/RESERVATION_INVOICED: (\S+)/);
+  if (invoiced) {
+    return new ReservationInvoicedError(
+      `Rezerwacja jest na fakturze ${invoiced[1]} — nie można zmienić biura, dat, typu miejsca, ceny ani jej anulować`
+    );
+  }
+  const month = message?.match(/AGENCY_MONTH_INVOICED: (\S+)/);
+  if (month) {
+    return new ReservationInvoicedError(
+      `Biuro ma już wystawioną fakturę za ${month[1]} — wybierz inny termin lub biuro`
+    );
+  }
   if (message?.includes("AGENCY_ARCHIVED") || message?.includes("AGENCY_NOT_FOUND")) {
     return new TravelAgencyUnavailableError();
   }
@@ -226,7 +288,7 @@ export class ReservationService {
    */
   async createReservation(command: CreateReservationCommand, userId?: string): Promise<ReservationDto> {
     // Validate input data
-    const validatedData = await createReservationSchema.parseAsync(command);
+    const { garage_spot_id: requestedSpotId, ...validatedData } = await createReservationSchema.parseAsync(command);
 
     // Calculate total cost if not provided — the price list row follows the requested parking type.
     // Agency reservations are always priced by the DB (price list − agency discount), so a
@@ -280,15 +342,14 @@ export class ReservationService {
     if (isCoveredParkingType(validatedData.parking_type)) {
       try {
         const allocationService = new GarageAllocationService(adminClient);
-        const spot = await allocationService.findAvailableSpot(
+        const spotId = await pickGarageSpot(
+          allocationService,
+          validatedData.parking_type,
           reservation.planned_check_in,
           reservation.planned_check_out,
-          validatedData.parking_type
+          requestedSpotId
         );
-        if (!spot) {
-          throw new NoGarageAvailableError();
-        }
-        await allocationService.assign(reservation.id, spot.id, "system");
+        await allocationService.assign(reservation.id, spotId, requestedSpotId ? "staff" : "system");
       } catch (allocationError) {
         // Roll back the reservation — a garage request that can't be fulfilled must not leave an orphaned row.
         await adminClient.from("reservations").delete().eq("id", reservation.id);
@@ -374,14 +435,30 @@ ${data.notes}`
    */
   async updateReservation(id: string, command: UpdateReservationCommand): Promise<ReservationDto> {
     // Validate input data
-    const validatedData = await updateReservationSchema.parseAsync(command);
+    const { garage_spot_id: requestedSpotId, ...validatedData } = await updateReservationSchema.parseAsync(command);
+    let allocationService: GarageAllocationService | null = null;
 
-    // If planned dates are changing, re-validate the 10h garage buffer before writing —
-    // an edit must not be able to silently break the invariant `assign`/`swap` enforce.
-    if (validatedData.planned_check_in || validatedData.planned_check_out) {
+    // Spot change, decided up front before anything is written:
+    // - parking type change (allowed in any status): the old garage/carport spot no longer
+    //   matches, so it is released and — for a stay that still needs a spot — the requested
+    //   (or first free) spot of the new type is assigned;
+    // - same covered type, another spot requested: the reservation moves to that spot.
+    // - status leaves / re-enters the active set (cancel, no-show, restore): the spot is released,
+    //   or a free one is assigned again.
+    let spotChange: { previousType: ParkingType | null; previousStatus: string; spotId: string | null } | null = null;
+
+    if (
+      validatedData.status ||
+      validatedData.planned_check_in ||
+      validatedData.planned_check_out ||
+      validatedData.parking_type ||
+      requestedSpotId ||
+      validatedData.keys_left !== undefined
+    ) {
+      allocationService = new GarageAllocationService(this.supabase);
       const { data: current, error: currentError } = await this.supabase
         .from("reservations")
-        .select("planned_check_in, planned_check_out")
+        .select("planned_check_in, planned_check_out, parking_type, status, keys_left")
         .eq("id", id)
         .single();
 
@@ -389,21 +466,62 @@ ${data.notes}`
         throw new Error(`Reservation with ID ${id} not found`);
       }
 
+      // Keys are physically handed over at arrival, so the flag only changes while the car is parked.
+      if (
+        validatedData.keys_left !== undefined &&
+        validatedData.keys_left !== current.keys_left &&
+        current.status !== "in_progress"
+      ) {
+        throw new KeysLeftNotEditableError();
+      }
+
       const nextCheckIn = validatedData.planned_check_in ?? current.planned_check_in;
       const nextCheckOut = validatedData.planned_check_out ?? current.planned_check_out;
-      const allocationService = new GarageAllocationService(this.supabase);
-      await allocationService.revalidateAssignment(id, nextCheckIn, nextCheckOut);
-    }
+      const nextStatus = validatedData.status ?? current.status;
+      const nextType = validatedData.parking_type ?? current.parking_type;
+      const needsSpot = isCoveredParkingType(nextType) && ACTIVE_STAY_STATUSES.includes(nextStatus);
 
-    // Prepare update data with audit fields
-    const updateData = {
-      ...validatedData,
-    };
+      const wasActive = ACTIVE_STAY_STATUSES.includes(current.status);
+      const willBeActive = ACTIVE_STAY_STATUSES.includes(nextStatus);
+
+      if (nextType !== current.parking_type) {
+        const spotId = needsSpot
+          ? await pickGarageSpot(allocationService, nextType, nextCheckIn, nextCheckOut, requestedSpotId, id)
+          : null;
+        spotChange = { previousType: current.parking_type as ParkingType, previousStatus: current.status, spotId };
+      } else if (wasActive && !willBeActive) {
+        spotChange = { previousType: null, previousStatus: current.status, spotId: null };
+      } else if (!wasActive && willBeActive && needsSpot) {
+        const spotId = await pickGarageSpot(
+          allocationService,
+          nextType,
+          nextCheckIn,
+          nextCheckOut,
+          requestedSpotId,
+          id
+        );
+        spotChange = { previousType: null, previousStatus: current.status, spotId };
+      } else if (requestedSpotId && needsSpot && requestedSpotId !== (await allocationService.activeSpotId(id))) {
+        const spotId = await pickGarageSpot(
+          allocationService,
+          nextType,
+          nextCheckIn,
+          nextCheckOut,
+          requestedSpotId,
+          id
+        );
+        spotChange = { previousType: null, previousStatus: current.status, spotId };
+      } else if (validatedData.planned_check_in || validatedData.planned_check_out) {
+        // If planned dates are changing, re-validate the 10h garage buffer before writing —
+        // an edit must not be able to silently break the invariant `assign`/`swap` enforce.
+        await allocationService.revalidateAssignment(id, nextCheckIn, nextCheckOut);
+      }
+    }
 
     // Perform update operation
     const { data: reservation, error } = await this.supabase
       .from("reservations")
-      .update(updateData)
+      .update(validatedData)
       .eq("id", id)
       .select()
       .single();
@@ -415,6 +533,27 @@ ${data.notes}`
       }
       // The cost trigger re-prices on date/parking type changes and raises when no list covers the date.
       throw asPricingError(error.message) ?? new Error(`Failed to update reservation: ${error.message}`);
+    }
+
+    if (spotChange && allocationService) {
+      const releasedSpotId = await allocationService.release(id);
+      if (spotChange.spotId) {
+        try {
+          await allocationService.assign(id, spotChange.spotId, "staff");
+        } catch (allocationError) {
+          // Spot was taken in the meantime — restore the previous type (the trigger re-prices back)
+          // and the previous spot.
+          if (spotChange.previousType) {
+            await this.supabase.from("reservations").update({ parking_type: spotChange.previousType }).eq("id", id);
+          }
+          // A failed restore must not leave the reservation active without a spot.
+          if (!ACTIVE_STAY_STATUSES.includes(spotChange.previousStatus)) {
+            await this.supabase.from("reservations").update({ status: spotChange.previousStatus }).eq("id", id);
+          }
+          if (releasedSpotId) await allocationService.assign(id, releasedSpotId, "staff").catch(() => undefined);
+          throw allocationError;
+        }
+      }
     }
 
     return reservation;

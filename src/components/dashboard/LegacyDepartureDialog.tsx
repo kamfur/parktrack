@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import { cn } from "@/lib/utils";
 
 interface LegacyDepartureDialogProps {
   isOpen: boolean;
@@ -106,7 +108,7 @@ export function LegacyDepartureDialog({ isOpen, isLoading = false, onClose, onCo
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className={cn(MOBILE_FULLSCREEN_DIALOG, "max-h-[90vh] overflow-y-auto")}>
         <DialogHeader>
           <DialogTitle>Dodaj wyjazd (samochód już na parkingu)</DialogTitle>
           <DialogDescription>

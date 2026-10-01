@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GarageAssignmentDto, GarageOccupancyEntryDto, GarageSpotDto } from "../../types";
+import type { CoveredParkingType } from "../pricing/parking-type";
 
 /** Minimum idle time required between one vehicle's departure and the next arrival on the same spot. */
 export const GARAGE_BUFFER_MS = 10 * 60 * 60 * 1000;
@@ -26,9 +27,12 @@ export function respectsBuffer(candidate: ReservationWindow, existing: Reservati
   return candidateAfterExisting || existingAfterCandidate;
 }
 
+/** Reservation statuses that still hold a spot; cancelled / no-show / completed stays do not. */
+const SPOT_HOLDING_STATUSES: readonly string[] = ["pending", "confirmed", "in_progress"];
+
 interface ActiveAssignmentRow {
   reservation_id: string;
-  reservations: { planned_check_in: string; planned_check_out: string } | null;
+  reservations: { planned_check_in: string; planned_check_out: string; status: string } | null;
 }
 
 interface ActiveOccupancyRow {
@@ -36,7 +40,12 @@ interface ActiveOccupancyRow {
   garage_spot_id: string;
   garage_spots: { name: string } | null;
   reservation_id: string;
-  reservations: { last_name: string; planned_check_in: string; planned_check_out: string } | null;
+  reservations: { last_name: string; planned_check_in: string; planned_check_out: string; status: string } | null;
+}
+
+function holdsSpot(status: string | undefined): boolean {
+  // Rows without a status (older callers / mocks) are treated as active.
+  return status === undefined || SPOT_HOLDING_STATUSES.includes(status);
 }
 
 /**
@@ -52,7 +61,7 @@ export class GarageAllocationService {
   ): Promise<ReservationWindow[]> {
     let query = this.supabase
       .from("garage_assignments")
-      .select("reservation_id, reservations!inner(planned_check_in, planned_check_out)")
+      .select("reservation_id, reservations!inner(planned_check_in, planned_check_out, status)")
       .eq("garage_spot_id", garageSpotId)
       .is("superseded_at", null);
 
@@ -67,7 +76,7 @@ export class GarageAllocationService {
     }
 
     return ((data ?? []) as unknown as ActiveAssignmentRow[]).flatMap((row) => {
-      if (!row.reservations) return [];
+      if (!row.reservations || !holdsSpot(row.reservations.status)) return [];
       return [
         {
           checkIn: new Date(row.reservations.planned_check_in),
@@ -77,16 +86,40 @@ export class GarageAllocationService {
     });
   }
 
-  private async isSpotAvailableForWindow(garageSpotId: string, candidate: ReservationWindow): Promise<boolean> {
-    const existingWindows = await this.activeWindowsForSpot(garageSpotId);
+  private async isSpotAvailableForWindow(
+    garageSpotId: string,
+    candidate: ReservationWindow,
+    excludeReservationId?: string
+  ): Promise<boolean> {
+    const existingWindows = await this.activeWindowsForSpot(garageSpotId, excludeReservationId);
     return existingWindows.every((existing) => respectsBuffer(candidate, existing));
   }
 
   /**
-   * First available garage/carport spot (is_available = true) whose active
+   * First available spot of `spotType` (is_available = true) whose active
    * assignments all keep the 10h buffer against the given window, or null.
+   * The type must match what the reservation was priced as (garage vs carport).
    */
-  async findAvailableSpot(plannedCheckIn: string, plannedCheckOut: string): Promise<GarageSpotDto | null> {
+  async findAvailableSpot(
+    plannedCheckIn: string,
+    plannedCheckOut: string,
+    spotType: CoveredParkingType
+  ): Promise<GarageSpotDto | null> {
+    const spots = await this.listAvailableSpots(plannedCheckIn, plannedCheckOut, spotType);
+    return spots[0] ?? null;
+  }
+
+  /**
+   * All spots of `spotType` that could take the given window (10h buffer kept), by name.
+   * `excludeReservationId` ignores that reservation's own assignment — used when
+   * re-picking a spot for an existing reservation, so its current spot stays selectable.
+   */
+  async listAvailableSpots(
+    plannedCheckIn: string,
+    plannedCheckOut: string,
+    spotType: CoveredParkingType,
+    excludeReservationId?: string
+  ): Promise<GarageSpotDto[]> {
     const candidate: ReservationWindow = {
       checkIn: new Date(plannedCheckIn),
       checkOut: new Date(plannedCheckOut),
@@ -96,19 +129,21 @@ export class GarageAllocationService {
       .from("garage_spots")
       .select("*")
       .eq("is_available", true)
+      .eq("spot_type", spotType)
       .order("name", { ascending: true });
 
     if (error) {
       throw new Error(`Failed to fetch garage spots: ${error.message}`);
     }
 
+    const available: GarageSpotDto[] = [];
     for (const spot of spots ?? []) {
-      if (await this.isSpotAvailableForWindow(spot.id, candidate)) {
-        return spot;
+      if (await this.isSpotAvailableForWindow(spot.id, candidate, excludeReservationId)) {
+        available.push(spot);
       }
     }
 
-    return null;
+    return available;
   }
 
   /**
@@ -172,9 +207,33 @@ export class GarageAllocationService {
    * the new spot, re-validating the buffer for the new spot via `assign`.
    */
   async swap(reservationId: string, newGarageSpotId: string): Promise<GarageAssignmentDto> {
+    await this.release(reservationId);
+    return this.assign(reservationId, newGarageSpotId, "staff");
+  }
+
+  /** Spot id of the reservation's active assignment, or null. */
+  async activeSpotId(reservationId: string): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .from("garage_assignments")
+      .select("garage_spot_id")
+      .eq("reservation_id", reservationId)
+      .is("superseded_at", null)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to fetch current garage assignment: ${error.message}`);
+    }
+    return data?.garage_spot_id ?? null;
+  }
+
+  /**
+   * Supersedes the reservation's active assignment (if any), e.g. when its parking
+   * type changes. Returns the released spot id, or null when there was none.
+   */
+  async release(reservationId: string): Promise<string | null> {
     const { data: current, error: currentError } = await this.supabase
       .from("garage_assignments")
-      .select("id")
+      .select("id, garage_spot_id")
       .eq("reservation_id", reservationId)
       .is("superseded_at", null)
       .maybeSingle();
@@ -182,19 +241,18 @@ export class GarageAllocationService {
     if (currentError) {
       throw new Error(`Failed to fetch current garage assignment: ${currentError.message}`);
     }
+    if (!current) return null;
 
-    if (current) {
-      const { error: supersedeError } = await this.supabase
-        .from("garage_assignments")
-        .update({ superseded_at: new Date().toISOString() })
-        .eq("id", current.id);
+    const { error: supersedeError } = await this.supabase
+      .from("garage_assignments")
+      .update({ superseded_at: new Date().toISOString() })
+      .eq("id", current.id);
 
-      if (supersedeError) {
-        throw new Error(`Failed to supersede prior garage assignment: ${supersedeError.message}`);
-      }
+    if (supersedeError) {
+      throw new Error(`Failed to release garage assignment: ${supersedeError.message}`);
     }
 
-    return this.assign(reservationId, newGarageSpotId, "staff");
+    return current.garage_spot_id;
   }
 
   /** All currently-active assignments, denormalized for the occupancy view. */
@@ -202,7 +260,7 @@ export class GarageAllocationService {
     const { data, error } = await this.supabase
       .from("garage_assignments")
       .select(
-        "id, garage_spot_id, garage_spots!inner(name), reservation_id, reservations!inner(last_name, planned_check_in, planned_check_out)"
+        "id, garage_spot_id, garage_spots!inner(name), reservation_id, reservations!inner(last_name, planned_check_in, planned_check_out, status)"
       )
       .is("superseded_at", null)
       .order("garage_spot_id", { ascending: true });
@@ -212,7 +270,7 @@ export class GarageAllocationService {
     }
 
     return ((data ?? []) as unknown as ActiveOccupancyRow[]).flatMap((row) => {
-      if (!row.garage_spots || !row.reservations) return [];
+      if (!row.garage_spots || !row.reservations || !holdsSpot(row.reservations.status)) return [];
       return [
         {
           assignmentId: row.id,

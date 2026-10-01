@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import { cn } from "@/lib/utils";
 
 export type TravelAgencyDialogState = { mode: "create" } | { mode: "edit"; agency: TravelAgencyDto };
 
@@ -119,7 +121,9 @@ export function TravelAgencyDialog({ state, isSaving, onOpenChange, onSave }: Tr
 
   return (
     <Dialog open={state !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent
+        className={cn(MOBILE_FULLSCREEN_DIALOG, "max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-2xl")}
+      >
         <DialogHeader>
           <DialogTitle>{state?.mode === "edit" ? "Edytuj biuro podróży" : "Nowe biuro podróży"}</DialogTitle>
           <DialogDescription>

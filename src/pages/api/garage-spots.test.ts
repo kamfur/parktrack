@@ -41,14 +41,14 @@ describe("POST /api/garage-spots", () => {
     const res = await POST(
       makeCtx({
         locals: { user: { id: "u1" }, supabase },
-        request: { json: async () => ({ name: "", spot_type: "shed", price_per_day: -1 }) },
+        request: { json: async () => ({ name: "", spot_type: "shed" }) },
       })
     );
     expect(res.status).toBe(400);
   });
 
   it("creates a spot on valid input", async () => {
-    const created = { id: "s1", name: "Garaż 1", spot_type: "garage", capacity_label: "single", price_per_day: 50 };
+    const created = { id: "s1", name: "Garaż 1", spot_type: "garage", capacity_label: "single" };
     const supabase = {
       from: vi.fn().mockReturnValue({
         insert: vi.fn().mockReturnThis(),
@@ -60,7 +60,7 @@ describe("POST /api/garage-spots", () => {
       makeCtx({
         locals: { user: { id: "u1" }, supabase },
         request: {
-          json: async () => ({ name: "Garaż 1", spot_type: "garage", capacity_label: "single", price_per_day: 50 }),
+          json: async () => ({ name: "Garaż 1", spot_type: "garage", capacity_label: "single" }),
         },
       })
     );

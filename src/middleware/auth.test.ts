@@ -72,6 +72,12 @@ describe("isPublicPath", () => {
 });
 
 describe("isStaffOnlyPath", () => {
+  it("lets drivers view garage occupancy read-only (page + driver APIs, not the write API)", () => {
+    expect(isStaffOnlyPath("/garage-occupancy")).toBe(false);
+    expect(isStaffOnlyPath("/api/driver/garage-spots")).toBe(false);
+    expect(isStaffOnlyPath("/api/driver/garage-assignments")).toBe(false);
+  });
+
   it("marks dashboard and staff modules", () => {
     expect(isStaffOnlyPath("/")).toBe(true);
     expect(isStaffOnlyPath("/ustawienia")).toBe(true);
@@ -81,6 +87,7 @@ describe("isStaffOnlyPath", () => {
     expect(isStaffOnlyPath("/api/invoices")).toBe(true);
     expect(isStaffOnlyPath("/api/reservations")).toBe(true);
     expect(isStaffOnlyPath("/kalendarz")).toBe(true);
+    expect(isStaffOnlyPath("/api/garage-assignments")).toBe(true);
     expect(isStaffOnlyPath("/api/calendar/events")).toBe(true);
     expect(isStaffOnlyPath("/api/shifts")).toBe(true);
     expect(isStaffOnlyPath("/api/drivers")).toBe(true);

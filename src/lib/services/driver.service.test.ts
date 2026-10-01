@@ -122,6 +122,35 @@ describe("DriverService status guards", () => {
 
     expect(client.update).toHaveBeenCalledWith(expect.objectContaining({ license_plate: "KR 999AA" }));
   });
+
+  it("confirmArrival records that the client left the keys", async () => {
+    const client = mockSupabase({
+      id: "r1",
+      status: "confirmed",
+      paid_at_arrival: false,
+      paid_at_departure: false,
+      planned_check_out: "2026-09-10T10:00:00.000Z",
+      keys_left: false,
+    });
+    const service = new DriverService(client as never);
+    await service.confirmArrival("r1", { keys_left: true });
+
+    expect(client.update).toHaveBeenCalledWith(expect.objectContaining({ keys_left: true }));
+  });
+
+  it("confirmArrival defaults keys_left to false when not provided", async () => {
+    const client = mockSupabase({
+      id: "r1",
+      status: "confirmed",
+      paid_at_arrival: false,
+      paid_at_departure: false,
+      planned_check_out: "2026-09-10T10:00:00.000Z",
+    });
+    const service = new DriverService(client as never);
+    await service.confirmArrival("r1", { paid_at_arrival: true });
+
+    expect(client.update).toHaveBeenCalledWith(expect.objectContaining({ keys_left: false }));
+  });
 });
 
 function mockListClient() {

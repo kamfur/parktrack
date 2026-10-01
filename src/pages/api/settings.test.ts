@@ -20,7 +20,7 @@ describe("PATCH /api/settings — admin-client 503 guard", () => {
   });
 
   it("returns 503 when admin client is unavailable", async () => {
-    const res = await PATCH(makePatchCtx("daily_rate", { value: "100" }));
+    const res = await PATCH(makePatchCtx("total_parking_spots", { value: "100" }));
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.error).toMatch(/SUPABASE_SERVICE_ROLE_KEY/i);

@@ -14,15 +14,18 @@ describe("driverArrivalFormSchema", () => {
       passenger_count: 2,
       parking_sector: "B3",
       paid_at_arrival: true,
+      keys_left: true,
     });
     expect(parsed.passenger_count).toBe(2);
     expect(parsed.paid_at_arrival).toBe(true);
+    expect(parsed.keys_left).toBe(true);
   });
 
   it("accepts null passenger_count", () => {
     const parsed = driverArrivalFormSchema.parse({
       passenger_count: null,
       paid_at_arrival: false,
+      keys_left: false,
     });
     expect(parsed.passenger_count).toBeNull();
   });

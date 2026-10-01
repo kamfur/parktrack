@@ -28,24 +28,27 @@ export function CalendarMonthGrid({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-7 gap-2 rounded-lg border bg-card p-4">
+      <div className="grid min-h-0 flex-1 grid-cols-7 gap-1 overflow-hidden rounded-lg border bg-card p-2 sm:gap-2 sm:p-4">
         {Array.from({ length: 35 }, (_, index) => (
-          <Skeleton key={index} className="h-24 w-full" />
+          <Skeleton key={index} className="h-16 w-full sm:h-24" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="overflow-auto rounded-lg border bg-card">
-      <div className="grid grid-cols-7 border-b">
+    <div className="flex min-h-0 flex-1 flex-col overflow-auto rounded-lg border bg-card">
+      <div className="sticky top-0 z-10 grid shrink-0 grid-cols-7 border-b bg-card">
         {WEEKDAYS.map((label) => (
-          <div key={label} className="px-2 py-2 text-center text-xs font-medium text-muted-foreground">
+          <div
+            key={label}
+            className="px-1 py-1.5 text-center text-xs font-medium text-muted-foreground sm:px-2 sm:py-2"
+          >
             {label}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7">
+      <div className="grid flex-1 auto-rows-[minmax(4.5rem,1fr)] grid-cols-7 sm:auto-rows-[minmax(6rem,1fr)]">
         {dateKeys.map((dateKey) => {
           const counts = byDate.get(dateKey) ?? { date: dateKey, arrivals: 0, departures: 0, occupancy: 0 };
           const inMonth = isInAnchorMonth(dateKey, anchorDate);
@@ -56,7 +59,7 @@ export function CalendarMonthGrid({
               type="button"
               onClick={() => onSelectDay(dateKey)}
               className={cn(
-                "flex min-h-24 flex-col items-start gap-1 border-b border-r px-2 py-2 text-left last:border-r-0 hover:bg-accent/50",
+                "flex min-w-0 flex-col items-start gap-0.5 border-r border-b px-1 py-1 text-left last:border-r-0 hover:bg-accent/50 sm:gap-1 sm:px-2 sm:py-2",
                 !inMonth && "bg-muted/30 text-muted-foreground",
                 dateKey === today && "ring-inset ring-2 ring-primary"
               )}
@@ -64,22 +67,27 @@ export function CalendarMonthGrid({
             >
               <span className={cn("text-sm font-semibold", dateKey === today && "text-primary")}>{dayNumber}</span>
               {visibility.arrivals ? (
-                <span className="text-[11px] text-emerald-700">
-                  Przyjazdy <span className="font-semibold">{counts.arrivals}</span>
-                </span>
+                <MonthCount label="Przyjazdy" value={counts.arrivals} dot="bg-emerald-400" text="text-emerald-700" />
               ) : null}
               {visibility.departures ? (
-                <span className="text-[11px] text-rose-700">
-                  Wyjazdy <span className="font-semibold">{counts.departures}</span>
-                </span>
+                <MonthCount label="Wyjazdy" value={counts.departures} dot="bg-rose-400" text="text-rose-700" />
               ) : null}
-              <span className="text-[11px] text-sky-800">
-                Pobyty <span className="font-semibold">{counts.occupancy}</span>
-              </span>
+              <MonthCount label="Pobyty" value={counts.occupancy} dot="bg-sky-500" text="text-sky-800" />
             </button>
           );
         })}
       </div>
     </div>
+  );
+}
+
+// Phones: 7 columns leave ~50px per day, so labels collapse to a colour dot + count.
+function MonthCount({ label, value, dot, text }: { label: string; value: number; dot: string; text: string }) {
+  return (
+    <span className={cn("flex items-center gap-1 text-[11px] leading-tight", text)} title={`${label} ${value}`}>
+      <span className={cn("size-1.5 shrink-0 rounded-full sm:hidden", dot)} aria-hidden="true" />
+      <span className="hidden sm:inline">{label}</span>
+      <span className="font-semibold">{value}</span>
+    </span>
   );
 }

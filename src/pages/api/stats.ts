@@ -77,7 +77,16 @@ export const GET: APIRoute = async ({ url }) => {
   const { start, end } = getWarsawPeriodBounds(period);
 
   try {
-    const [arrivalsResult, departuresResult, occupancyResult, settingsResult, revenueResult] = await Promise.all([
+    const [
+      arrivalsResult,
+      departuresResult,
+      occupancyResult,
+      settingsResult,
+      revenueResult,
+      reservationsResult,
+      garageSpotsResult,
+      garageOccupiedResult,
+    ] = await Promise.all([
       // Arrivals: day=confirmed with check-in today; month=all check-ins this month
       period === "day"
         ? supabase
@@ -120,12 +129,34 @@ export const GET: APIRoute = async ({ url }) => {
         .not("actual_check_out", "is", null)
         .gte("actual_check_out", start)
         .lt("actual_check_out", end),
+
+      // Reservations: non-cancelled bookings created in period
+      supabase
+        .from("reservations")
+        .select("*", { count: "exact", head: true })
+        .neq("status", "cancelled")
+        .gte("created_at", start)
+        .lt("created_at", end),
+
+      // Garage capacity: spots currently enabled in the configurator
+      supabase.from("garage_spots").select("*", { count: "exact", head: true }).eq("is_available", true),
+
+      // Garage occupancy: always current — active assignments of cars currently parked.
+      // Assignments aren't superseded on check-out, so the reservation status is the source of truth.
+      supabase
+        .from("garage_assignments")
+        .select("garage_spot_id, reservations!inner(status)")
+        .is("superseded_at", null)
+        .eq("reservations.status", "in_progress"),
     ]);
 
     if (arrivalsResult.error) throw new Error(`Arrivals: ${arrivalsResult.error.message}`);
     if (departuresResult.error) throw new Error(`Departures: ${departuresResult.error.message}`);
     if (occupancyResult.error) throw new Error(`Occupancy: ${occupancyResult.error.message}`);
     if (revenueResult.error) throw new Error(`Revenue: ${revenueResult.error.message}`);
+    if (reservationsResult.error) throw new Error(`Reservations: ${reservationsResult.error.message}`);
+    if (garageSpotsResult.error) throw new Error(`Garage spots: ${garageSpotsResult.error.message}`);
+    if (garageOccupiedResult.error) throw new Error(`Garage occupancy: ${garageOccupiedResult.error.message}`);
 
     const arrivalsCount = arrivalsResult.count ?? 0;
     const departuresCount = departuresResult.count ?? 0;
@@ -143,6 +174,11 @@ export const GET: APIRoute = async ({ url }) => {
     const occupancyPct = Math.round((occupied / totalSpots) * 100);
     const freeSpots = Math.max(0, totalSpots - occupied);
 
+    const reservationsCount = reservationsResult.count ?? 0;
+    const garageTotalSpots = garageSpotsResult.count ?? 0;
+    const garageOccupiedSpots = new Set((garageOccupiedResult.data ?? []).map((row) => row.garage_spot_id)).size;
+    const garageOccupancyPct = garageTotalSpots > 0 ? Math.round((garageOccupiedSpots / garageTotalSpots) * 100) : 0;
+
     const revenue = (revenueResult.data ?? []).reduce((sum, row) => sum + (Number(row.total_cost) || 0), 0);
     const roundedRevenue = Math.round(revenue * 100) / 100;
 
@@ -154,6 +190,10 @@ export const GET: APIRoute = async ({ url }) => {
         freeSpots,
         totalSpots,
         revenue: roundedRevenue,
+        reservationsCount,
+        garageOccupiedSpots,
+        garageTotalSpots,
+        garageOccupancyPct,
         period,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }

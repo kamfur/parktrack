@@ -5,8 +5,9 @@ import { toast } from "sonner";
 /**
  * Hook do widoku obłożenia garaży: listuje aktywne przydziały i skonfigurowane
  * miejsca, obsługuje ręczną zamianę oraz opisową propozycję optymalizacji.
+ * `readOnly` (kierowca) czyta z endpointów /api/driver/* — personelowe są dla niego zablokowane.
  */
-export function useGarageOccupancy() {
+export function useGarageOccupancy({ readOnly = false }: { readOnly?: boolean } = {}) {
   const [entries, setEntries] = useState<GarageOccupancyEntryDto[]>([]);
   const [spots, setSpots] = useState<GarageSpotDto[]>([]);
   const [suggestions, setSuggestions] = useState<GarageOptimizationSuggestionDto[]>([]);
@@ -19,7 +20,11 @@ export function useGarageOccupancy() {
     setIsLoading(true);
     setError(null);
     try {
-      const [entriesRes, spotsRes] = await Promise.all([fetch("/api/garage-assignments"), fetch("/api/garage-spots")]);
+      const apiBase = readOnly ? "/api/driver" : "/api";
+      const [entriesRes, spotsRes] = await Promise.all([
+        fetch(`${apiBase}/garage-assignments`),
+        fetch(`${apiBase}/garage-spots`),
+      ]);
       if (!entriesRes.ok || !spotsRes.ok) throw new Error("Nie udało się pobrać obłożenia garaży");
       setEntries(await entriesRes.json());
       setSpots(await spotsRes.json());
@@ -28,7 +33,7 @@ export function useGarageOccupancy() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [readOnly]);
 
   useEffect(() => {
     void refetch();

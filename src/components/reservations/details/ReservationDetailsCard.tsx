@@ -3,6 +3,7 @@ import { Calendar, Plane, Warehouse } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ReservationDetailsCardProps } from "@/types";
+import { KeysLeftBadge } from "@/components/shared/KeysLeftBadge";
 import { format, differenceInDays } from "date-fns";
 import { pl } from "date-fns/locale";
 
@@ -14,6 +15,7 @@ export function ReservationDetailsCard({
   plannedCheckOut,
   flightDirection,
   garageSpotLabel,
+  keysLeft,
 }: ReservationDetailsCardProps) {
   const formatDate = (dateString: string): string => {
     try {
@@ -111,6 +113,12 @@ export function ReservationDetailsCard({
             </Badge>
           </div>
         )}
+
+        {keysLeft ? (
+          <div className="pt-2">
+            <KeysLeftBadge />
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

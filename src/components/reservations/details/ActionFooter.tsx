@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { LogIn, LogOut, Edit, XCircle, FileText, UserX } from "lucide-react";
+import { LogIn, LogOut, Edit, XCircle, FileText, UserX, Undo2 } from "lucide-react";
 import type { ActionFooterProps, ReservationStatus } from "@/types";
 
 /**
@@ -14,12 +14,14 @@ export function ActionFooter({
   onEdit,
   onCancel,
   onNoShow,
+  onRestore,
   isProcessing,
   existingInvoiceId,
   isAgencyReservation,
 }: ActionFooterProps) {
   // Determine which actions are available based on status
-  const availableActions = getAvailableActions(status);
+  // Invoiced reservations cannot be cancelled or marked no-show (DB lock mirrors this).
+  const availableActions = getAvailableActions(status, existingInvoiceId !== null);
 
   return (
     <div className="border-t px-4 sm:px-6 py-3 sm:py-4 bg-muted/20 sticky bottom-0 z-10">
@@ -78,6 +80,18 @@ export function ActionFooter({
           </Button>
         )}
 
+        {availableActions.canRestore && (
+          <Button
+            onClick={onRestore}
+            disabled={isProcessing}
+            variant="outline"
+            className="gap-2 min-h-[44px] text-sm sm:text-base"
+          >
+            <Undo2 className="h-4 w-4" />
+            Przywróć rezerwację
+          </Button>
+        )}
+
         {/* Agency stays go on the agency's monthly invoice (Biura podróży module). */}
         {status === "completed" &&
           (existingInvoiceId || !isAgencyReservation) &&
@@ -104,12 +118,13 @@ export function ActionFooter({
 /**
  * Helper function to determine available actions based on reservation status
  */
-function getAvailableActions(status: ReservationStatus) {
+function getAvailableActions(status: ReservationStatus, isInvoiced: boolean) {
   return {
     canCheckIn: status === "confirmed",
     canCheckOut: status === "in_progress",
     canEdit: status === "confirmed" || status === "in_progress",
-    canCancel: status === "confirmed" || status === "in_progress",
-    canMarkNoShow: status === "confirmed",
+    canCancel: !isInvoiced && (status === "confirmed" || status === "in_progress"),
+    canMarkNoShow: !isInvoiced && status === "confirmed",
+    canRestore: !isInvoiced && status === "cancelled",
   };
 }

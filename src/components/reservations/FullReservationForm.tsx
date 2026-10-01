@@ -14,6 +14,7 @@ import { CostPreview } from "./CostPreview";
 import { AvailabilityIndicator } from "./AvailabilityIndicator";
 import { FlightDirectionInput } from "./FlightDirectionInput";
 import { TravelAgencySelect } from "./TravelAgencySelect";
+import { GarageSpotSelect } from "./GarageSpotSelect";
 import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
 import { Loader2 } from "lucide-react";
 
@@ -45,6 +46,7 @@ export function FullReservationForm({
       flightDirection: initialData?.flightDirection || "",
       notes: initialData?.notes || "",
       parkingType: initialData?.parkingType ?? "open_air",
+      garageSpotId: initialData?.garageSpotId ?? "",
       travelAgencyId: initialData?.travelAgencyId ?? "",
     },
   });
@@ -283,13 +285,32 @@ export function FullReservationForm({
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription>
-                  Wiata i garaż są przydzielane automatycznie; cena wg cennika dla typu.
-                </FormDescription>
+                <FormDescription>Cena wg cennika dla typu.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          {parkingType === "garage" || parkingType === "carport" ? (
+            <FormField
+              control={form.control}
+              name="garageSpotId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{parkingType === "garage" ? "Garaż" : "Wiata"}</FormLabel>
+                  <GarageSpotSelect
+                    parkingType={parkingType}
+                    checkIn={checkInDate}
+                    checkOut={checkOutDate}
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    emptyLabel="Automatycznie (pierwsze wolne)"
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
 
           <FormField
             control={form.control}

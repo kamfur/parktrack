@@ -34,11 +34,13 @@ interface UseReservationDetailsResult {
   isEditMode: boolean;
   isDirty: boolean;
   editRules: ConditionalEditRules;
+  /** Active garage/carport assignment's spot id (covered types), or null. */
+  garageSpotId: string | null;
 
   // Actions
   enterEditMode: () => void;
   exitEditMode: () => void;
-  updateReservation: (data: Partial<ReservationDto>) => Promise<void>;
+  updateReservation: (data: Partial<ReservationDto> & { garage_spot_id?: string }) => Promise<void>;
   updateNotes: (notes: string) => Promise<void>;
 
   // Modal states
@@ -58,6 +60,8 @@ interface UseReservationDetailsResult {
   cancelReservation: (reason?: string) => Promise<void>;
   /** Marks a confirmed reservation whose client never arrived (status no_show). */
   markNoShow: () => Promise<void>;
+  /** Reverts a cancelled reservation to confirmed (a free spot is re-assigned for covered parking). */
+  restoreReservation: () => Promise<void>;
 
   // Processing state
   isProcessing: boolean;
@@ -75,6 +79,7 @@ export function useReservationDetails({
   // State
   const [reservation, setReservation] = useState<ReservationDto | null>(null);
   const [garageSpotName, setGarageSpotName] = useState<string | null>(null);
+  const [garageSpotId, setGarageSpotId] = useState<string | null>(null);
   const [existingInvoice, setExistingInvoice] = useState<InvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -126,11 +131,14 @@ export function useReservationDetails({
             const entries: GarageOccupancyEntryDto[] = garageRes.ok ? await garageRes.json() : [];
             const match = entries.find((entry) => entry.reservationId === reservationId);
             setGarageSpotName(match?.garageSpotName ?? null);
+            setGarageSpotId(match?.garageSpotId ?? null);
           } catch {
             setGarageSpotName(null);
+            setGarageSpotId(null);
           }
         } else {
           setGarageSpotName(null);
+          setGarageSpotId(null);
         }
 
         if (invoiceRes.ok) {
@@ -167,7 +175,7 @@ export function useReservationDetails({
 
   // Update reservation
   const updateReservation = useCallback(
-    async (data: Partial<ReservationDto>) => {
+    async (data: Partial<ReservationDto> & { garage_spot_id?: string }) => {
       if (!reservationId) return;
 
       setIsUpdating(true);
@@ -181,18 +189,21 @@ export function useReservationDetails({
         });
 
         if (!response.ok) {
-          throw new Error("Failed to update reservation");
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.error ?? "Failed to update reservation");
         }
 
         const updated = await response.json();
         // API returns single object
         setReservation(updated);
         setIsDirty(false);
+        // A parking type or spot change moves the reservation to another garage/carport spot (or none).
+        if (data.parking_type || data.garage_spot_id) void fetchReservation({ silent: true });
       } finally {
         setIsUpdating(false);
       }
     },
-    [reservationId]
+    [reservationId, fetchReservation]
   );
 
   // Update notes
@@ -317,13 +328,26 @@ export function useReservationDetails({
     }
   }, [updateReservation]);
 
+  const restoreReservation = useCallback(async () => {
+    setIsProcessing(true);
+    try {
+      await updateReservation({ status: "confirmed" });
+      // The spot is re-assigned server-side; refresh it for the details card.
+      await fetchReservation({ silent: true });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [updateReservation, fetchReservation]);
+
   // Build ViewModel
   const viewModel: ReservationDetailsViewModel | null = reservation
     ? buildViewModel(reservation, garageSpotName)
     : null;
 
   // Get edit rules
-  const editRules = reservation ? getEditRules(reservation.status) : getDefaultEditRules();
+  const editRules = reservation
+    ? withInvoiceLock(getEditRules(reservation.status), existingInvoice?.invoice_number ?? null)
+    : getDefaultEditRules();
 
   return {
     reservation,
@@ -335,6 +359,7 @@ export function useReservationDetails({
     isEditMode,
     isDirty,
     editRules,
+    garageSpotId,
     enterEditMode,
     exitEditMode,
     updateReservation,
@@ -352,6 +377,7 @@ export function useReservationDetails({
     performCheckOut,
     cancelReservation,
     markNoShow,
+    restoreReservation,
     isProcessing,
   };
 }
@@ -473,6 +499,9 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditVehicleInfo: true,
         canEditNotes: true,
         canEditTravelAgency: true,
+        canEditParkingType: true,
+        canEditKeysLeft: false,
+        lockedByInvoiceNumber: null,
       };
 
     case "in_progress":
@@ -483,6 +512,9 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditVehicleInfo: true,
         canEditNotes: true,
         canEditTravelAgency: true,
+        canEditParkingType: true,
+        canEditKeysLeft: true,
+        lockedByInvoiceNumber: null,
       };
 
     case "completed":
@@ -495,11 +527,28 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditVehicleInfo: false,
         canEditNotes: true, // ONLY NOTES
         canEditTravelAgency: false,
+        canEditParkingType: true,
+        canEditKeysLeft: false,
+        lockedByInvoiceNumber: null,
       };
 
     default:
-      return getDefaultEditRules();
+      // Parking type stays editable whatever the status.
+      return { ...getDefaultEditRules(), canEditParkingType: true };
   }
+}
+
+/** An invoiced reservation keeps its billing fields (dates, payer, parking type) — mirrors the DB lock trigger. */
+function withInvoiceLock(rules: ConditionalEditRules, invoiceNumber: string | null): ConditionalEditRules {
+  if (!invoiceNumber) return rules;
+  return {
+    ...rules,
+    canEditCheckIn: false,
+    canEditCheckOut: false,
+    canEditTravelAgency: false,
+    canEditParkingType: false,
+    lockedByInvoiceNumber: invoiceNumber,
+  };
 }
 
 function getDefaultEditRules(): ConditionalEditRules {
@@ -510,6 +559,9 @@ function getDefaultEditRules(): ConditionalEditRules {
     canEditVehicleInfo: false,
     canEditNotes: false,
     canEditTravelAgency: false,
+    canEditParkingType: false,
+    canEditKeysLeft: false,
+    lockedByInvoiceNumber: null,
   };
 }
 

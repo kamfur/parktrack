@@ -56,6 +56,8 @@ export const createReservationSchema = z
     notes: z.string().optional(),
     flight_direction: z.string().max(100, "Flight direction must be at most 100 characters").optional(),
     parking_type: z.enum(PARKING_TYPES).default("open_air"),
+    /** Chosen garage/carport spot (covered types only); omitted = auto-assign the first free one. */
+    garage_spot_id: z.string().uuid("Invalid garage spot ID").optional(),
     /** Paying travel agency; the DB then prices with its discount and marks the stay paid. */
     travel_agency_id: z.string().uuid("Invalid travel agency ID").nullable().optional(),
   })
@@ -105,6 +107,10 @@ export const updateReservationSchema = z.object({
   surcharge_amount: z.number().nonnegative().nullable().optional(),
   is_paid: z.boolean().optional(),
   parking_type: z.enum(PARKING_TYPES).optional(),
+  /** Move to this garage/carport spot (not a reservations column — handled via garage_assignments). */
+  garage_spot_id: z.string().uuid("Invalid garage spot ID").optional(),
+  /** Client left the car keys — editable only while the car is on the parking (in_progress). */
+  keys_left: z.boolean().optional(),
   travel_agency_id: z.string().uuid("Invalid travel agency ID").nullable().optional(),
 });
 
@@ -202,6 +208,8 @@ export const fullReservationSchema = z
       .or(z.literal("")),
     notes: z.string().max(1000, "Notatki mogą zawierać maksymalnie 1000 znaków").optional(),
     parkingType: z.enum(PARKING_TYPES).optional(),
+    /** "" = przydział automatyczny (tylko wiata/garaż) */
+    garageSpotId: z.string().uuid("Nieprawidłowe miejsce").optional().or(z.literal("")),
     /** "" = brak biura (klient indywidualny) */
     travelAgencyId: z.string().uuid("Nieprawidłowe biuro podróży").optional().or(z.literal("")),
   })
@@ -263,6 +271,10 @@ export const editReservationSchema = z
     notes: z.string().max(1000, "Notatki mogą zawierać maksymalnie 1000 znaków").optional().or(z.literal("")),
     /** "" = brak biura (klient indywidualny) */
     travelAgencyId: z.string().uuid("Nieprawidłowe biuro podróży").optional().or(z.literal("")),
+    parkingType: z.enum(PARKING_TYPES),
+    /** "" = bez zmian (lub przydział automatyczny przy zmianie typu) */
+    garageSpotId: z.string().uuid("Nieprawidłowe miejsce").optional().or(z.literal("")),
+    keysLeft: z.boolean(),
   })
   .refine(
     (data) => {

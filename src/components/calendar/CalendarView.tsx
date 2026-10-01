@@ -40,7 +40,7 @@ export function CalendarView() {
     calendar.view !== "month" && !calendar.isLoading && calendar.events.length === 0 && calendar.shifts.length === 0;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-4">
       <CalendarToolbar
         view={calendar.view}
         dateKeys={calendar.dateKeys}
@@ -56,11 +56,11 @@ export function CalendarView() {
       />
 
       {isEmpty ? (
-        <div className="flex items-start gap-3 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
+        <div className="flex shrink-0 items-start gap-3 rounded-lg border bg-muted/40 px-3 py-2 text-sm sm:px-4 sm:py-3">
           <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <div>
             <p className="font-medium">Brak wydarzeń w tym zakresie</p>
-            <p className="text-muted-foreground">
+            <p className="hidden text-muted-foreground sm:block">
               Nie ma zaplanowanych przyjazdów, wyjazdów ani zmian. Zmień datę albo włącz ukryte warstwy.
             </p>
           </div>

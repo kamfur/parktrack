@@ -12,10 +12,6 @@ import type { GarageSpotFormData } from "@/lib/schemas/garage-spot.schema";
 const SPOT_TYPE_LABEL: Record<string, string> = { garage: "Garaż", carport: "Wiata" };
 const CAPACITY_LABEL: Record<string, string> = { single: "Pojedynczy", double: "Podwójny" };
 
-function formatPrice(pricePerDay: number): string {
-  return new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" }).format(pricePerDay);
-}
-
 export function GarageSpotConfigurator() {
   const { spots, isLoading, isSaving, createSpot, updateSpot, toggleAvailability } = useGarageSpots();
   const [dialogState, setDialogState] = useState<GarageSpotDialogState | null>(null);
@@ -45,7 +41,6 @@ export function GarageSpotConfigurator() {
               <TableHead>Nazwa</TableHead>
               <TableHead>Typ</TableHead>
               <TableHead>Pojemność</TableHead>
-              <TableHead>Cena za dobę</TableHead>
               <TableHead>Dostępne</TableHead>
               <TableHead className="w-[50px]">
                 <span className="sr-only">Akcje</span>
@@ -56,14 +51,14 @@ export function GarageSpotConfigurator() {
             {isLoading ? (
               Array.from({ length: 3 }).map((_, index) => (
                 <TableRow key={index}>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={5}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : spots.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                   Brak skonfigurowanych miejsc garażowych
                 </TableCell>
               </TableRow>
@@ -75,7 +70,6 @@ export function GarageSpotConfigurator() {
                     <Badge variant="outline">{SPOT_TYPE_LABEL[spot.spot_type] ?? spot.spot_type}</Badge>
                   </TableCell>
                   <TableCell>{CAPACITY_LABEL[spot.capacity_label] ?? spot.capacity_label}</TableCell>
-                  <TableCell>{formatPrice(spot.price_per_day)}</TableCell>
                   <TableCell>
                     <Checkbox
                       checked={spot.is_available}

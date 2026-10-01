@@ -4,6 +4,7 @@ import {
   flightDirectionLabel,
   garageSpotLabel,
   isAfterToday,
+  matchesDriverSearch,
   isAgencyPaid,
   isNearCheckout,
   isOverdue,
@@ -14,6 +15,23 @@ describe("isOverdue", () => {
     const now = new Date("2026-09-09T12:00:00+02:00");
     expect(isOverdue("2026-09-08T10:00:00+02:00", now)).toBe(true);
     expect(isOverdue("2026-09-09T08:00:00+02:00", now)).toBe(false);
+  });
+});
+
+describe("matchesDriverSearch", () => {
+  const r = { first_name: "Jan", last_name: "Kowalski", license_plate: "KR 12345", phone: "+48 600-100-200" };
+
+  it("matches name, full name, plate and phone ignoring case, spaces and dashes", () => {
+    expect(matchesDriverSearch(r, "kowal")).toBe(true);
+    expect(matchesDriverSearch(r, "jan kowalski")).toBe(true);
+    expect(matchesDriverSearch(r, "kr12345")).toBe(true);
+    expect(matchesDriverSearch(r, "600100")).toBe(true);
+    expect(matchesDriverSearch(r, "  ")).toBe(true);
+  });
+
+  it("rejects non-matching queries", () => {
+    expect(matchesDriverSearch(r, "nowak")).toBe(false);
+    expect(matchesDriverSearch({ ...r, license_plate: null, phone: null }, "kr1")).toBe(false);
   });
 });
 

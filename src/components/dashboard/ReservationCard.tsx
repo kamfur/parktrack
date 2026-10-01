@@ -2,6 +2,7 @@ import type { ReservationCardProps } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { KeysLeftBadge } from "@/components/shared/KeysLeftBadge";
 import { Banknote, Phone, Car, Clock, Mail, Plane, PlaneLanding, Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { amountDue, flightDirectionLabel, garageSpotLabel, isAfterToday, isOverdue } from "@/lib/driver/display";
@@ -76,6 +77,7 @@ export function ReservationCard({
             <h3 className="font-semibold text-lg">{fullName}</h3>
             {overdue ? <Badge variant="secondary">{actionType === "check-in" ? "Zaległe" : "Opóźniony"}</Badge> : null}
             {tomorrow ? <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100">Jutro</Badge> : null}
+            {actionType === "check-out" && reservation.keys_left ? <KeysLeftBadge /> : null}
           </div>
 
           <div className="space-y-2 text-sm text-muted-foreground">
@@ -144,7 +146,7 @@ export function ReservationCard({
               variant={actionType === "check-in" ? "default" : "outline"}
               aria-label={`${actionType === "check-in" ? "Zamelduj" : "Wymelduj"} ${fullName}`}
             >
-              {actionType === "check-in" ? "Przyjęcie" : "Check-out"}
+              {actionType === "check-in" ? "Przyjęcie" : "Wydanie"}
             </Button>
             {actionType === "check-in" && canCancel ? (
               <Button

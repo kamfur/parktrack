@@ -135,3 +135,31 @@ describe("GarageAllocationService.revalidateAssignment", () => {
     ).rejects.toBeInstanceOf(GarageBufferViolationError);
   });
 });
+
+describe("GarageAllocationService.listActiveAssignments", () => {
+  const row = (id: string, status: string) => ({
+    id,
+    garage_spot_id: "s1",
+    garage_spots: { name: "G1" },
+    reservation_id: `r-${id}`,
+    reservations: {
+      last_name: "Kowalski",
+      planned_check_in: "2026-09-01T00:00:00Z",
+      planned_check_out: "2026-09-03T00:00:00Z",
+      status,
+    },
+  });
+
+  it("leaves out reservations that no longer hold a spot (cancelled, no-show, completed)", async () => {
+    const supabase = mockSupabase({
+      garage_assignments: {
+        data: [row("a1", "confirmed"), row("a2", "cancelled"), row("a3", "no_show"), row("a4", "in_progress")],
+        error: null,
+      },
+    });
+
+    const entries = await new GarageAllocationService(supabase as never).listActiveAssignments();
+
+    expect(entries.map((entry) => entry.assignmentId)).toEqual(["a1", "a4"]);
+  });
+});

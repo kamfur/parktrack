@@ -737,10 +737,10 @@ Volumes are small (tens to hundreds of reservations per agency per month). `agen
 
 #### Automated
 
-- [x] 4.1 Migration applies: `npx supabase db reset`
-- [x] 4.2 pgTAP passes: `npx supabase test db`
-- [x] 4.3 Unit tests pass: `npm run test`
-- [x] 4.4 Type checking passes: `npm run typecheck`
+- [x] 4.1 Migration applies: `npx supabase db reset` — 3e1a22f
+- [x] 4.2 pgTAP passes: `npx supabase test db` — 3e1a22f
+- [x] 4.3 Unit tests pass: `npm run test` — 3e1a22f
+- [x] 4.4 Type checking passes: `npm run typecheck` — 3e1a22f
 - [ ] 4.5 Linting passes: `npm run lint`
 
 #### Manual
@@ -755,12 +755,12 @@ Volumes are small (tens to hundreds of reservations per agency per month). `agen
 
 #### Automated
 
-- [ ] 5.1 Migration applies: `npx supabase db reset`
-- [ ] 5.2 pgTAP passes: `npx supabase test db`
-- [ ] 5.3 Unit and integration tests pass: `npm run test`
-- [ ] 5.4 Type checking passes: `npm run typecheck`
+- [x] 5.1 Migration applies: `npx supabase db reset`
+- [x] 5.2 pgTAP passes: `npx supabase test db`
+- [x] 5.3 Unit and integration tests pass: `npm run test`
+- [x] 5.4 Type checking passes: `npm run typecheck`
 - [ ] 5.5 Linting passes: `npm run lint`
-- [ ] 5.6 Build passes: `npm run build`
+- [x] 5.6 Build passes: `npm run build`
 - [ ] 5.7 E2E passes: `npm run test:e2e -- e2e/travel-agencies.spec.ts`
 
 #### Manual

@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 4321
+    },
+    {
+      "name": "soniox-poc-recorder",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/soniox-poc/record-server.mjs"],
+      "port": 5178
     }
   ]
 }

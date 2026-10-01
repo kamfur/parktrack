@@ -23,6 +23,7 @@ export function DashboardContainer() {
     handleCancel,
     handleChangeReturnDate,
     handleCreateLegacyDeparture,
+    handleWalkInArrival,
     period,
     setPeriod,
   } = useDashboard();
@@ -31,6 +32,7 @@ export function DashboardContainer() {
   const [arrivalTarget, setArrivalTarget] = useState<ReservationDto | null>(null);
   const [departureTarget, setDepartureTarget] = useState<ReservationDto | null>(null);
   const [isLegacyDepartureOpen, setLegacyDepartureOpen] = useState(false);
+  const [isWalkInOpen, setWalkInOpen] = useState(false);
 
   const onConfirmCancel = async (reason?: string) => {
     if (!cancelTarget) return;
@@ -89,11 +91,14 @@ export function DashboardContainer() {
       <TodayView
         arrivals={data.todaysArrivals}
         departures={data.todaysDepartures}
+        handledArrivals={data.handledArrivals}
+        handledDepartures={data.handledDepartures}
         onCheckIn={setArrivalTarget}
         onCheckOut={setDepartureTarget}
         onCancel={setCancelTarget}
         onChangeReturnDate={setReturnDateTarget}
         onAddLegacyDeparture={() => setLegacyDepartureOpen(true)}
+        onAddWalkIn={() => setWalkInOpen(true)}
         isLoading={isProcessing}
       />
       <DriverArrivalDialog
@@ -106,6 +111,16 @@ export function DashboardContainer() {
         onSubmit={async (id, body) => {
           await handleCheckIn(id, body);
           toast.success("Przyjazd potwierdzony");
+        }}
+      />
+      <DriverArrivalDialog
+        mode="walk-in"
+        open={isWalkInOpen}
+        onOpenChange={setWalkInOpen}
+        isProcessing={isProcessing}
+        onSubmit={async (command) => {
+          await handleWalkInArrival(command);
+          toast.success("Przyjazd dodany");
         }}
       />
       <DriverDepartureDialog

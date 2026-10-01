@@ -7,14 +7,16 @@ const PUBLIC_API_PREFIXES = ["/api/auth/", "/api/health", "/api/reservations/ext
 
 const PUBLIC_ASSET_PREFIXES = ["/_astro/", "/favicon", "/sitemap"];
 
-/** Staff-only page prefixes. Drivers are redirected to /kierowca. Exact `/` is handled separately. */
+/**
+ * Staff-only page prefixes. Drivers are redirected to /kierowca. Exact `/` is handled separately.
+ * `/garage-occupancy` is deliberately absent: drivers see it read-only (data via /api/driver/*).
+ */
 const STAFF_ONLY_PAGE_PREFIXES = [
   "/ustawienia",
   "/faktury",
   "/rezerwacje",
   "/kalendarz",
   "/garage-spots",
-  "/garage-occupancy",
   "/biura-podrozy",
 ];
 
@@ -86,7 +88,7 @@ function homeForRole(role: AppRole | undefined): string {
 
 /**
  * Protects staff pages and APIs. Public auth/health/external routes stay open.
- * Drivers are limited to /kierowca and /api/driver/* (plus auth).
+ * Drivers are limited to /kierowca, /garage-occupancy (read-only) and /api/driver/* (plus auth).
  */
 export const authMiddleware: MiddlewareHandler = async (context, next) => {
   const { pathname } = context.url;

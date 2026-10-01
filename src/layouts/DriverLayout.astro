@@ -8,6 +8,12 @@ interface Props {
 }
 
 const { title = "ParkTrack — Kierowca", userEmail } = Astro.props;
+
+const navLinks = [
+  { href: "/kierowca", label: "Operacje" },
+  { href: "/garage-occupancy", label: "Garaże" },
+];
+const currentPath = Astro.url.pathname;
 ---
 
 <!doctype html>
@@ -26,6 +32,25 @@ const { title = "ParkTrack — Kierowca", userEmail } = Astro.props;
           <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">ParkTrack</p>
           <h1 class="text-lg font-semibold leading-tight">Kierowca</h1>
         </div>
+        <nav class="flex items-center gap-1" aria-label="Panel kierowcy">
+          {
+            navLinks.map((link) => {
+              const active = currentPath === link.href || currentPath.startsWith(`${link.href}/`);
+              return (
+                <a
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  class:list={[
+                    "rounded-md px-3 py-2 text-sm font-medium",
+                    active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                  ]}
+                >
+                  {link.label}
+                </a>
+              );
+            })
+          }
+        </nav>
         <div class="flex items-center gap-3">
           {
             userEmail ? (
@@ -36,7 +61,7 @@ const { title = "ParkTrack — Kierowca", userEmail } = Astro.props;
         </div>
       </div>
     </header>
-    <main class="mx-auto max-w-lg lg:max-w-6xl px-4 py-4 pb-24">
+    <main class="mx-auto max-w-lg lg:max-w-6xl px-4 py-4 lg:pb-8">
       <slot />
     </main>
   </body>

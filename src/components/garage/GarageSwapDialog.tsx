@@ -3,6 +3,7 @@ import type { GarageOccupancyEntryDto, GarageSpotDto } from "@/types";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
 
 interface GarageSwapDialogProps {
   entry: GarageOccupancyEntryDto | null;
@@ -32,7 +33,7 @@ export function GarageSwapDialog({ entry, spots, isSwapping, onOpenChange, onSwa
         onOpenChange(open);
       }}
     >
-      <DialogContent>
+      <DialogContent className={MOBILE_FULLSCREEN_DIALOG}>
         <DialogHeader>
           <DialogTitle>Zamień przydział garażu</DialogTitle>
         </DialogHeader>

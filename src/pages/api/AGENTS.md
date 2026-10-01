@@ -23,6 +23,7 @@ Run one file: `npm run test -- src/pages/api/settings.test.ts`.
 - Prefix: `/api/driver/*` — arrivals, departures, occupancy, reservation arrival/departure PATCH.
 - `GET /api/driver/reservations/:id/quote?check_out=` — live price for the arrival/departure dialogs; unchanged date returns stored `total_cost`, otherwise `calculate_total_cost` (same rule as `trg_update_cost`).
 - `POST /api/driver/reservations` — driver adds a reservation (`driverCreateReservationSchema`: no price/agency/payment fields, `source=walk_in`, audited as the user); `GET /api/driver/price` previews the price-list total for it.
+- `POST /api/driver/walk-in-arrivals` — client arrived without a reservation (driver panel + staff dashboard): `driverWalkInArrivalSchema`, creates the stay with check-in = now, then `DriverService.confirmArrival` (same rules as a booked arrival). Not atomic — if confirmation fails the reservation stays `confirmed` on the arrivals list.
 - Allowed roles: `driver` and `staff`. Staff-only APIs remain blocked for drivers in `authMiddleware`.
 - List window: overdue + calendar today (Warsaw), extended to now + 12h when that reaches past midnight (`pendingWindowEndIso`), for both `/api/driver/*` lists and staff dashboard `getTodaysArrivals` / `getTodaysDepartures`.
 - Handled window: `GET /api/driver/arrivals` and `/departures` also return `handled` — actual timestamp on Warsaw today **or** within the last 12 hours (union).
@@ -47,3 +48,9 @@ Run one file: `npm run test -- src/pages/api/settings.test.ts`.
 - Never skip auth assumption — protected routes must return 401/redirect (see `@context/foundation/test-plan.md` risk #5).
 - PATCH/POST settings use admin client in handler — do not assume user RLS for writes.
 - Drivers must not use `/api/reservations` — use `/api/driver/...` action routes.
+
+## Travel agencies & agency invoices
+
+- `/api/travel-agencies[/id]` (CRUD, `PATCH {archived}`), `/[id]/summary?month=YYYY-MM`, `/[id]/invoices` (GET, POST `{month}`) — staff-only.
+- Money rules live in Postgres: discount + `is_paid` in `trg_update_cost`, month summary / issuing in `agency_month_summary` / `create_agency_invoice`, invoice locks in `trg_block_invoiced_reservation`. Handlers only map `P0001` codes (e.g. `BLOCKING_RESERVATIONS` → 409, `MONTH_NOT_CLOSED` → 422, `RESERVATION_INVOICED` → 409). Cover rule changes with pgTAP (`supabase/tests/`).
+- Billing month = planned check-in in Europe/Warsaw. Agency reservations never get individual invoices.

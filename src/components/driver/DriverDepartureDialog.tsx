@@ -18,6 +18,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import { useCheckoutQuote } from "@/hooks/useCheckoutQuote";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import { cn } from "@/lib/utils";
 
 interface DriverDepartureDialogProps {
   reservation: ReservationDto | null;
@@ -90,7 +92,7 @@ export function DriverDepartureDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
+      <DialogContent className={cn(MOBILE_FULLSCREEN_DIALOG, "max-h-[90dvh] max-w-md overflow-y-auto")}>
         <DialogHeader>
           <DialogTitle>Zakończ wyjazd</DialogTitle>
           {reservation ? (
@@ -117,7 +119,12 @@ export function DriverDepartureDialog({
                 )}
               />
             ) : (
-              <Button type="button" variant="link" className="h-auto px-0" onClick={() => setShowDateField(true)}>
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto px-0 underline"
+                onClick={() => setShowDateField(true)}
+              >
                 Zmień datę wyjazdu
               </Button>
             )}
@@ -177,11 +184,16 @@ export function DriverDepartureDialog({
               />
             )}
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 flex-row gap-2 border-t bg-white px-6 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 flex-1 sm:flex-none"
+                onClick={() => onOpenChange(false)}
+              >
                 Anuluj
               </Button>
-              <Button type="submit" className="min-h-11" disabled={isProcessing}>
+              <Button type="submit" className="min-h-11 flex-[2] sm:flex-none" disabled={isProcessing}>
                 {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Zakończ wyjazd
               </Button>

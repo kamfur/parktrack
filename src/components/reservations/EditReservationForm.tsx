@@ -7,12 +7,19 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DateTimePicker } from "@/components/shared/DateTimePicker";
 import { CostPreview } from "./CostPreview";
-import { PARKING_TYPES, type ParkingType } from "@/lib/pricing/parking-type";
+import { PARKING_TYPES, PARKING_TYPE_LABELS, type ParkingType } from "@/lib/pricing/parking-type";
 import { FlightDirectionInput } from "./FlightDirectionInput";
 import { TravelAgencySelect } from "./TravelAgencySelect";
-import { Loader2 } from "lucide-react";
+import { GarageSpotSelect } from "./GarageSpotSelect";
+import { KeyRound, Loader2 } from "lucide-react";
+
+function toParkingType(value: string | null | undefined): ParkingType {
+  return (PARKING_TYPES as readonly string[]).includes(value ?? "") ? (value as ParkingType) : "open_air";
+}
 
 function parseDate(value: string): Date {
   const date = new Date(value);
@@ -25,6 +32,7 @@ function parseDate(value: string): Date {
 export function EditReservationForm({
   reservation,
   editRules,
+  currentGarageSpotId,
   onSubmit,
   onCancel,
   isSubmitting,
@@ -42,10 +50,13 @@ export function EditReservationForm({
       flightDirection: reservation.flight_direction || "",
       notes: reservation.notes || "",
       travelAgencyId: reservation.travel_agency_id ?? "",
+      parkingType: toParkingType(reservation.parking_type),
+      garageSpotId: currentGarageSpotId ?? "",
+      keysLeft: reservation.keys_left ?? false,
     },
   });
 
-  const { checkInDate, checkOutDate, notes, travelAgencyId } = form.watch();
+  const { checkInDate, checkOutDate, notes, travelAgencyId, parkingType } = form.watch();
 
   const capitalizeFirst = (value: string) => {
     if (!value) return value;
@@ -76,6 +87,12 @@ export function EditReservationForm({
 
   return (
     <Form {...form}>
+      {editRules.lockedByInvoiceNumber && (
+        <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+          Rezerwacja jest na fakturze {editRules.lockedByInvoiceNumber} — daty, typ miejsca i biuro podróży są
+          zablokowane.
+        </p>
+      )}
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-neutral-700">Dane osobowe</h3>
@@ -253,7 +270,78 @@ export function EditReservationForm({
               </FormItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name="parkingType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Typ miejsca</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange} disabled={!editRules.canEditParkingType}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {PARKING_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {PARKING_TYPE_LABELS[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>Zmiana typu przelicza cenę.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {parkingType === "garage" || parkingType === "carport" ? (
+            <FormField
+              control={form.control}
+              name="garageSpotId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{parkingType === "garage" ? "Garaż" : "Wiata"}</FormLabel>
+                  <GarageSpotSelect
+                    parkingType={parkingType}
+                    checkIn={checkInDate}
+                    checkOut={checkOutDate}
+                    reservationId={reservation.id}
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    emptyLabel={
+                      parkingType === reservation.parking_type && currentGarageSpotId
+                        ? "Bez zmian"
+                        : "Automatycznie (pierwsze wolne)"
+                    }
+                    disabled={!editRules.canEditParkingType}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
         </div>
+
+        {editRules.canEditKeysLeft ? (
+          <FormField
+            control={form.control}
+            name="keysLeft"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
+                <FormControl>
+                  <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
+                </FormControl>
+                <FormLabel className="flex items-center gap-2 font-normal">
+                  <KeyRound className="h-4 w-4 text-amber-600" aria-hidden />
+                  Zostawił kluczyki
+                </FormLabel>
+              </FormItem>
+            )}
+          />
+        ) : null}
 
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-neutral-700">Informacje o locie</h3>
@@ -337,11 +425,7 @@ export function EditReservationForm({
         <CostPreview
           checkInDate={checkInDate}
           checkOutDate={checkOutDate}
-          parkingType={
-            (PARKING_TYPES as readonly string[]).includes(reservation.parking_type)
-              ? (reservation.parking_type as ParkingType)
-              : "open_air"
-          }
+          parkingType={parkingType}
           travelAgencyId={travelAgencyId || null}
           isCalculating={false}
         />

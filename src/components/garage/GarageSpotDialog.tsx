@@ -8,6 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
 
 export type GarageSpotDialogState = { mode: "create" } | { mode: "edit"; spot: GarageSpotDto };
 
@@ -21,7 +22,7 @@ interface GarageSpotDialogProps {
 export function GarageSpotDialog({ state, isSaving, onOpenChange, onSave }: GarageSpotDialogProps) {
   const form = useForm<GarageSpotFormData>({
     resolver: zodResolver(garageSpotFormSchema),
-    defaultValues: { name: "", spot_type: "garage", capacity_label: "single", price_per_day: 0 },
+    defaultValues: { name: "", spot_type: "garage", capacity_label: "single" },
   });
 
   useEffect(() => {
@@ -31,11 +32,10 @@ export function GarageSpotDialog({ state, isSaving, onOpenChange, onSave }: Gara
         name: state.spot.name,
         spot_type: state.spot.spot_type as GarageSpotFormData["spot_type"],
         capacity_label: state.spot.capacity_label as GarageSpotFormData["capacity_label"],
-        price_per_day: state.spot.price_per_day,
       });
       return;
     }
-    form.reset({ name: "", spot_type: "garage", capacity_label: "single", price_per_day: 0 });
+    form.reset({ name: "", spot_type: "garage", capacity_label: "single" });
   }, [state, form]);
 
   const handleSubmit = form.handleSubmit(async (data) => {
@@ -45,7 +45,7 @@ export function GarageSpotDialog({ state, isSaving, onOpenChange, onSave }: Gara
 
   return (
     <Dialog open={state !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className={MOBILE_FULLSCREEN_DIALOG}>
         <DialogHeader>
           <DialogTitle>{state?.mode === "edit" ? "Edytuj miejsce garażowe" : "Nowe miejsce garażowe"}</DialogTitle>
         </DialogHeader>
@@ -106,25 +106,7 @@ export function GarageSpotDialog({ state, isSaving, onOpenChange, onSave }: Gara
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="price_per_day"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cena za dobę</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <p className="text-sm text-muted-foreground">Cena wynika z cennika garaży i wiat w ustawieniach.</p>
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
                 Anuluj

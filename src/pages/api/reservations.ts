@@ -1,7 +1,9 @@
 import type { APIRoute } from "astro";
 import {
+  KeysLeftNotEditableError,
   NoGarageAvailableError,
   NoPriceListError,
+  ReservationInvoicedError,
   ReservationService,
   TravelAgencyUnavailableError,
 } from "../../lib/services/reservation.service";
@@ -247,6 +249,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
+    // Invoiced reservation (billing fields locked) or an already-invoiced agency-month
+    if (error instanceof ReservationInvoicedError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // No garage/carport spot available within the buffer, or a manual swap would violate it
     if (error instanceof NoGarageAvailableError || error instanceof GarageBufferViolationError) {
       return new Response(JSON.stringify({ error: error.message }), {
@@ -343,8 +353,21 @@ export const PATCH: APIRoute = async ({ request, locals, url }) => {
       });
     }
 
-    // Editing planned dates would violate the assigned garage's 10h buffer
-    if (error instanceof GarageBufferViolationError) {
+    // Invoiced reservation (billing fields locked) or an already-invoiced agency-month
+    if (error instanceof ReservationInvoicedError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Editing planned dates would violate the assigned garage's 10h buffer,
+    // or a parking type change found no free garage/carport spot
+    if (
+      error instanceof GarageBufferViolationError ||
+      error instanceof NoGarageAvailableError ||
+      error instanceof KeysLeftNotEditableError
+    ) {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 409,
         headers: { "Content-Type": "application/json" },

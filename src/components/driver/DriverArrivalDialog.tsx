@@ -1,92 +1,200 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { ReservationDto } from "@/types";
+import type { ParkingType, ReservationDto } from "@/types";
 import {
   driverArrivalFormSchema,
   datetimeLocalToIso,
   isoToDatetimeLocal,
   type DriverArrivalFormData,
 } from "@/lib/schemas/driver-form.schema";
+import { driverWalkInArrivalSchema, type DriverWalkInArrival } from "@/lib/schemas/driver.schema";
 import { driverDisplayName, isAgencyPaid } from "@/lib/driver/display";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PARKING_TYPES, PARKING_TYPE_LABELS } from "@/lib/pricing/parking-type";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
-import { useCheckoutQuote } from "@/hooks/useCheckoutQuote";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { KeyRound, Loader2 } from "lucide-react";
+import { useCheckoutQuote, useNewStayQuote } from "@/hooks/useCheckoutQuote";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
+import { GarageSpotSelect } from "@/components/reservations/GarageSpotSelect";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import { cn } from "@/lib/utils";
 
-interface DriverArrivalDialogProps {
-  reservation: ReservationDto | null;
+interface CommonProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (id: string, body: Record<string, unknown>) => Promise<void>;
   isProcessing: boolean;
 }
 
-function normalizeFlightDirection(value: string | null | undefined): string {
-  return value ?? "";
+/** Accepting a booked reservation from the arrivals list. */
+interface ReservationArrivalProps extends CommonProps {
+  mode?: "reservation";
+  reservation: ReservationDto | null;
+  onSubmit: (id: string, body: Record<string, unknown>) => Promise<void>;
 }
 
-export function DriverArrivalDialog({
-  reservation,
-  open,
-  onOpenChange,
-  onSubmit,
-  isProcessing,
-}: DriverArrivalDialogProps) {
-  const [submitError, setSubmitError] = useState<string | null>(null);
+/** Client arrived without a reservation: same form plus client details; creates and accepts the stay. */
+interface WalkInArrivalProps extends CommonProps {
+  mode: "walk-in";
+  onSubmit: (body: DriverWalkInArrival) => Promise<void>;
+}
 
-  const form = useForm<DriverArrivalFormData>({
-    resolver: zodResolver(driverArrivalFormSchema) as Resolver<DriverArrivalFormData>,
-    defaultValues: {
-      planned_check_out: "",
-      flight_direction: "",
-      passenger_count: null,
-      parking_sector: "",
-      license_plate: "",
-      paid_at_arrival: false,
-    },
+type DriverArrivalDialogProps = ReservationArrivalProps | WalkInArrivalProps;
+
+type ArrivalFormValues = DriverArrivalFormData & {
+  last_name: string;
+  first_name: string;
+  phone: string;
+  parking_type: ParkingType;
+  /** Walk-in garage/carport spot; "" = auto-assign the first free one. */
+  garage_spot_id: string;
+};
+
+/** Walk-in validation issues shown under their field; anything else goes to the form-level error. */
+const WALK_IN_FIELDS = ["last_name", "planned_check_out", "parking_sector", "license_plate"] as const;
+
+function formatClock(date: Date): string {
+  return date.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+}
+
+function emptyValues(): ArrivalFormValues {
+  return {
+    last_name: "",
+    first_name: "",
+    phone: "",
+    parking_type: "open_air",
+    garage_spot_id: "",
+    planned_check_out: "",
+    flight_direction: "",
+    passenger_count: null,
+    parking_sector: "",
+    license_plate: "",
+    paid_at_arrival: false,
+    keys_left: false,
+  };
+}
+
+export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
+  const { open, onOpenChange, isProcessing } = props;
+  const walkIn = props.mode === "walk-in";
+  const reservation = props.mode === "walk-in" ? null : props.reservation;
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  // Walk-in check-in time: fixed when the dialog opens so the price preview does not refetch every render.
+  const [openedAt, setOpenedAt] = useState(() => new Date());
+
+  const form = useForm<ArrivalFormValues>({
+    // raw: keep the walk-in-only fields (client details, parking type, spot) that the schema would strip.
+    resolver: zodResolver(driverArrivalFormSchema, undefined, { raw: true }) as unknown as Resolver<ArrivalFormValues>,
+    defaultValues: emptyValues(),
   });
 
   useEffect(() => {
-    if (!reservation || !open) return;
-    form.reset({
-      planned_check_out: isoToDatetimeLocal(reservation.planned_check_out),
-      flight_direction: normalizeFlightDirection(reservation.flight_direction),
-      passenger_count: reservation.passenger_count,
-      parking_sector: reservation.parking_sector ?? "",
-      license_plate: reservation.license_plate ?? "",
-      paid_at_arrival: reservation.paid_at_arrival ?? false,
-    });
+    if (!open) return;
+    if (walkIn) {
+      form.reset(emptyValues());
+      setOpenedAt(new Date());
+    } else if (reservation) {
+      form.reset({
+        ...emptyValues(),
+        planned_check_out: isoToDatetimeLocal(reservation.planned_check_out),
+        flight_direction: reservation.flight_direction ?? "",
+        passenger_count: reservation.passenger_count,
+        parking_sector: reservation.parking_sector ?? "",
+        license_plate: reservation.license_plate ?? "",
+        paid_at_arrival: reservation.paid_at_arrival ?? false,
+        keys_left: reservation.keys_left ?? false,
+      });
+    }
     setSubmitError(null);
-  }, [reservation, open, form]);
+  }, [walkIn, reservation, open, form]);
 
-  const paymentDue = reservation ? !reservation.is_paid : false;
-  const watchedCheckout = form.watch("planned_check_out");
-  const quote = useCheckoutQuote(
-    reservation?.id ?? null,
-    datetimeLocalToIso(watchedCheckout ?? "") ?? null,
-    open && paymentDue
+  const agencyPaid = reservation ? isAgencyPaid(reservation) : false;
+  const paymentDue = walkIn || (reservation ? !reservation.is_paid : false);
+  const checkoutIso = datetimeLocalToIso(form.watch("planned_check_out") ?? "") ?? null;
+  const openedAtIso = useMemo(() => openedAt.toISOString(), [openedAt]);
+  const reservationQuote = useCheckoutQuote(reservation?.id ?? null, checkoutIso, open && !walkIn && paymentDue);
+  const parkingType = form.watch("parking_type");
+  const walkInQuote = useNewStayQuote(open && walkIn ? openedAtIso : null, checkoutIso, parkingType);
+  const quote = walkIn ? walkInQuote : reservationQuote;
+
+  const sectorField = (
+    <FormField
+      control={form.control}
+      name="parking_sector"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Sektor</FormLabel>
+          <FormControl>
+            <Input className="min-h-11" placeholder="np. A12" {...field} value={field.value ?? ""} />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
   );
 
   const handleSubmit = form.handleSubmit(async (data) => {
-    if (!reservation) return;
     setSubmitError(null);
+    const trimmed = {
+      parking_sector: data.parking_sector?.trim() ? data.parking_sector.trim() : null,
+      license_plate: data.license_plate?.trim() ? data.license_plate.trim().toUpperCase() : null,
+      flight_direction: data.flight_direction?.trim() ? data.flight_direction.trim() : null,
+    };
+
+    if (props.mode === "walk-in") {
+      const parsed = driverWalkInArrivalSchema.safeParse({
+        last_name: data.last_name,
+        first_name: data.first_name.trim() || undefined,
+        phone: data.phone.replace(/\s/g, "") || undefined,
+        license_plate: trimmed.license_plate ?? undefined,
+        flight_direction: trimmed.flight_direction ?? undefined,
+        planned_check_out: checkoutIso ?? "",
+        parking_type: data.parking_type,
+        ...(data.parking_type === "open_air"
+          ? { parking_sector: trimmed.parking_sector ?? undefined }
+          : { garage_spot_id: data.garage_spot_id || undefined }),
+        passenger_count: data.passenger_count ?? null,
+        paid_at_arrival: data.paid_at_arrival,
+        keys_left: data.keys_left,
+      });
+      if (!parsed.success) {
+        const issue = parsed.error.issues[0];
+        const field = WALK_IN_FIELDS.find((name) => name === issue?.path[0]);
+        if (field && issue) form.setError(field, { message: issue.message });
+        else setSubmitError(issue?.message ?? "Nieprawidłowe dane");
+        return;
+      }
+      try {
+        await props.onSubmit(parsed.data);
+        onOpenChange(false);
+      } catch (error) {
+        setSubmitError(error instanceof Error ? error.message : "Nie udało się dodać przyjazdu");
+      }
+      return;
+    }
+
+    if (!reservation) return;
     try {
       const body: Record<string, unknown> = {
-        ...(isAgencyPaid(reservation) ? {} : { paid_at_arrival: data.paid_at_arrival }),
+        ...(agencyPaid ? {} : { paid_at_arrival: data.paid_at_arrival }),
         passenger_count: data.passenger_count ?? null,
-        parking_sector: data.parking_sector?.trim() ? data.parking_sector.trim() : null,
-        license_plate: data.license_plate?.trim() ? data.license_plate.trim().toUpperCase() : null,
-        flight_direction: data.flight_direction?.trim() ? data.flight_direction.trim() : null,
+        keys_left: data.keys_left,
+        ...trimmed,
       };
-      const checkoutIso = datetimeLocalToIso(data.planned_check_out);
       if (checkoutIso) body.planned_check_out = checkoutIso;
-      await onSubmit(reservation.id, body);
+      await props.onSubmit(reservation.id, body);
       onOpenChange(false);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Nie udało się potwierdzić przyjazdu");
@@ -95,10 +203,16 @@ export function DriverArrivalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
+      <DialogContent className={cn(MOBILE_FULLSCREEN_DIALOG, "max-h-[90dvh] max-w-md overflow-y-auto")}>
         <DialogHeader>
-          <DialogTitle>Potwierdź przyjazd</DialogTitle>
-          {reservation ? (
+          <DialogTitle>{walkIn ? "Przyjazd bez rezerwacji" : "Potwierdź przyjazd"}</DialogTitle>
+          {walkIn ? (
+            <DialogDescription>
+              Klient przyjechał teraz ({formatClock(openedAt)}) i nie ma go na liście przyjazdów. Zapisanie utworzy
+              rezerwację i od razu potwierdzi przyjazd. Jeśli klient ma rezerwację, zamknij to okno i przyjmij go z
+              listy.
+            </DialogDescription>
+          ) : reservation ? (
             <p className="text-sm text-muted-foreground">
               {driverDisplayName(reservation)}
               {reservation.license_plate ? ` · ${reservation.license_plate}` : ""}
@@ -107,6 +221,47 @@ export function DriverArrivalDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {walkIn ? (
+              <>
+                <FormField
+                  control={form.control}
+                  name="last_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nazwisko *</FormLabel>
+                      <FormControl>
+                        <Input className="min-h-11" maxLength={100} autoComplete="off" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="first_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Imię</FormLabel>
+                      <FormControl>
+                        <Input className="min-h-11" maxLength={100} autoComplete="off" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefon</FormLabel>
+                      <FormControl>
+                        <Input type="tel" className="min-h-11" maxLength={20} autoComplete="off" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </>
+            ) : null}
             <FormField
               control={form.control}
               name="license_plate"
@@ -132,7 +287,7 @@ export function DriverArrivalDialog({
               name="planned_check_out"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Planowany wyjazd</FormLabel>
+                  <FormLabel>{walkIn ? "Planowany wyjazd *" : "Planowany wyjazd"}</FormLabel>
                   <FormControl>
                     <Input type="datetime-local" className="min-h-11" {...field} value={field.value ?? ""} />
                   </FormControl>
@@ -140,6 +295,55 @@ export function DriverArrivalDialog({
                 </FormItem>
               )}
             />
+            {walkIn ? (
+              <>
+                <FormField
+                  control={form.control}
+                  name="parking_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Typ miejsca</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-11 w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PARKING_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {PARKING_TYPE_LABELS[type]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                {/* Where the car stands depends on the type: a sector on open-air parking, a spot in a garage or carport. */}
+                {parkingType === "open_air" ? (
+                  sectorField
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="garage_spot_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{parkingType === "garage" ? "Miejsce w garażu" : "Miejsce pod wiatą"}</FormLabel>
+                        <GarageSpotSelect
+                          parkingType={parkingType}
+                          checkIn={openedAtIso}
+                          checkOut={checkoutIso}
+                          value={field.value}
+                          onChange={field.onChange}
+                          emptyLabel="Automatycznie (pierwsze wolne)"
+                        />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </>
+            ) : null}
             <FormField
               control={form.control}
               name="flight_direction"
@@ -179,26 +383,29 @@ export function DriverArrivalDialog({
                 </FormItem>
               )}
             />
+            {walkIn ? null : sectorField}
             <FormField
               control={form.control}
-              name="parking_sector"
+              name="keys_left"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sektor</FormLabel>
+                <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
                   <FormControl>
-                    <Input className="min-h-11" placeholder="np. A12" {...field} value={field.value ?? ""} />
+                    <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
                   </FormControl>
-                  <FormMessage />
+                  <FormLabel className="flex items-center gap-2 font-normal">
+                    <KeyRound className="h-4 w-4 text-amber-600" aria-hidden />
+                    Zostawił kluczyki
+                  </FormLabel>
                 </FormItem>
               )}
             />
-            {reservation && isAgencyPaid(reservation) ? (
+            {agencyPaid ? (
               <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
                 Biuro podróży – opłacone. Nie pobieraj płatności od klienta.
               </p>
             ) : (
               <>
-                {paymentDue ? <PaymentQuote {...quote} /> : null}
+                {paymentDue && (!walkIn || checkoutIso) ? <PaymentQuote {...quote} /> : null}
                 <FormField
                   control={form.control}
                   name="paid_at_arrival"
@@ -214,13 +421,18 @@ export function DriverArrivalDialog({
               </>
             )}
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 flex-row gap-2 border-t bg-white px-6 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 flex-1 sm:flex-none"
+                onClick={() => onOpenChange(false)}
+              >
                 Anuluj
               </Button>
-              <Button type="submit" className="min-h-11" disabled={isProcessing}>
+              <Button type="submit" className="min-h-11 flex-[2] sm:flex-none" disabled={isProcessing}>
                 {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Potwierdź przyjazd
+                {walkIn ? "Dodaj przyjazd" : "Potwierdź przyjazd"}
               </Button>
             </DialogFooter>
           </form>
