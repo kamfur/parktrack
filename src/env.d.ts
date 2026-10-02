@@ -23,6 +23,11 @@ interface ImportMetaEnv {
   readonly OPENROUTER_API_KEY: string;
   readonly API_SECRET_KEY?: string;
   readonly KTW_ARRIVALS_URL?: string;
+  readonly SONIOX_API_KEY?: string;
+  /** "eu" (default) or "us"/"global" — must match the Soniox project region of SONIOX_API_KEY. */
+  readonly SONIOX_REGION?: string;
+  /** "true" shows the voice dictation button in reservation forms. */
+  readonly PUBLIC_VOICE_ENABLED?: string;
 }
 
 interface ImportMeta {

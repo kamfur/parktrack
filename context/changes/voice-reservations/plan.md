@@ -522,23 +522,23 @@ One Playwright test that covers the whole staff flow from transcript to saved re
 
 #### Automated
 
-- [x] 1.1 Parser and merge unit tests pass
-- [x] 1.2 At least 13 of 15 PoC transcript fixtures parse fully correct; remaining misses asserted as STT limitations
-- [x] 1.3 Type checking passes
-- [x] 1.4 Linting passes
+- [x] 1.1 Parser and merge unit tests pass — 51eec35
+- [x] 1.2 At least 13 of 15 PoC transcript fixtures parse fully correct; remaining misses asserted as STT limitations — 51eec35
+- [x] 1.3 Type checking passes — 51eec35
+- [x] 1.4 Linting passes — 51eec35
 
 #### Manual
 
-- [x] 1.5 Fixture expectations reviewed against PoC results
+- [x] 1.5 Fixture expectations reviewed against PoC results — 51eec35
 
 ### Phase 2: Soniox temporary key endpoint
 
 #### Automated
 
-- [ ] 2.1 Route and adapter tests pass
-- [ ] 2.2 Middleware test passes (driver allowed)
-- [ ] 2.3 Type checking passes
-- [ ] 2.4 Linting passes
+- [x] 2.1 Route and adapter tests pass
+- [x] 2.2 Middleware test passes (driver allowed)
+- [x] 2.3 Type checking passes
+- [x] 2.4 Linting passes
 
 #### Manual
 

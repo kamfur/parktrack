@@ -216,6 +216,13 @@ describe("authMiddleware", () => {
     expect(res.status).toBe(200);
   });
 
+  it("allows driver POST /api/voice/token (voice reservations)", async () => {
+    const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
+    expect(isStaffOnlyPath("/api/voice/token")).toBe(false);
+    const res = (await authMiddleware(makeCtx("/api/voice/token", user), next)) as Response;
+    expect(res.status).toBe(200);
+  });
+
   it("allows driver GET /kierowca", async () => {
     const user = { id: "user-1", email: "driver@example.com", role: "driver" as const };
     const res = (await authMiddleware(makeCtx("/kierowca", user), next)) as Response;
