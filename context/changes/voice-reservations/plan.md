@@ -595,8 +595,8 @@ One Playwright test that covers the whole staff flow from transcript to saved re
 
 #### Automated
 
-- [x] 6.1 Voice E2E spec passes locally
-- [x] 6.2 Full E2E suite passes
+- [x] 6.1 Voice E2E spec passes locally — 2c4e31d
+- [x] 6.2 Full E2E suite passes — 2c4e31d
 - [ ] 6.3 CI job `ci` passes
 
 #### Manual
