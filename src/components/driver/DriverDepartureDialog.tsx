@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
+import { Banknote, Loader2 } from "lucide-react";
 import { useCheckoutQuote } from "@/hooks/useCheckoutQuote";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
 import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
@@ -92,8 +92,10 @@ export function DriverDepartureDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(MOBILE_FULLSCREEN_DIALOG, "max-h-[90dvh] max-w-md overflow-y-auto")}>
-        <DialogHeader>
+      <DialogContent
+        className={cn(MOBILE_FULLSCREEN_DIALOG, "flex max-h-[90dvh] max-w-md flex-col gap-0 overflow-hidden p-0")}
+      >
+        <DialogHeader className="shrink-0 px-6 pb-4 pt-6">
           <DialogTitle>Zakończ wyjazd</DialogTitle>
           {reservation ? (
             <p className="text-sm text-muted-foreground">
@@ -103,88 +105,97 @@ export function DriverDepartureDialog({
           ) : null}
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {showDateField ? (
-              <FormField
-                control={form.control}
-                name="planned_check_out"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Planowany / skorygowany wyjazd</FormLabel>
-                    <FormControl>
-                      <Input type="datetime-local" className="min-h-11" {...field} value={field.value ?? ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ) : (
-              <Button
-                type="button"
-                variant="link"
-                className="h-auto px-0 underline"
-                onClick={() => setShowDateField(true)}
-              >
-                Zmień datę wyjazdu
-              </Button>
-            )}
-            {agencyPaid ? (
-              <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
-                Biuro podróży – opłacone. Nie pobieraj płatności ani dopłaty od klienta.
-              </p>
-            ) : null}
-            {agencyPaid ? null : (
-              <FormField
-                control={form.control}
-                name="surcharge_amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dopłata (PLN)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        className="min-h-11"
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notatki</FormLabel>
-                  <FormControl>
-                    <Textarea className="min-h-24" {...field} value={field.value ?? ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-4">
+              {showDateField ? (
+                <FormField
+                  control={form.control}
+                  name="planned_check_out"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Planowany / skorygowany wyjazd</FormLabel>
+                      <FormControl>
+                        <Input type="datetime-local" className="min-h-11" {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto px-0 underline"
+                  onClick={() => setShowDateField(true)}
+                >
+                  Zmień datę wyjazdu
+                </Button>
               )}
-            />
-            {alreadyPaid ? null : <PaymentQuote {...quote} surcharge={watchedSurcharge} />}
-            {alreadyPaid ? null : (
+              {agencyPaid ? (
+                <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                  Biuro podróży – opłacone. Nie pobieraj płatności ani dopłaty od klienta.
+                </p>
+              ) : null}
+              {agencyPaid ? null : (
+                <FormField
+                  control={form.control}
+                  name="surcharge_amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dopłata (PLN)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="min-h-11"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={form.control}
-                name="paid_at_departure"
+                name="notes"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
+                  <FormItem>
+                    <FormLabel>Notatki</FormLabel>
                     <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
+                      <Textarea className="min-h-24" {...field} value={field.value ?? ""} />
                     </FormControl>
-                    <FormLabel className="font-normal">Opłacono przy wyjeździe</FormLabel>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
-            {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
-            <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 flex-row gap-2 border-t bg-white px-6 py-3">
+              {alreadyPaid ? null : <PaymentQuote {...quote} surcharge={watchedSurcharge} />}
+              {alreadyPaid ? null : (
+                <FormField
+                  control={form.control}
+                  name="paid_at_departure"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border-2 border-emerald-500 bg-emerald-50 p-4 shadow-sm">
+                      <FormControl>
+                        <Checkbox
+                          className="h-7 w-7 border-emerald-600 data-[state=checked]:bg-emerald-600"
+                          checked={field.value}
+                          onCheckedChange={(v) => field.onChange(v === true)}
+                        />
+                      </FormControl>
+                      <FormLabel className="flex flex-1 cursor-pointer items-center gap-2 text-base font-semibold text-emerald-900">
+                        <Banknote className="h-5 w-5 text-emerald-700" aria-hidden />
+                        Opłacono przy wyjeździe
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              )}
+              {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
+            </div>
+            <DialogFooter className="shrink-0 flex-row gap-2 border-t bg-white px-6 py-3">
               <Button
                 type="button"
                 variant="outline"

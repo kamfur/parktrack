@@ -14,7 +14,7 @@ export class CalendarServiceError extends Error {
 }
 
 const EVENT_SELECT =
-  "id, first_name, last_name, license_plate, planned_check_in, planned_check_out, status, actual_check_in, actual_check_out, parking_type, flight_direction, keys_left";
+  "id, first_name, last_name, license_plate, planned_check_in, planned_check_out, status, actual_check_in, actual_check_out, parking_type, flight_direction, keys_left, notes";
 
 const CALENDAR_EVENT_STATUSES = ["confirmed", "in_progress", "completed"] as const;
 
@@ -32,6 +32,7 @@ type CalendarReservation = Pick<
   | "parking_type"
   | "flight_direction"
   | "keys_left"
+  | "notes"
 >;
 
 export function toCalendarEvent(row: CalendarReservation, kind: CalendarEventDto["kind"]): CalendarEventDto {
@@ -47,6 +48,7 @@ export function toCalendarEvent(row: CalendarReservation, kind: CalendarEventDto
     parkingType: row.parking_type as CalendarEventDto["parkingType"],
     flightDirection: row.flight_direction?.trim() || null,
     keysLeft: row.keys_left ?? false,
+    notes: row.notes?.trim() || null,
   };
 }
 

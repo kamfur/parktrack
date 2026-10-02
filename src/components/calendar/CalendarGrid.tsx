@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { KeyRound } from "lucide-react";
+import { KeyRound, StickyNote } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { eventDisplayName, formatDayHeading, groupEventsByHour, layoutShiftsForDay } from "@/lib/calendar/view-model";
 import { warsawDateKey, warsawHour, warsawTimeLabel } from "@/lib/calendar/warsaw-time";
@@ -211,7 +211,8 @@ function EventChip({ event, onClick }: { event: CalendarEventDto; onClick: (even
     : null;
   // Departures: the flight the client returns from — helps plan the pickup.
   const flightDirection = !isArrival && event.flightDirection ? event.flightDirection : null;
-  const keysLeft = !isArrival && event.keysLeft;
+  const keysLeft = event.keysLeft;
+  const notes = event.notes?.replace(/s+/g, " ") ?? null;
   const summary = [
     kindLabel,
     warsawTimeLabel(new Date(event.at)),
@@ -220,6 +221,7 @@ function EventChip({ event, onClick }: { event: CalendarEventDto; onClick: (even
     flightDirection ? `✈ ${flightDirection}` : null,
     garageSuffix,
     keysLeft ? "· zostawił kluczyki" : null,
+    notes ? `· notatka: ${notes}` : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -231,7 +233,7 @@ function EventChip({ event, onClick }: { event: CalendarEventDto; onClick: (even
         onClick(event);
       }}
       className={cn(
-        "pointer-events-auto block w-full truncate rounded border px-1.5 py-0.5 text-left text-[11px] leading-4",
+        "pointer-events-auto block w-full line-clamp-2 break-words rounded border px-1.5 py-0.5 text-left text-[11px] leading-4",
         isArrival ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800",
         event.handled && "line-through opacity-70"
       )}
@@ -243,6 +245,13 @@ function EventChip({ event, onClick }: { event: CalendarEventDto; onClick: (even
       {event.licensePlate ? ` · ${event.licensePlate}` : ""}
       {flightDirection ? ` · ✈ ${flightDirection}` : ""}
       {garageSuffix ? ` · ${garageSuffix}` : ""}
+      {notes ? (
+        <span className="text-neutral-600">
+          {" · "}
+          <StickyNote className="mr-0.5 inline h-3 w-3 align-[-2px]" aria-hidden />
+          {notes}
+        </span>
+      ) : null}
     </button>
   );
 }

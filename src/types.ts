@@ -168,8 +168,10 @@ export interface CalendarEventDto {
   parkingType: ParkingType;
   /** Free-text flight direction (e.g. "Londyn, LO 392"); shown on departure chips. */
   flightDirection: string | null;
-  /** Client left the car keys at arrival; shown on departure chips. */
+  /** Client left the car keys at arrival; shown on arrival and departure chips. */
   keysLeft: boolean;
+  /** Staff notes of the reservation, shown on the chip. */
+  notes: string | null;
   /** Assigned garage/carport spot name, resolved client-side (not part of the API response). */
   garageSpotName?: string | null;
 }
@@ -872,6 +874,8 @@ export interface ConditionalEditRules {
   canEditParkingType: boolean;
   /** Czy można zmienić „Zostawił kluczyki” — tylko gdy auto stoi na parkingu (in_progress) */
   canEditKeysLeft: boolean;
+  /** Czy można zmienić „Opłacono przy przyjeździe/wyjeździe” (nie dla biur podróży) */
+  canEditPayment: boolean;
   /** Numer faktury, na której jest rezerwacja — pola rozliczeniowe są wtedy zablokowane */
   lockedByInvoiceNumber: string | null;
 }

@@ -20,6 +20,7 @@ import { enrichDepartures } from "./ktw-arrival-hours.service";
 import { GarageAllocationService } from "./garage-allocation.service";
 import { isCoveredParkingType, type CoveredParkingType, type ParkingType } from "../pricing/parking-type";
 import { applyAgencyDiscount } from "../pricing/agency-discount";
+import { syncIsPaid } from "./driver.service";
 
 /** Statuses whose stay still needs a physical spot (a garage/carport assignment). */
 const ACTIVE_STAY_STATUSES: readonly string[] = ["pending", "confirmed", "in_progress"];
@@ -453,12 +454,16 @@ ${data.notes}`
       validatedData.planned_check_out ||
       validatedData.parking_type ||
       requestedSpotId ||
-      validatedData.keys_left !== undefined
+      validatedData.keys_left !== undefined ||
+      validatedData.paid_at_arrival !== undefined ||
+      validatedData.paid_at_departure !== undefined
     ) {
       allocationService = new GarageAllocationService(this.supabase);
       const { data: current, error: currentError } = await this.supabase
         .from("reservations")
-        .select("planned_check_in, planned_check_out, parking_type, status, keys_left")
+        .select(
+          "planned_check_in, planned_check_out, parking_type, status, keys_left, paid_at_arrival, paid_at_departure, travel_agency_id"
+        )
         .eq("id", id)
         .single();
 
@@ -473,6 +478,19 @@ ${data.notes}`
         current.status !== "in_progress"
       ) {
         throw new KeysLeftNotEditableError();
+      }
+
+      // is_paid mirrors the driver payment flags (agency stays are always paid — the DB trigger owns those).
+      const agencyAfter =
+        validatedData.travel_agency_id === undefined ? current.travel_agency_id : validatedData.travel_agency_id;
+      if (
+        agencyAfter == null &&
+        (validatedData.paid_at_arrival !== undefined || validatedData.paid_at_departure !== undefined)
+      ) {
+        validatedData.is_paid = syncIsPaid(
+          validatedData.paid_at_arrival ?? current.paid_at_arrival,
+          validatedData.paid_at_departure ?? current.paid_at_departure
+        );
       }
 
       const nextCheckIn = validatedData.planned_check_in ?? current.planned_check_in;

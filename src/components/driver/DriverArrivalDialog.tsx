@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { KeyRound, Loader2 } from "lucide-react";
+import { Banknote, KeyRound, Loader2 } from "lucide-react";
 import { useCheckoutQuote, useNewStayQuote } from "@/hooks/useCheckoutQuote";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
@@ -81,7 +81,7 @@ function emptyValues(): ArrivalFormValues {
     passenger_count: null,
     parking_sector: "",
     license_plate: "",
-    paid_at_arrival: false,
+    paid_at_arrival: true,
     keys_left: false,
   };
 }
@@ -113,7 +113,7 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
         passenger_count: reservation.passenger_count,
         parking_sector: reservation.parking_sector ?? "",
         license_plate: reservation.license_plate ?? "",
-        paid_at_arrival: reservation.paid_at_arrival ?? false,
+        paid_at_arrival: true,
         keys_left: reservation.keys_left ?? false,
       });
     }
@@ -203,8 +203,10 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(MOBILE_FULLSCREEN_DIALOG, "max-h-[90dvh] max-w-md overflow-y-auto")}>
-        <DialogHeader>
+      <DialogContent
+        className={cn(MOBILE_FULLSCREEN_DIALOG, "flex max-h-[90dvh] max-w-md flex-col gap-0 overflow-hidden p-0")}
+      >
+        <DialogHeader className="shrink-0 px-6 pb-4 pt-6">
           <DialogTitle>{walkIn ? "Przyjazd bez rezerwacji" : "Potwierdź przyjazd"}</DialogTitle>
           {walkIn ? (
             <DialogDescription>
@@ -220,208 +222,230 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
           ) : null}
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {walkIn ? (
-              <>
-                <FormField
-                  control={form.control}
-                  name="last_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nazwisko *</FormLabel>
-                      <FormControl>
-                        <Input className="min-h-11" maxLength={100} autoComplete="off" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="first_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Imię</FormLabel>
-                      <FormControl>
-                        <Input className="min-h-11" maxLength={100} autoComplete="off" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefon</FormLabel>
-                      <FormControl>
-                        <Input type="tel" className="min-h-11" maxLength={20} autoComplete="off" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </>
-            ) : null}
-            <FormField
-              control={form.control}
-              name="license_plate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Numer rejestracyjny</FormLabel>
-                  <FormControl>
-                    <Input
-                      className="min-h-11"
-                      placeholder="np. WX 12345"
-                      maxLength={15}
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="planned_check_out"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{walkIn ? "Planowany wyjazd *" : "Planowany wyjazd"}</FormLabel>
-                  <FormControl>
-                    <Input type="datetime-local" className="min-h-11" {...field} value={field.value ?? ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {walkIn ? (
-              <>
-                <FormField
-                  control={form.control}
-                  name="parking_type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Typ miejsca</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger className="min-h-11 w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {PARKING_TYPES.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {PARKING_TYPE_LABELS[type]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )}
-                />
-                {/* Where the car stands depends on the type: a sector on open-air parking, a spot in a garage or carport. */}
-                {parkingType === "open_air" ? (
-                  sectorField
-                ) : (
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-4">
+              {walkIn ? (
+                <>
                   <FormField
                     control={form.control}
-                    name="garage_spot_id"
+                    name="last_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{parkingType === "garage" ? "Miejsce w garażu" : "Miejsce pod wiatą"}</FormLabel>
-                        <GarageSpotSelect
-                          parkingType={parkingType}
-                          checkIn={openedAtIso}
-                          checkOut={checkoutIso}
-                          value={field.value}
-                          onChange={field.onChange}
-                          emptyLabel="Automatycznie (pierwsze wolne)"
-                        />
+                        <FormLabel>Nazwisko *</FormLabel>
+                        <FormControl>
+                          <Input className="min-h-11" maxLength={100} autoComplete="off" {...field} />
+                        </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
-                )}
-              </>
-            ) : null}
-            <FormField
-              control={form.control}
-              name="flight_direction"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Kierunek lotu</FormLabel>
-                  <FlightDirectionInput
-                    className="min-h-11"
-                    placeholder="np. Londyn, LO 392"
-                    maxLength={100}
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    name={field.name}
+                  <FormField
+                    control={form.control}
+                    name="first_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Imię</FormLabel>
+                        <FormControl>
+                          <Input className="min-h-11" maxLength={100} autoComplete="off" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
                   />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="passenger_count"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Liczba pasażerów</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={99}
-                      className="min-h-11"
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)}
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefon</FormLabel>
+                        <FormControl>
+                          <Input type="tel" className="min-h-11" maxLength={20} autoComplete="off" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </>
+              ) : null}
+              <FormField
+                control={form.control}
+                name="license_plate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Numer rejestracyjny</FormLabel>
+                    <FormControl>
+                      <Input
+                        className="min-h-11"
+                        placeholder="np. WX 12345"
+                        maxLength={15}
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="planned_check_out"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{walkIn ? "Planowany wyjazd *" : "Planowany wyjazd"}</FormLabel>
+                    <FormControl>
+                      <Input type="datetime-local" className="min-h-11" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {walkIn ? (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="parking_type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Typ miejsca</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger className="min-h-11 w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {PARKING_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {PARKING_TYPE_LABELS[type]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                  {/* Where the car stands depends on the type: a sector on open-air parking, a spot in a garage or carport. */}
+                  {parkingType === "open_air" ? (
+                    sectorField
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="garage_spot_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{parkingType === "garage" ? "Miejsce w garażu" : "Miejsce pod wiatą"}</FormLabel>
+                          <GarageSpotSelect
+                            parkingType={parkingType}
+                            checkIn={openedAtIso}
+                            checkOut={checkoutIso}
+                            value={field.value}
+                            onChange={field.onChange}
+                            emptyLabel="Automatycznie (pierwsze wolne)"
+                          />
+                        </FormItem>
+                      )}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {walkIn ? null : sectorField}
-            <FormField
-              control={form.control}
-              name="keys_left"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
-                  <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
-                  </FormControl>
-                  <FormLabel className="flex items-center gap-2 font-normal">
-                    <KeyRound className="h-4 w-4 text-amber-600" aria-hidden />
-                    Zostawił kluczyki
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-            {agencyPaid ? (
-              <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
-                Biuro podróży – opłacone. Nie pobieraj płatności od klienta.
-              </p>
-            ) : (
-              <>
-                {paymentDue && (!walkIn || checkoutIso) ? <PaymentQuote {...quote} /> : null}
-                <FormField
-                  control={form.control}
-                  name="paid_at_arrival"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
-                      <FormControl>
-                        <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
-                      </FormControl>
-                      <FormLabel className="font-normal">Opłacono przy przyjeździe</FormLabel>
-                    </FormItem>
                   )}
-                />
-              </>
-            )}
-            {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
-            <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 flex-row gap-2 border-t bg-white px-6 py-3">
+                </>
+              ) : null}
+              <FormField
+                control={form.control}
+                name="flight_direction"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kierunek lotu</FormLabel>
+                    <FlightDirectionInput
+                      className="min-h-11"
+                      placeholder="np. Londyn, LO 392"
+                      maxLength={100}
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="passenger_count"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Liczba pasażerów</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={99}
+                        className="min-h-11"
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {walkIn ? null : sectorField}
+              <FormField
+                control={form.control}
+                name="keys_left"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
+                    </FormControl>
+                    <FormLabel className="flex items-center gap-2 font-normal">
+                      <KeyRound className="h-4 w-4 text-amber-600" aria-hidden />
+                      Zostawił kluczyki
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+              {agencyPaid ? (
+                <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                  Biuro podróży – opłacone. Nie pobieraj płatności od klienta.
+                </p>
+              ) : (
+                <>
+                  {paymentDue && (!walkIn || checkoutIso) ? <PaymentQuote {...quote} /> : null}
+                  <FormField
+                    control={form.control}
+                    name="paid_at_arrival"
+                    render={({ field }) => (
+                      <FormItem
+                        className={cn(
+                          "flex flex-row items-center gap-3 space-y-0 rounded-lg border-2 p-4 shadow-sm",
+                          field.value ? "border-emerald-500 bg-emerald-50" : "border-amber-500 bg-amber-50"
+                        )}
+                      >
+                        <FormControl>
+                          <Checkbox
+                            className="h-7 w-7 border-amber-600 data-[state=checked]:border-emerald-600 data-[state=checked]:bg-emerald-600"
+                            checked={field.value}
+                            onCheckedChange={(v) => field.onChange(v === true)}
+                          />
+                        </FormControl>
+                        <FormLabel
+                          className={cn(
+                            "flex flex-1 cursor-pointer items-center gap-2 text-base font-semibold",
+                            field.value ? "text-emerald-900" : "text-amber-900"
+                          )}
+                        >
+                          <Banknote
+                            className={cn("h-5 w-5", field.value ? "text-emerald-700" : "text-amber-700")}
+                            aria-hidden
+                          />
+                          Opłacono przy przyjeździe
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+              {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
+            </div>
+            <DialogFooter className="shrink-0 flex-row gap-2 border-t bg-white px-6 py-3">
               <Button
                 type="button"
                 variant="outline"

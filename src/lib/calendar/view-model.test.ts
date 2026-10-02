@@ -24,6 +24,7 @@ function event(overrides: Partial<CalendarEventDto>): CalendarEventDto {
     parkingType: "open_air",
     flightDirection: null,
     keysLeft: false,
+    notes: null,
     ...overrides,
   };
 }

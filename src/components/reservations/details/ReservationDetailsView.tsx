@@ -116,6 +116,14 @@ export function ReservationDetailsView({
     if (editRules.canEditKeysLeft && data.keysLeft !== reservation.keys_left) {
       payload.keys_left = data.keysLeft;
     }
+    if (editRules.canEditPayment && !(data.travelAgencyId || null)) {
+      if (data.paidAtArrival !== undefined && data.paidAtArrival !== reservation.paid_at_arrival) {
+        payload.paid_at_arrival = data.paidAtArrival;
+      }
+      if (data.paidAtDeparture !== undefined && data.paidAtDeparture !== reservation.paid_at_departure) {
+        payload.paid_at_departure = data.paidAtDeparture;
+      }
+    }
     if (
       editRules.canEditParkingType &&
       (data.parkingType === "garage" || data.parkingType === "carport") &&

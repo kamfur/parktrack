@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { EditReservationFormProps, EditReservationFormData } from "@/types";
 import { editReservationSchema } from "@/lib/schemas/reservation.schema";
@@ -15,7 +15,7 @@ import { PARKING_TYPES, PARKING_TYPE_LABELS, type ParkingType } from "@/lib/pric
 import { FlightDirectionInput } from "./FlightDirectionInput";
 import { TravelAgencySelect } from "./TravelAgencySelect";
 import { GarageSpotSelect } from "./GarageSpotSelect";
-import { KeyRound, Loader2 } from "lucide-react";
+import { Banknote, KeyRound, Loader2 } from "lucide-react";
 
 function toParkingType(value: string | null | undefined): ParkingType {
   return (PARKING_TYPES as readonly string[]).includes(value ?? "") ? (value as ParkingType) : "open_air";
@@ -24,6 +24,38 @@ function toParkingType(value: string | null | undefined): ParkingType {
 function parseDate(value: string): Date {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function PaidCheckbox({
+  control,
+  name,
+  label,
+}: {
+  control: Control<EditReservationFormData>;
+  name: "paidAtArrival" | "paidAtDeparture";
+  label: string;
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border-2 border-emerald-500 bg-emerald-50 p-4 shadow-sm">
+          <FormControl>
+            <Checkbox
+              className="h-7 w-7 border-emerald-600 data-[state=checked]:bg-emerald-600"
+              checked={field.value ?? false}
+              onCheckedChange={(v) => field.onChange(v === true)}
+            />
+          </FormControl>
+          <FormLabel className="flex flex-1 cursor-pointer items-center gap-2 text-base font-semibold text-emerald-900">
+            <Banknote className="h-5 w-5 text-emerald-700" aria-hidden />
+            {label}
+          </FormLabel>
+        </FormItem>
+      )}
+    />
+  );
 }
 
 /**
@@ -53,6 +85,8 @@ export function EditReservationForm({
       parkingType: toParkingType(reservation.parking_type),
       garageSpotId: currentGarageSpotId ?? "",
       keysLeft: reservation.keys_left ?? false,
+      paidAtArrival: reservation.paid_at_arrival ?? false,
+      paidAtDeparture: reservation.paid_at_departure ?? false,
     },
   });
 
@@ -208,7 +242,7 @@ export function EditReservationForm({
                     <DateTimePicker
                       value={field.value}
                       onChange={field.onChange}
-                      placeholder="Wybierz datę i godzinę przyjazdu"
+                      placeholder="Wybierz datę"
                       disabled={!editRules.canEditCheckIn}
                       error={!!form.formState.errors.checkInDate}
                     />
@@ -233,7 +267,7 @@ export function EditReservationForm({
                     <DateTimePicker
                       value={field.value}
                       onChange={field.onChange}
-                      placeholder="Wybierz datę i godzinę wyjazdu"
+                      placeholder="Wybierz datę"
                       disabled={!editRules.canEditCheckOut}
                       minDate={checkInDate || undefined}
                       error={!!form.formState.errors.checkOutDate}
@@ -391,6 +425,16 @@ export function EditReservationForm({
             )}
           />
         </div>
+
+        {editRules.canEditPayment && !travelAgencyId ? (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-neutral-700">Płatność</h3>
+            <PaidCheckbox control={form.control} name="paidAtArrival" label="Opłacono przy przyjeździe" />
+            {reservation.status === "in_progress" || reservation.status === "completed" ? (
+              <PaidCheckbox control={form.control} name="paidAtDeparture" label="Opłacono przy wyjeździe" />
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-neutral-700">Notatki</h3>

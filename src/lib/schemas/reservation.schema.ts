@@ -275,6 +275,9 @@ export const editReservationSchema = z
     /** "" = bez zmian (lub przydział automatyczny przy zmianie typu) */
     garageSpotId: z.string().uuid("Nieprawidłowe miejsce").optional().or(z.literal("")),
     keysLeft: z.boolean(),
+    /** Opłacono przy przyjeździe / wyjeździe (nie dotyczy rezerwacji biura podróży) */
+    paidAtArrival: z.boolean().optional(),
+    paidAtDeparture: z.boolean().optional(),
   })
   .refine(
     (data) => {
