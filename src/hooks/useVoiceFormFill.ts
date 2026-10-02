@@ -20,6 +20,8 @@ export interface VoiceFormFill {
   markManual(key: VoiceFieldKey): void;
   needsPlateConfirmation: boolean;
   confirmPlate(): void;
+  /** Forget provenance and applied values (form reset on reopen). */
+  reset(): void;
 }
 
 /**
@@ -80,11 +82,20 @@ export function useVoiceFormFill(options: {
 
   const confirmPlate = useCallback(() => setPlateConfirmed(true), []);
 
+  const reset = useCallback(() => {
+    provenanceRef.current = {};
+    appliedRef.current = {};
+    setProvenance({});
+    setMeta({});
+    setPlateConfirmed(false);
+  }, []);
+
   return {
     provenance,
     meta,
     markManual,
     needsPlateConfirmation: plateNeedsConfirmation(provenance, plateConfirmed),
     confirmPlate,
+    reset,
   };
 }

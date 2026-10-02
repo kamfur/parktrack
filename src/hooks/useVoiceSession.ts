@@ -62,11 +62,14 @@ export function useVoiceSession(options?: { today?: string }): VoiceSession {
     wakeLockRef.current = null;
   }, []);
 
+  /** Tear down and forget the dictation (closing / resetting the form). `stop` keeps the transcript. */
   const cancel = useCallback(() => {
     sourceRef.current?.cancel();
     sourceRef.current = null;
     releaseResources();
-    setState((s) => (s === "error" ? s : "idle"));
+    setTranscript(EMPTY);
+    setError(undefined);
+    setState("idle");
   }, [releaseResources]);
 
   const stop = useCallback(async () => {

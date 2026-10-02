@@ -563,10 +563,10 @@ One Playwright test that covers the whole staff flow from transcript to saved re
 
 #### Automated
 
-- [x] 4.1 Staff form adapter unit tests pass
-- [x] 4.2 Type checking passes
-- [x] 4.3 Linting passes
-- [x] 4.4 Existing unit and E2E suites still pass
+- [x] 4.1 Staff form adapter unit tests pass — 7760cc4
+- [x] 4.2 Type checking passes — 7760cc4
+- [x] 4.3 Linting passes — 7760cc4
+- [x] 4.4 Existing unit and E2E suites still pass — 7760cc4
 
 #### Manual
 
@@ -581,9 +581,9 @@ One Playwright test that covers the whole staff flow from transcript to saved re
 
 #### Automated
 
-- [ ] 5.1 Driver form adapter unit tests pass
-- [ ] 5.2 Type checking passes
-- [ ] 5.3 Linting passes
+- [x] 5.1 Driver form adapter unit tests pass
+- [x] 5.2 Type checking passes
+- [x] 5.3 Linting passes
 
 #### Manual
 

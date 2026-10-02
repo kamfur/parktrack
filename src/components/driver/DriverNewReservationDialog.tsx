@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { ParkingType } from "@/types";
 import { driverCreateReservationSchema } from "@/lib/schemas/driver.schema";
 import { datetimeLocalToIso, isoToDatetimeLocal } from "@/lib/schemas/driver-form.schema";
 import { PARKING_TYPES, PARKING_TYPE_LABELS } from "@/lib/pricing/parking-type";
 import { useNewStayQuote } from "@/hooks/useCheckoutQuote";
+import { DateTimePicker } from "@/components/shared/DateTimePicker";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
 import { GarageSpotSelect } from "@/components/reservations/GarageSpotSelect";
@@ -17,6 +18,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
 import { cn } from "@/lib/utils";
+import { useVoiceSession } from "@/hooks/useVoiceSession";
+import { useVoiceFormFill } from "@/hooks/useVoiceFormFill";
+import { toDriverFormWrites } from "@/lib/voice/apply-to-driver-form";
+import type { VoiceFieldKey } from "@/lib/voice/merge";
+import type { ParsedVoiceFields } from "@/lib/voice/types";
+import { VoiceCaptureButton } from "@/components/voice/VoiceCaptureButton";
+import { TranscriptPreview } from "@/components/voice/TranscriptPreview";
+import { VoiceFieldBadge } from "@/components/voice/VoiceFieldBadge";
+import { PlateConfirmation } from "@/components/voice/PlateConfirmation";
 
 interface DriverNewReservationDialogProps {
   open: boolean;
@@ -63,11 +73,31 @@ export function DriverNewReservationDialog({
   const form = useForm<FormValues>({ defaultValues: emptyForm() });
   const [error, setError] = useState<string | null>(null);
 
+  // Dictation: the dialog stays mounted, so the session and provenance are reset on every open/close.
+  const voice = useVoiceSession();
+  const applyVoice = useCallback(
+    (updates: Partial<ParsedVoiceFields>) => {
+      for (const write of toDriverFormWrites(updates, (field) => form.getValues(field))) {
+        form.setValue(write.field, write.value as never, { shouldDirty: true });
+      }
+    },
+    [form]
+  );
+  const voiceFill = useVoiceFormFill({ parsed: voice.parsed, apply: applyVoice });
+  const { cancel: cancelVoice } = voice;
+  const { reset: resetVoiceFill } = voiceFill;
+  const voiceBadge = (key: VoiceFieldKey) =>
+    voiceFill.provenance[key] === "voice" ? (
+      <VoiceFieldBadge lowConfidence={voiceFill.meta[key]?.lowConfidence} />
+    ) : null;
+
   useEffect(() => {
+    cancelVoice();
+    resetVoiceFill();
     if (!open) return;
     form.reset(emptyForm());
     setError(null);
-  }, [open, form]);
+  }, [open, form, cancelVoice, resetVoiceFill]);
 
   const checkInIso = datetimeLocalToIso(form.watch("checkIn")) ?? null;
   const checkOutIso = datetimeLocalToIso(form.watch("checkOut")) ?? null;
@@ -76,6 +106,7 @@ export function DriverNewReservationDialog({
 
   const handleSubmit = form.handleSubmit(async (values) => {
     setError(null);
+    if (voiceFill.needsPlateConfirmation) return;
     const parsed = driverCreateReservationSchema.safeParse({
       last_name: values.lastName,
       first_name: values.firstName.trim() || undefined,
@@ -109,14 +140,40 @@ export function DriverNewReservationDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={handleSubmit} onChange={() => setError(null)} className="space-y-4">
+            <div className="space-y-2">
+              <VoiceCaptureButton
+                size="lg"
+                className="w-full"
+                state={voice.state}
+                onStart={() => void voice.start()}
+                onStop={() => void voice.stop()}
+              />
+              <TranscriptPreview
+                state={voice.state}
+                finalText={voice.finalText}
+                partialText={voice.partialText}
+                error={voice.error}
+              />
+            </div>
             <FormField
               control={form.control}
               name="lastName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nazwisko *</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Nazwisko *</FormLabel>
+                    {voiceBadge("lastName")}
+                  </div>
                   <FormControl>
-                    <Input className="min-h-11" maxLength={100} {...field} />
+                    <Input
+                      className="min-h-11"
+                      maxLength={100}
+                      {...field}
+                      onChange={(e) => {
+                        voiceFill.markManual("lastName");
+                        field.onChange(e);
+                      }}
+                    />
                   </FormControl>
                 </FormItem>
               )}
@@ -126,9 +183,20 @@ export function DriverNewReservationDialog({
               name="firstName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Imię</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Imię</FormLabel>
+                    {voiceBadge("firstName")}
+                  </div>
                   <FormControl>
-                    <Input className="min-h-11" maxLength={100} {...field} />
+                    <Input
+                      className="min-h-11"
+                      maxLength={100}
+                      {...field}
+                      onChange={(e) => {
+                        voiceFill.markManual("firstName");
+                        field.onChange(e);
+                      }}
+                    />
                   </FormControl>
                 </FormItem>
               )}
@@ -138,9 +206,21 @@ export function DriverNewReservationDialog({
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Telefon</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Telefon</FormLabel>
+                    {voiceBadge("phone")}
+                  </div>
                   <FormControl>
-                    <Input type="tel" className="min-h-11" maxLength={20} {...field} />
+                    <Input
+                      type="tel"
+                      className="min-h-11"
+                      maxLength={20}
+                      {...field}
+                      onChange={(e) => {
+                        voiceFill.markManual("phone");
+                        field.onChange(e);
+                      }}
+                    />
                   </FormControl>
                 </FormItem>
               )}
@@ -150,16 +230,29 @@ export function DriverNewReservationDialog({
               name="licensePlate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Numer rejestracyjny</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Numer rejestracyjny</FormLabel>
+                    {voiceBadge("licensePlate")}
+                  </div>
                   <FormControl>
                     <Input
                       className="min-h-11"
                       placeholder="np. WX 12345"
                       maxLength={15}
                       {...field}
-                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                      onChange={(e) => {
+                        voiceFill.markManual("licensePlate");
+                        field.onChange(e.target.value.toUpperCase());
+                      }}
                     />
                   </FormControl>
+                  {voiceFill.needsPlateConfirmation && field.value ? (
+                    <PlateConfirmation
+                      plate={field.value}
+                      formatWarning={voiceFill.meta.licensePlate?.formatWarning}
+                      onConfirm={voiceFill.confirmPlate}
+                    />
+                  ) : null}
                 </FormItem>
               )}
             />
@@ -168,9 +261,19 @@ export function DriverNewReservationDialog({
               name="checkIn"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Przyjazd *</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Przyjazd *</FormLabel>
+                    {voiceBadge("checkIn")}
+                  </div>
                   <FormControl>
-                    <Input type="datetime-local" className="min-h-11" {...field} />
+                    <DateTimePicker
+                      value={field.value ? new Date(field.value) : null}
+                      onChange={(d) => {
+                        voiceFill.markManual("checkIn");
+                        field.onChange(d ? isoToDatetimeLocal(d.toISOString()) : "");
+                      }}
+                      placeholder="Wybierz datę"
+                    />
                   </FormControl>
                 </FormItem>
               )}
@@ -180,9 +283,19 @@ export function DriverNewReservationDialog({
               name="checkOut"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Powrót *</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Powrót *</FormLabel>
+                    {voiceBadge("checkOut")}
+                  </div>
                   <FormControl>
-                    <Input type="datetime-local" className="min-h-11" {...field} />
+                    <DateTimePicker
+                      value={field.value ? new Date(field.value) : null}
+                      onChange={(d) => {
+                        voiceFill.markManual("checkOut");
+                        field.onChange(d ? isoToDatetimeLocal(d.toISOString()) : "");
+                      }}
+                      placeholder="Wybierz datę"
+                    />
                   </FormControl>
                 </FormItem>
               )}
@@ -192,8 +305,17 @@ export function DriverNewReservationDialog({
               name="parkingType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Typ miejsca</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Typ miejsca</FormLabel>
+                    {voiceBadge("parkingType")}
+                  </div>
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) => {
+                      voiceFill.markManual("parkingType");
+                      field.onChange(value);
+                    }}
+                  >
                     <FormControl>
                       <SelectTrigger className="min-h-11 w-full">
                         <SelectValue />
@@ -234,13 +356,19 @@ export function DriverNewReservationDialog({
               name="flightDirection"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kierunek lotu</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Kierunek lotu</FormLabel>
+                    {voiceBadge("flightDirection")}
+                  </div>
                   <FlightDirectionInput
                     className="min-h-11"
                     placeholder="np. Londyn, LO 392"
                     maxLength={100}
                     value={field.value}
-                    onChange={field.onChange}
+                    onChange={(value) => {
+                      voiceFill.markManual("flightDirection");
+                      field.onChange(value);
+                    }}
                     onBlur={field.onBlur}
                     name={field.name}
                   />
@@ -261,6 +389,11 @@ export function DriverNewReservationDialog({
             />
             {checkInIso && checkOutIso ? <PaymentQuote {...quote} /> : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {voiceFill.needsPlateConfirmation ? (
+              <p className="text-sm text-muted-foreground">
+                Potwierdź numer rejestracyjny z dyktowania, aby dodać rezerwację.
+              </p>
+            ) : null}
             <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 flex-row gap-2 border-t bg-white px-6 py-3">
               <Button
                 type="button"
@@ -270,7 +403,11 @@ export function DriverNewReservationDialog({
               >
                 Anuluj
               </Button>
-              <Button type="submit" className="min-h-11 flex-[2] sm:flex-none" disabled={isProcessing}>
+              <Button
+                type="submit"
+                className="min-h-11 flex-[2] sm:flex-none"
+                disabled={isProcessing || voiceFill.needsPlateConfirmation}
+              >
                 {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Dodaj rezerwację
               </Button>
