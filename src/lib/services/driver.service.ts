@@ -204,21 +204,26 @@ export class DriverService {
   }
 
   /**
-   * Price of the stay if it ends at `checkOutIso` — mirrors trg_update_cost, which reprices
-   * individual reservations when planned_check_out changes. Unchanged date → stored total_cost.
+   * Price of the stay if it ends at `checkOutIso` — mirrors trg_update_cost, which prices individual
+   * stays from the actual arrival (the price list of that day) and reprices unpaid ones when the
+   * arrival is recorded. A not-yet-arrived stay is therefore quoted from now. Unchanged date on a
+   * stay the trigger would leave alone → stored total_cost.
    */
   async quoteCheckout(id: string, checkOutIso: string): Promise<number> {
     const current = await this.getById(id);
+    const arrivesNow = current.status === "confirmed" && !current.actual_check_in;
+    const checkInIso = current.actual_check_in ?? (arrivesNow ? new Date().toISOString() : current.planned_check_in);
 
-    if (Date.parse(checkOutIso) === Date.parse(current.planned_check_out)) {
+    if (Date.parse(checkOutIso) === Date.parse(current.planned_check_out) && !(arrivesNow && !current.is_paid)) {
       return Number(current.total_cost);
     }
+    // Validated against the booked date: a client arriving after the planned return is still billed 1 day.
     if (Date.parse(checkOutIso) <= Date.parse(current.planned_check_in)) {
       throw new DriverServiceError("Check-out must be after check-in", 400);
     }
 
     const { data, error } = await this.supabase.rpc("calculate_total_cost", {
-      p_check_in: current.planned_check_in,
+      p_check_in: checkInIso,
       p_check_out: checkOutIso,
       p_parking_type: current.parking_type,
     });

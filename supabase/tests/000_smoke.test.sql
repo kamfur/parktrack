@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(9);
+select plan(11);
 
 -- Fixture: a far-future price list so the base 2000-01-01 list never wins.
 -- day_prices[n] = 10 * n, extra_day_price = 5.
@@ -74,6 +74,41 @@ select is(
   999.00::numeric(10,2),
   'staff can override total_cost when dates and type are unchanged'
 );
+
+-- Price at the actual arrival ----------------------------------------------------
+-- Planned 2099-06-01..06-06 is 5 days = 50. Arriving a day later (06-02 → 06-06) is 4 days = 40.
+
+update public.reservations
+   set total_cost = 50, is_paid = false, actual_check_in = null
+ where id = '00000000-0000-4000-8000-000000000001';
+
+update public.reservations
+   set actual_check_in = '2099-06-02 10:00+02', status = 'in_progress'
+ where id = '00000000-0000-4000-8000-000000000001';
+
+select is(
+  (select total_cost from public.reservations where id = '00000000-0000-4000-8000-000000000001'),
+  40.00::numeric(10,2),
+  'recording the arrival reprices an unpaid stay from the actual check-in'
+);
+
+update public.reservations
+   set total_cost = 50, actual_check_in = null, status = 'confirmed', is_paid = true
+ where id = '00000000-0000-4000-8000-000000000001';
+
+update public.reservations
+   set actual_check_in = '2099-06-02 10:00+02', status = 'in_progress'
+ where id = '00000000-0000-4000-8000-000000000001';
+
+select is(
+  (select total_cost from public.reservations where id = '00000000-0000-4000-8000-000000000001'),
+  50.00::numeric(10,2),
+  'recording the arrival keeps the amount of an already paid stay'
+);
+
+update public.reservations
+   set total_cost = 999, is_paid = false
+ where id = '00000000-0000-4000-8000-000000000001';
 
 -- Driver allowlist trigger -----------------------------------------------------
 

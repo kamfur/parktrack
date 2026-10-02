@@ -257,6 +257,39 @@ describe("quoteCheckout", () => {
     });
   });
 
+  it("prices a stay already on the parking from its actual check-in", async () => {
+    const actual = "2026-09-11T09:00:00.000Z";
+    const client = { ...mockSupabase({ ...current, status: "in_progress", actual_check_in: actual }) };
+    const rpc = vi.fn().mockResolvedValue({ data: 190, error: null });
+    await new DriverService({ ...client, rpc } as never).quoteCheckout("r1", "2026-09-17T08:00:00.000Z");
+    expect(rpc).toHaveBeenCalledWith("calculate_total_cost", expect.objectContaining({ p_check_in: actual }));
+  });
+
+  it("quotes a not-yet-arrived unpaid stay from now, even with an unchanged return date", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-12T10:00:00.000Z"));
+    try {
+      const client = { ...mockSupabase({ ...current, status: "confirmed", is_paid: false }) };
+      const rpc = vi.fn().mockResolvedValue({ data: 130, error: null });
+      const total = await new DriverService({ ...client, rpc } as never).quoteCheckout("r1", current.planned_check_out);
+      expect(total).toBe(130);
+      expect(rpc).toHaveBeenCalledWith(
+        "calculate_total_cost",
+        expect.objectContaining({ p_check_in: "2026-09-12T10:00:00.000Z" })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the stored total for a paid, not-yet-arrived stay with an unchanged return date", async () => {
+    const client = { ...mockSupabase({ ...current, status: "confirmed", is_paid: true }) };
+    const rpc = vi.fn();
+    const total = await new DriverService({ ...client, rpc } as never).quoteCheckout("r1", current.planned_check_out);
+    expect(total).toBe(150);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it("rejects a return before check-in and a missing price list", async () => {
     const service = new DriverService(clientWithRpc({ data: null, error: { message: "no list" } }) as never);
     await expect(service.quoteCheckout("r1", "2026-09-09T08:00:00.000Z")).rejects.toMatchObject({ statusCode: 400 });
