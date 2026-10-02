@@ -535,10 +535,10 @@ One Playwright test that covers the whole staff flow from transcript to saved re
 
 #### Automated
 
-- [x] 2.1 Route and adapter tests pass
-- [x] 2.2 Middleware test passes (driver allowed)
-- [x] 2.3 Type checking passes
-- [x] 2.4 Linting passes
+- [x] 2.1 Route and adapter tests pass — 6fa3146
+- [x] 2.2 Middleware test passes (driver allowed) — 6fa3146
+- [x] 2.3 Type checking passes — 6fa3146
+- [x] 2.4 Linting passes — 6fa3146
 
 #### Manual
 
@@ -549,10 +549,10 @@ One Playwright test that covers the whole staff flow from transcript to saved re
 
 #### Automated
 
-- [ ] 3.1 Fake source and hook helper unit tests pass
-- [ ] 3.2 Type checking passes
-- [ ] 3.3 Linting passes
-- [ ] 3.4 Build passes
+- [x] 3.1 Fake source and hook helper unit tests pass
+- [x] 3.2 Type checking passes
+- [x] 3.3 Linting passes
+- [x] 3.4 Build passes
 
 #### Manual
 

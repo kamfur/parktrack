@@ -1,0 +1,13 @@
+---
+// Dev-only harness for voice reservations (plan Phase 3 manual checks). Not served in production builds.
+import Layout from "../../layouts/Layout.astro";
+import VoiceHarness from "../../components/voice/VoiceHarness";
+
+if (!import.meta.env.DEV) {
+  return Astro.redirect("/");
+}
+---
+
+<Layout title="Dyktowanie (dev) - ParkTrack">
+  <VoiceHarness client:only="react" />
+</Layout>

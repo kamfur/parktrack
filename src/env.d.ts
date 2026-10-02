@@ -28,6 +28,8 @@ interface ImportMetaEnv {
   readonly SONIOX_REGION?: string;
   /** "true" shows the voice dictation button in reservation forms. */
   readonly PUBLIC_VOICE_ENABLED?: string;
+  /** E2E only: "true" swaps Soniox for the scripted window.__parktrackFakeVoice source. */
+  readonly PUBLIC_VOICE_FAKE?: string;
 }
 
 interface ImportMeta {
