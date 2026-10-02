@@ -549,10 +549,10 @@ One Playwright test that covers the whole staff flow from transcript to saved re
 
 #### Automated
 
-- [x] 3.1 Fake source and hook helper unit tests pass
-- [x] 3.2 Type checking passes
-- [x] 3.3 Linting passes
-- [x] 3.4 Build passes
+- [x] 3.1 Fake source and hook helper unit tests pass — a3d5ab5
+- [x] 3.2 Type checking passes — a3d5ab5
+- [x] 3.3 Linting passes — a3d5ab5
+- [x] 3.4 Build passes — a3d5ab5
 
 #### Manual
 
@@ -563,10 +563,10 @@ One Playwright test that covers the whole staff flow from transcript to saved re
 
 #### Automated
 
-- [ ] 4.1 Staff form adapter unit tests pass
-- [ ] 4.2 Type checking passes
-- [ ] 4.3 Linting passes
-- [ ] 4.4 Existing unit and E2E suites still pass
+- [x] 4.1 Staff form adapter unit tests pass
+- [x] 4.2 Type checking passes
+- [x] 4.3 Linting passes
+- [x] 4.4 Existing unit and E2E suites still pass
 
 #### Manual
 

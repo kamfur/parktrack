@@ -10,6 +10,8 @@ import type { ParkingType } from "./lib/pricing/parking-type";
 import type { PriceListRates } from "./lib/pricing/price-list";
 import type { SavePriceListCommand } from "./lib/schemas/price-list.schema";
 import type { SaveTravelAgencyCommand, SaveTravelAgencyInput } from "./lib/schemas/travel-agency.schema";
+import type { VoiceFieldKey } from "./lib/voice/merge";
+import type { ParsedVoiceFields } from "./lib/voice/types";
 import type {
   CalendarRangeQuery,
   DriverShiftFormData,
@@ -580,6 +582,11 @@ export interface QuickReservationFormProps {
   onSubmit: (data: QuickReservationFormData) => Promise<void>;
   /** Callback przełączenia do trybu Full z danymi z Quick Mode */
   onSwitchToFull: (data: QuickReservationFormData) => void;
+  /** Dyktowanie: przełącza do trybu Full z bieżącymi danymi i listą pól zmienionych ręcznie */
+  onStartVoice?: (
+    data: Partial<QuickReservationFormData>,
+    manualFields: readonly ("lastName" | "checkIn" | "checkOut")[]
+  ) => void;
   /** Czy formularz jest w trakcie wysyłania */
   isSubmitting: boolean;
 }
@@ -594,6 +601,11 @@ export interface FullReservationFormProps {
   onSubmit: (data: FullReservationFormData) => Promise<void>;
   /** Callback powrotu do trybu Quick */
   onSwitchToQuick: () => void;
+  /** Dyktowanie: rozpoznane pola i pola już wpisane ręcznie (nie nadpisywane głosem) */
+  voice?: {
+    parsed: ParsedVoiceFields;
+    initialManual?: readonly VoiceFieldKey[];
+  };
   /** Czy formularz jest w trakcie wysyłania */
   isSubmitting: boolean;
 }

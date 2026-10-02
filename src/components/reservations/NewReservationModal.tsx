@@ -11,6 +11,10 @@ import { FullReservationForm } from "./FullReservationForm";
 import { useCreateReservation } from "@/hooks/useCreateReservation";
 import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
 import { cn } from "@/lib/utils";
+import { useVoiceSession } from "@/hooks/useVoiceSession";
+import type { VoiceFieldKey } from "@/lib/voice/merge";
+import { VoiceCaptureButton } from "@/components/voice/VoiceCaptureButton";
+import { TranscriptPreview } from "@/components/voice/TranscriptPreview";
 
 /**
  * Główny kontener modala nowej rezerwacji.
@@ -19,6 +23,9 @@ import { cn } from "@/lib/utils";
 export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = "quick" }: NewReservationModalProps) {
   const [mode, setMode] = useState<"quick" | "full">(defaultMode);
   const [formData, setFormData] = useState<Partial<FullReservationFormData>>({});
+  // Dictation lives here so the session survives the quick → full switch.
+  const voice = useVoiceSession();
+  const [voiceManual, setVoiceManual] = useState<readonly VoiceFieldKey[]>([]);
 
   const { createReservation, isCreating } = useCreateReservation();
 
@@ -104,8 +111,20 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
     setMode("full");
   };
 
+  // Mic in quick mode: carry typed values to full mode and start listening
+  const handleStartVoiceFromQuick = (
+    data: Partial<QuickReservationFormData>,
+    manualFields: readonly ("lastName" | "checkIn" | "checkOut")[]
+  ) => {
+    setFormData({ lastName: data.lastName, checkInDate: data.checkInDate, checkOutDate: data.checkOutDate });
+    setVoiceManual(manualFields);
+    setMode("full");
+    void voice.start();
+  };
+
   // Switch from Full to Quick Mode
   const handleSwitchToQuick = () => {
+    voice.cancel();
     // Keep only common fields
     setFormData({
       lastName: formData.lastName || "",
@@ -117,13 +136,16 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
 
   // Reset modal state
   const resetModal = () => {
+    voice.cancel();
     setMode(defaultMode);
     setFormData({});
+    setVoiceManual([]);
   };
 
   // Handle modal close with unsaved changes detection
   const handleOpenChange = (open: boolean) => {
     if (!open) {
+      voice.cancel();
       // TODO: Add unsaved changes detection and warning
       // For now, just close
       onClose();
@@ -148,15 +170,32 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
           <QuickReservationForm
             onSubmit={handleQuickSubmit}
             onSwitchToFull={handleSwitchToFull}
+            onStartVoice={handleStartVoiceFromQuick}
             isSubmitting={isCreating}
           />
         ) : (
-          <FullReservationForm
-            initialData={formData}
-            onSubmit={handleFullSubmit}
-            onSwitchToQuick={handleSwitchToQuick}
-            isSubmitting={isCreating}
-          />
+          <>
+            <div className="space-y-2">
+              <VoiceCaptureButton
+                state={voice.state}
+                onStart={() => void voice.start()}
+                onStop={() => void voice.stop()}
+              />
+              <TranscriptPreview
+                state={voice.state}
+                finalText={voice.finalText}
+                partialText={voice.partialText}
+                error={voice.error}
+              />
+            </div>
+            <FullReservationForm
+              initialData={formData}
+              onSubmit={handleFullSubmit}
+              onSwitchToQuick={handleSwitchToQuick}
+              isSubmitting={isCreating}
+              voice={{ parsed: voice.parsed, initialManual: voiceManual }}
+            />
+          </>
         )}
       </DialogContent>
     </Dialog>
