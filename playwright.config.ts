@@ -6,6 +6,8 @@ import { defineConfig, devices } from "@playwright/test";
 loadEnv({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".env") });
 
 const authFile = "playwright/.auth/user.json";
+// Override to target an already-running server, e.g. the voice-fake dev server on :3100.
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -15,7 +17,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL,
     trace: "on-first-retry",
   },
   projects: [
@@ -34,8 +36,11 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run dev",
-    url: "http://localhost:3000",
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // Voice reservations E2E: show the "Dyktuj" button and use the scripted transcript source
+    // (no microphone, no Soniox). A reused dev server must be started with the same flags.
+    env: { PUBLIC_VOICE_ENABLED: "true", PUBLIC_VOICE_FAKE: "true" },
   },
 });

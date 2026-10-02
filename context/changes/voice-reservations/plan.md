@@ -581,9 +581,9 @@ One Playwright test that covers the whole staff flow from transcript to saved re
 
 #### Automated
 
-- [x] 5.1 Driver form adapter unit tests pass
-- [x] 5.2 Type checking passes
-- [x] 5.3 Linting passes
+- [x] 5.1 Driver form adapter unit tests pass — d1064c6
+- [x] 5.2 Type checking passes — d1064c6
+- [x] 5.3 Linting passes — d1064c6
 
 #### Manual
 
@@ -595,8 +595,8 @@ One Playwright test that covers the whole staff flow from transcript to saved re
 
 #### Automated
 
-- [ ] 6.1 Voice E2E spec passes locally
-- [ ] 6.2 Full E2E suite passes
+- [x] 6.1 Voice E2E spec passes locally
+- [x] 6.2 Full E2E suite passes
 - [ ] 6.3 CI job `ci` passes
 
 #### Manual
