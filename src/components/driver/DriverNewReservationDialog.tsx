@@ -6,6 +6,7 @@ import { datetimeLocalToIso, isoToDatetimeLocal } from "@/lib/schemas/driver-for
 import { PARKING_TYPES, PARKING_TYPE_LABELS } from "@/lib/pricing/parking-type";
 import { useNewStayQuote } from "@/hooks/useCheckoutQuote";
 import { DateTimePicker } from "@/components/shared/DateTimePicker";
+import { VehicleCountInput } from "@/components/shared/VehicleCountInput";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
 import { GarageSpotSelect } from "@/components/reservations/GarageSpotSelect";
@@ -40,6 +41,7 @@ interface FormValues {
   firstName: string;
   phone: string;
   licensePlate: string;
+  vehicleCount: number;
   checkIn: string;
   checkOut: string;
   parkingType: ParkingType;
@@ -55,6 +57,7 @@ function emptyForm(): FormValues {
     firstName: "",
     phone: "",
     licensePlate: "",
+    vehicleCount: 1,
     checkIn: isoToDatetimeLocal(new Date().toISOString()),
     checkOut: "",
     parkingType: "open_air",
@@ -102,7 +105,8 @@ export function DriverNewReservationDialog({
   const checkInIso = datetimeLocalToIso(form.watch("checkIn")) ?? null;
   const checkOutIso = datetimeLocalToIso(form.watch("checkOut")) ?? null;
   const parkingType = form.watch("parkingType");
-  const quote = useNewStayQuote(checkInIso, checkOutIso, parkingType);
+  const vehicleCount = form.watch("vehicleCount");
+  const quote = useNewStayQuote(checkInIso, checkOutIso, parkingType, vehicleCount);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     setError(null);
@@ -112,6 +116,7 @@ export function DriverNewReservationDialog({
       first_name: values.firstName.trim() || undefined,
       phone: values.phone.replace(/\s/g, "") || undefined,
       license_plate: values.licensePlate.trim() ? values.licensePlate.trim().toUpperCase() : undefined,
+      vehicle_count: values.vehicleCount,
       flight_direction: values.flightDirection.trim() || undefined,
       notes: values.notes.trim() || undefined,
       planned_check_in: checkInIso ?? "",
@@ -253,6 +258,18 @@ export function DriverNewReservationDialog({
                       onConfirm={voiceFill.confirmPlate}
                     />
                   ) : null}
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="vehicleCount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Liczba aut</FormLabel>
+                  <FormControl>
+                    <VehicleCountInput value={field.value} onChange={field.onChange} />
+                  </FormControl>
                 </FormItem>
               )}
             />

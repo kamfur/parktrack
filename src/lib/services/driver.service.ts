@@ -21,7 +21,7 @@ export class DriverServiceError extends Error {
 }
 
 const DRIVER_LIST_SELECT =
-  "id, last_name, first_name, phone, email, license_plate, parking_type, planned_check_in, planned_check_out, flight_direction, passenger_count, parking_sector, paid_at_arrival, paid_at_departure, keys_left, surcharge_amount, total_cost, notes, status, is_paid, actual_check_in, actual_check_out, travel_agency_id";
+  "id, last_name, first_name, phone, email, license_plate, vehicle_count, extra_license_plates, parking_type, planned_check_in, planned_check_out, flight_direction, passenger_count, parking_sector, paid_at_arrival, paid_at_departure, keys_left, surcharge_amount, total_cost, notes, status, is_paid, actual_check_in, actual_check_out, travel_agency_id";
 
 /**
  * Sync rule: is_paid is true when either driver payment flag is true.
@@ -161,7 +161,15 @@ export class DriverService {
     const paidAtArrival = validated.paid_at_arrival ?? current.paid_at_arrival;
     const paidAtDeparture = current.paid_at_departure;
 
+    const vehicleCount = validated.vehicle_count ?? current.vehicle_count ?? 1;
+    const extraPlates = validated.extra_license_plates ?? current.extra_license_plates ?? [];
+    if (extraPlates.length > vehicleCount - 1) {
+      throw new DriverServiceError("Za dużo numerów rejestracyjnych w stosunku do liczby aut", 400);
+    }
+
     const updateData = {
+      vehicle_count: vehicleCount,
+      extra_license_plates: extraPlates,
       status: "in_progress" as const,
       actual_check_in: validated.actual_check_in ?? new Date().toISOString(),
       planned_check_out: validated.planned_check_out ?? current.planned_check_out,
@@ -209,12 +217,19 @@ export class DriverService {
    * arrival is recorded. A not-yet-arrived stay is therefore quoted from now. Unchanged date on a
    * stay the trigger would leave alone → stored total_cost.
    */
-  async quoteCheckout(id: string, checkOutIso: string): Promise<number> {
+  async quoteCheckout(id: string, checkOutIso: string, vehicleCountOverride?: number): Promise<number> {
     const current = await this.getById(id);
     const arrivesNow = current.status === "confirmed" && !current.actual_check_in;
     const checkInIso = current.actual_check_in ?? (arrivesNow ? new Date().toISOString() : current.planned_check_in);
+    // The count can be corrected only while the arrival is being recorded (RLS blocks it later).
+    const vehicleCount = (arrivesNow ? vehicleCountOverride : undefined) ?? current.vehicle_count ?? 1;
+    const countChanged = vehicleCount !== (current.vehicle_count ?? 1);
 
-    if (Date.parse(checkOutIso) === Date.parse(current.planned_check_out) && !(arrivesNow && !current.is_paid)) {
+    if (
+      Date.parse(checkOutIso) === Date.parse(current.planned_check_out) &&
+      !(arrivesNow && !current.is_paid) &&
+      !countChanged
+    ) {
       return Number(current.total_cost);
     }
     // Validated against the booked date: a client arriving after the planned return is still billed 1 day.
@@ -232,7 +247,7 @@ export class DriverService {
       throw new DriverServiceError("Brak cennika dla tego terminu", 422);
     }
 
-    return Number(data);
+    return Number(data) * vehicleCount;
   }
 
   private async getById(id: string): Promise<ReservationDto> {

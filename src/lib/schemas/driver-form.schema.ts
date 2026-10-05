@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_VEHICLE_COUNT } from "../vehicles";
 
 /** Form schema for driver arrival card — maps to driverArrivalUpdateSchema on submit. */
 export const driverArrivalFormSchema = z.object({
@@ -7,6 +8,9 @@ export const driverArrivalFormSchema = z.object({
   passenger_count: z.number().int().min(0).max(99).nullable().optional(),
   parking_sector: z.string().max(50).optional(),
   license_plate: z.string().max(15).optional(),
+  vehicle_count: z.number().int().min(1).max(MAX_VEHICLE_COUNT).optional(),
+  /** Plates of cars 2..N (index 0 = car 2). */
+  extra_license_plates: z.array(z.string().max(15)).optional(),
   paid_at_arrival: z.boolean(),
   keys_left: z.boolean(),
 });

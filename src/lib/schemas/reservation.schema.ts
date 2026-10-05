@@ -1,5 +1,16 @@
 import { z } from "zod";
 import { PARKING_TYPES } from "../pricing/parking-type";
+import { MAX_VEHICLE_COUNT } from "../vehicles";
+
+/** Cars in one reservation: whole number 1..MAX_VEHICLE_COUNT (forms always send it). */
+const vehicleCountFormSchema = z
+  .number({ invalid_type_error: "Podaj liczbę aut" })
+  .int("Liczba aut musi być liczbą całkowitą")
+  .min(1, "Minimum 1 auto")
+  .max(MAX_VEHICLE_COUNT, `Maksymalnie ${MAX_VEHICLE_COUNT} aut`);
+
+/** API payloads may omit it: defaults to a single car. */
+const vehicleCountSchema = vehicleCountFormSchema.default(1);
 
 /**
  * Schema for validating external reservation requests.
@@ -60,6 +71,17 @@ export const createReservationSchema = z
     garage_spot_id: z.string().uuid("Invalid garage spot ID").optional(),
     /** Paying travel agency; the DB then prices with its discount and marks the stay paid. */
     travel_agency_id: z.string().uuid("Invalid travel agency ID").nullable().optional(),
+    /** Cars covered by the reservation; the price is multiplied by it. */
+    vehicle_count: vehicleCountSchema,
+    /** Plates of cars 2..vehicle_count (car 1 is license_plate). */
+    extra_license_plates: z
+      .array(z.string().trim().max(15))
+      .max(MAX_VEHICLE_COUNT - 1)
+      .optional(),
+  })
+  .refine((data) => (data.extra_license_plates?.length ?? 0) <= data.vehicle_count - 1, {
+    message: "Too many license plates for the vehicle count",
+    path: ["extra_license_plates"],
   })
   .refine(
     (data) => {
@@ -112,6 +134,11 @@ export const updateReservationSchema = z.object({
   /** Client left the car keys — editable only while the car is on the parking (in_progress). */
   keys_left: z.boolean().optional(),
   travel_agency_id: z.string().uuid("Invalid travel agency ID").nullable().optional(),
+  vehicle_count: vehicleCountFormSchema.optional(),
+  extra_license_plates: z
+    .array(z.string().trim().max(15))
+    .max(MAX_VEHICLE_COUNT - 1)
+    .optional(),
 });
 
 export type UpdateReservationSchema = typeof updateReservationSchema;
@@ -201,6 +228,8 @@ export const fullReservationSchema = z
       .optional()
       .or(z.literal("")),
     licensePlate: z.string().max(15, "Numer rejestracyjny jest zbyt długi").optional().or(z.literal("")),
+    /** Liczba aut w rezerwacji (cena × liczba aut) */
+    vehicleCount: vehicleCountFormSchema,
     flightDirection: z
       .string()
       .max(100, "Kierunek lotu może zawierać maksymalnie 100 znaków")
@@ -261,6 +290,9 @@ export const editReservationSchema = z
       .or(z.literal("")),
     phone: z.string().max(20, "Numer telefonu jest zbyt długi").optional().or(z.literal("")),
     licensePlate: z.string().max(15, "Numer rejestracyjny jest zbyt długi").optional().or(z.literal("")),
+    vehicleCount: vehicleCountFormSchema,
+    /** Numery aut 2..N (auto 1 = licensePlate); jeden wpis na auto, puste dozwolone */
+    extraLicensePlates: z.array(z.string().max(15, "Numer rejestracyjny jest zbyt długi")),
     checkInDate: baseReservationFields.checkInDate,
     checkOutDate: baseReservationFields.checkOutDate,
     flightDirection: z

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PARKING_TYPES, PARKING_TYPE_LABELS } from "@/lib/pricing/parking-type";
 import { DateTimePicker } from "@/components/shared/DateTimePicker";
+import { VehicleCountInput } from "@/components/shared/VehicleCountInput";
 import { CostPreview } from "./CostPreview";
 import { AvailabilityIndicator } from "./AvailabilityIndicator";
 import { FlightDirectionInput } from "./FlightDirectionInput";
@@ -48,6 +49,7 @@ export function FullReservationForm({
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       licensePlate: initialData?.licensePlate || "",
+      vehicleCount: initialData?.vehicleCount ?? 1,
       checkInDate: initialData?.checkInDate || today,
       checkOutDate: initialData?.checkOutDate || tomorrow,
       flightDirection: initialData?.flightDirection || "",
@@ -58,7 +60,7 @@ export function FullReservationForm({
     },
   });
 
-  const { checkInDate, checkOutDate, notes, parkingType, travelAgencyId, licensePlate } = form.watch();
+  const { checkInDate, checkOutDate, notes, parkingType, travelAgencyId, licensePlate, vehicleCount } = form.watch();
   const { isAvailable, isChecking } = useAvailabilityCheck(checkInDate, checkOutDate);
 
   // Dictation: write planned voice updates; fields the user edits are marked manual in onChange.
@@ -342,6 +344,24 @@ export function FullReservationForm({
 
           <FormField
             control={form.control}
+            name="vehicleCount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Liczba aut</FormLabel>
+                <FormControl>
+                  <VehicleCountInput value={field.value} onChange={field.onChange} />
+                </FormControl>
+                <FormDescription>
+                  Cena jest mnożona przez liczbę aut. Pozostałe numery rejestracyjne uzupełnia kierowca przy
+                  przyjeździe.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name="parkingType"
             render={({ field }) => (
               <FormItem>
@@ -473,6 +493,7 @@ export function FullReservationForm({
           checkOutDate={checkOutDate}
           parkingType={parkingType ?? "open_air"}
           travelAgencyId={travelAgencyId || null}
+          vehicleCount={vehicleCount}
           isCalculating={false}
         />
 

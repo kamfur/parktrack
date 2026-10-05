@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { z } from "zod";
 import type { CostCalculationResponse } from "../../types";
 import { PARKING_TYPES } from "../../lib/pricing/parking-type";
+import { MAX_VEHICLE_COUNT } from "../../lib/vehicles";
 import {
   NoPriceListError,
   ReservationService,
@@ -21,6 +22,7 @@ export const prerender = false;
  * - check_out (required): Data wyjazdu (ISO 8601)
  * - parking_type (optional): open_air (domyślnie) | carport | garage
  * - travel_agency_id (optional): UUID biura — cena po rabacie biura (podgląd; baza liczy ostatecznie)
+ * - vehicle_count (optional): liczba aut w rezerwacji (domyślnie 1) — cena × liczba aut
  *
  * Response: CostCalculationResponse
  */
@@ -39,6 +41,21 @@ export const GET: APIRoute = async ({ url, locals }) => {
       .uuid()
       .optional()
       .safeParse(url.searchParams.get("travel_agency_id") || undefined);
+
+    const vehicleCountResult = z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_VEHICLE_COUNT)
+      .default(1)
+      .safeParse(url.searchParams.get("vehicle_count") || undefined);
+
+    if (!vehicleCountResult.success) {
+      return new Response(JSON.stringify({ error: `vehicle_count must be an integer 1-${MAX_VEHICLE_COUNT}` }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     if (!travelAgencyResult.success) {
       return new Response(JSON.stringify({ error: "travel_agency_id must be a valid UUID" }), {
@@ -104,7 +121,8 @@ export const GET: APIRoute = async ({ url, locals }) => {
       checkIn,
       checkOut,
       parkingTypeResult.data,
-      travelAgencyResult.data
+      travelAgencyResult.data,
+      vehicleCountResult.data
     );
 
     // Get cost per day (simple division)

@@ -136,6 +136,7 @@ describe("fullReservationSchema phone", () => {
     checkInDate: today,
     checkOutDate: tomorrow,
     phone: "",
+    vehicleCount: 1,
   };
 
   it("accepts a formatted 9-digit phone with spaces", () => {
@@ -168,6 +169,8 @@ describe("editReservationSchema", () => {
     notes: "Uwagi",
     parkingType: "open_air" as const,
     keysLeft: false,
+    vehicleCount: 1,
+    extraLicensePlates: [] as string[],
   };
 
   it("accepts a past check-in date for an existing reservation", () => {
@@ -278,10 +281,46 @@ describe("travel agency fields", () => {
   it("form schemas treat an empty agency as none", () => {
     const tomorrow = new Date(Date.now() + 86_400_000);
     const later = new Date(Date.now() + 3 * 86_400_000);
-    const form = { lastName: "Kowalski", checkInDate: tomorrow, checkOutDate: later };
+    const form = { lastName: "Kowalski", checkInDate: tomorrow, checkOutDate: later, vehicleCount: 1 };
     expect(fullReservationSchema.safeParse({ ...form, travelAgencyId: "" }).success).toBe(true);
-    const editForm = { ...form, parkingType: "open_air", keysLeft: false };
+    const editForm = { ...form, parkingType: "open_air", keysLeft: false, extraLicensePlates: [] };
     expect(editReservationSchema.safeParse({ ...editForm, travelAgencyId: AGENCY_ID }).success).toBe(true);
     expect(editReservationSchema.safeParse({ ...editForm, travelAgencyId: "x" }).success).toBe(false);
+  });
+});
+
+describe("vehicle count", () => {
+  const form = {
+    lastName: "Kowalski",
+    checkInDate: new Date(Date.now() + 86_400_000),
+    checkOutDate: new Date(Date.now() + 3 * 86_400_000),
+  };
+
+  it("full form requires a whole number of cars between 1 and 10", () => {
+    expect(fullReservationSchema.safeParse({ ...form, vehicleCount: 3 }).success).toBe(true);
+    expect(fullReservationSchema.safeParse({ ...form, vehicleCount: 0 }).success).toBe(false);
+    expect(fullReservationSchema.safeParse({ ...form, vehicleCount: 11 }).success).toBe(false);
+    expect(fullReservationSchema.safeParse({ ...form, vehicleCount: 1.5 }).success).toBe(false);
+  });
+
+  const api = {
+    last_name: "Kowalski",
+    planned_check_in: "2026-10-10T10:00:00.000Z",
+    planned_check_out: "2026-10-12T10:00:00.000Z",
+    source: "phone" as const,
+  };
+
+  it("API create defaults to one car and rejects more plates than cars", () => {
+    expect(createReservationSchema.parse(api).vehicle_count).toBe(1);
+    expect(
+      createReservationSchema.safeParse({ ...api, vehicle_count: 2, extra_license_plates: ["KR 1"] }).success
+    ).toBe(true);
+    expect(
+      createReservationSchema.safeParse({ ...api, vehicle_count: 1, extra_license_plates: ["KR 1"] }).success
+    ).toBe(false);
+  });
+
+  it("API update leaves the count alone when it is omitted", () => {
+    expect(updateReservationSchema.parse({ notes: "x" }).vehicle_count).toBeUndefined();
   });
 });

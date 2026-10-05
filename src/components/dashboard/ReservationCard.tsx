@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { amountDue, flightDirectionLabel, garageSpotLabel, isAfterToday, isOverdue } from "@/lib/driver/display";
 import { formatKtwHourList } from "@/lib/ktw/format-hours";
 import { formatCost } from "@/lib/utils/reservation.formatters";
+import { joinLicensePlates } from "@/lib/vehicles";
 
 function formatWarsawDateTime(dateString: string): string {
   return new Date(dateString).toLocaleString("pl-PL", {
@@ -95,10 +96,15 @@ export function ReservationCard({
               </div>
             )}
 
-            {reservation.license_plate && (
+            {(joinLicensePlates(reservation) || (reservation.vehicle_count ?? 1) > 1) && (
               <div className="flex items-center gap-2">
                 <Car className="h-4 w-4" />
-                <span className="font-mono">{reservation.license_plate}</span>
+                <span className="font-mono">{joinLicensePlates(reservation)}</span>
+                {(reservation.vehicle_count ?? 1) > 1 && (
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
+                    {reservation.vehicle_count} auta
+                  </span>
+                )}
               </div>
             )}
 

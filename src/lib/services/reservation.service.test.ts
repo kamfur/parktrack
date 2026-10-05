@@ -319,6 +319,34 @@ describe("ReservationService pricing", () => {
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ total_cost: 180, parking_type: "carport" }));
   });
 
+  it("multiplies the price-list amount by the car count and stores the car data", async () => {
+    const insert = vi.fn().mockReturnThis();
+    vi.mocked(createSupabaseAdminClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        insert,
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: "r1" }, error: null }),
+      }),
+    } as never);
+    const rpc = vi.fn().mockResolvedValue({ data: 60, error: null });
+
+    await new ReservationService({ rpc } as never).createReservation(
+      {
+        last_name: "Kowalski",
+        planned_check_in: "2026-09-02T00:00:00Z",
+        planned_check_out: "2026-09-05T00:00:00Z",
+        source: "phone",
+        vehicle_count: 3,
+        extra_license_plates: ["KR 2"],
+      },
+      "user-1"
+    );
+
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ total_cost: 180, vehicle_count: 3, extra_license_plates: ["KR 2"] })
+    );
+  });
+
   it("throws NoPriceListError when no price list covers the check-in date", async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: null,
@@ -581,6 +609,22 @@ describe("ReservationService — travel agency pricing", () => {
       discountPct: 0,
       totalCost: 50,
     });
+  });
+
+  it("quoteCost multiplies by the car count before the agency discount", async () => {
+    const service = new ReservationService(agencyClient({ discount_pct: 15, archived_at: null }) as never);
+    await expect(
+      service.quoteCost("2026-09-02T10:00:00Z", "2026-09-07T10:00:00Z", "open_air", AGENCY_ID, 2)
+    ).resolves.toEqual({ baseCost: 100, discountPct: 15, totalCost: 85 });
+    await expect(
+      new ReservationService(agencyClient(null) as never).quoteCost(
+        "2026-09-02T10:00:00Z",
+        "2026-09-07T10:00:00Z",
+        "open_air",
+        null,
+        3
+      )
+    ).resolves.toEqual({ baseCost: 150, discountPct: 0, totalCost: 150 });
   });
 
   it("quoteCost rejects an archived agency", async () => {

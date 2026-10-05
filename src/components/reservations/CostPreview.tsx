@@ -11,6 +11,7 @@ export function CostPreview({
   checkOutDate,
   parkingType = "open_air",
   travelAgencyId = null,
+  vehicleCount = 1,
   isCalculating: externalIsCalculating,
 }: CostPreviewProps) {
   const {
@@ -20,7 +21,7 @@ export function CostPreview({
     days,
     isCalculating: hookIsCalculating,
     error,
-  } = useCostCalculation(checkInDate, checkOutDate, parkingType, travelAgencyId);
+  } = useCostCalculation(checkInDate, checkOutDate, parkingType, travelAgencyId, vehicleCount);
 
   const isCalculating = externalIsCalculating || hookIsCalculating;
 
@@ -62,7 +63,10 @@ export function CostPreview({
     return (
       <div className="space-y-1 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm">
         <div className="flex justify-between gap-4 text-neutral-600">
-          <span>Cena cennikowa{days > 0 ? ` (${days} ${days === 1 ? "dzień" : "dni"})` : ""}:</span>
+          <span>
+            Cena cennikowa{days > 0 ? ` (${days} ${days === 1 ? "dzień" : "dni"})` : ""}
+            {vehicleCount > 1 ? ` × ${vehicleCount} auta` : ""}:
+          </span>
           <span>{formatPln(baseCost)}</span>
         </div>
         <div className="flex justify-between gap-4 text-neutral-600">
@@ -89,6 +93,7 @@ export function CostPreview({
           ({days} {days === 1 ? "dzień" : days < 5 ? "dni" : "dni"})
         </span>
       )}
+      {vehicleCount > 1 && <span className="text-xs text-neutral-500">× {vehicleCount} auta</span>}
     </div>
   );
 }

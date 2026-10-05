@@ -222,6 +222,8 @@ export type CreateReservationCommand = Omit<
     | "notes"
     | "parking_type"
     | "travel_agency_id"
+    | "vehicle_count"
+    | "extra_license_plates"
   >,
   never
 > & {
@@ -637,6 +639,8 @@ export interface CostPreviewProps {
   parkingType?: ParkingType;
   /** Biuro podróży — cena po jego rabacie, płaci biuro */
   travelAgencyId?: string | null;
+  /** Liczba aut — cena = cena za auto × liczba aut (domyślnie 1) */
+  vehicleCount?: number;
   /** Czy koszt jest w trakcie obliczania */
   isCalculating: boolean;
 }
@@ -897,6 +901,10 @@ export interface PersonalInfoCardProps {
   email: string | null;
   phone: string | null;
   licensePlate: string | null;
+  /** Numery aut 2..N */
+  extraLicensePlates?: string[];
+  /** Liczba aut w rezerwacji (domyślnie 1) */
+  vehicleCount?: number;
 }
 
 /**

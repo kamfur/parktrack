@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DateTimePicker } from "@/components/shared/DateTimePicker";
+import { VehicleCountInput } from "@/components/shared/VehicleCountInput";
+import { platesForInputs } from "@/lib/vehicles";
 import { CostPreview } from "./CostPreview";
 import { PARKING_TYPES, PARKING_TYPE_LABELS, type ParkingType } from "@/lib/pricing/parking-type";
 import { FlightDirectionInput } from "./FlightDirectionInput";
@@ -77,6 +79,8 @@ export function EditReservationForm({
       email: reservation.email || "",
       phone: formatPhone(reservation.phone) === "—" ? "" : formatPhone(reservation.phone),
       licensePlate: reservation.license_plate || "",
+      vehicleCount: reservation.vehicle_count ?? 1,
+      extraLicensePlates: platesForInputs(reservation, reservation.vehicle_count ?? 1).slice(1),
       checkInDate: parseDate(reservation.planned_check_in),
       checkOutDate: parseDate(reservation.planned_check_out),
       flightDirection: reservation.flight_direction || "",
@@ -90,7 +94,18 @@ export function EditReservationForm({
     },
   });
 
-  const { checkInDate, checkOutDate, notes, travelAgencyId, parkingType } = form.watch();
+  const { checkInDate, checkOutDate, notes, travelAgencyId, parkingType, vehicleCount } = form.watch();
+
+  // Keep one plate input per extra car when the count changes (existing entries are preserved).
+  const changeVehicleCount = (next: number) => {
+    const current = form.getValues("extraLicensePlates");
+    form.setValue(
+      "extraLicensePlates",
+      Array.from({ length: next - 1 }, (_, i) => current[i] ?? ""),
+      { shouldDirty: true }
+    );
+    form.setValue("vehicleCount", next, { shouldDirty: true, shouldValidate: true });
+  };
 
   const capitalizeFirst = (value: string) => {
     if (!value) return value;
@@ -307,6 +322,48 @@ export function EditReservationForm({
 
           <FormField
             control={form.control}
+            name="vehicleCount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Liczba aut</FormLabel>
+                <FormControl>
+                  <VehicleCountInput
+                    value={field.value}
+                    onChange={changeVehicleCount}
+                    disabled={!editRules.canEditParkingType}
+                  />
+                </FormControl>
+                <FormDescription>Zmiana liczby aut przelicza cenę rezerwacji.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {Array.from({ length: vehicleCount - 1 }, (_, i) => (
+            <FormField
+              key={i}
+              control={form.control}
+              name={`extraLicensePlates.${i}`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Numer rejestracyjny – auto {i + 2}</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="WX 12345"
+                      maxLength={15}
+                      disabled={!editRules.canEditVehicleInfo}
+                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ))}
+
+          <FormField
+            control={form.control}
             name="parkingType"
             render={({ field }) => (
               <FormItem>
@@ -471,6 +528,7 @@ export function EditReservationForm({
           checkOutDate={checkOutDate}
           parkingType={parkingType}
           travelAgencyId={travelAgencyId || null}
+          vehicleCount={vehicleCount}
           isCalculating={false}
         />
 

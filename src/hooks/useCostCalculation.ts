@@ -9,13 +9,15 @@ import type { UseCostCalculationResult, CostCalculationResponse, ParkingType } f
  * @param checkOutDate - Data wyjazdu
  * @param parkingType - Typ miejsca (wiersz cennika)
  * @param travelAgencyId - Biuro podróży (cena po rabacie biura)
+ * @param vehicleCount - Liczba aut (cena × liczba aut)
  * @returns Stan obliczania kosztu
  */
 export function useCostCalculation(
   checkInDate: Date | null,
   checkOutDate: Date | null,
   parkingType: ParkingType = "open_air",
-  travelAgencyId: string | null = null
+  travelAgencyId: string | null = null,
+  vehicleCount = 1
 ): UseCostCalculationResult {
   const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
   const [baseCost, setBaseCost] = useState<number | null>(null);
@@ -47,6 +49,7 @@ export function useCostCalculation(
           parking_type: parkingType,
         });
         if (travelAgencyId) params.set("travel_agency_id", travelAgencyId);
+        if (vehicleCount > 1) params.set("vehicle_count", String(vehicleCount));
 
         const response = await fetch(`/api/calculate-cost?${params.toString()}`);
 
@@ -72,7 +75,7 @@ export function useCostCalculation(
     };
 
     calculateCost();
-  }, [checkInDate, checkOutDate, parkingType, travelAgencyId]);
+  }, [checkInDate, checkOutDate, parkingType, travelAgencyId, vehicleCount]);
 
   return {
     estimatedCost,

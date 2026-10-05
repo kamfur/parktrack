@@ -52,12 +52,14 @@ function usePriceQuote(url: string | null): PriceQuoteState {
 export function useCheckoutQuote(
   reservationId: string | null,
   checkOutIso: string | null,
-  enabled: boolean
+  enabled: boolean,
+  /** Car count being entered in the arrival dialog; omitted = the stored one. */
+  vehicleCount?: number
 ): PriceQuoteState {
+  const params = new URLSearchParams({ check_out: checkOutIso ?? "" });
+  if (vehicleCount) params.set("vehicle_count", String(vehicleCount));
   const url =
-    enabled && reservationId && checkOutIso
-      ? `/api/driver/reservations/${reservationId}/quote?${new URLSearchParams({ check_out: checkOutIso })}`
-      : null;
+    enabled && reservationId && checkOutIso ? `/api/driver/reservations/${reservationId}/quote?${params}` : null;
   return usePriceQuote(url);
 }
 
@@ -65,11 +67,17 @@ export function useCheckoutQuote(
 export function useNewStayQuote(
   checkInIso: string | null,
   checkOutIso: string | null,
-  parkingType: ParkingType
+  parkingType: ParkingType,
+  vehicleCount = 1
 ): PriceQuoteState {
   const valid = checkInIso && checkOutIso && Date.parse(checkOutIso) > Date.parse(checkInIso);
   const url = valid
-    ? `/api/driver/price?${new URLSearchParams({ check_in: checkInIso, check_out: checkOutIso, parking_type: parkingType })}`
+    ? `/api/driver/price?${new URLSearchParams({
+        check_in: checkInIso,
+        check_out: checkOutIso,
+        parking_type: parkingType,
+        vehicle_count: String(vehicleCount),
+      })}`
     : null;
   return usePriceQuote(url);
 }

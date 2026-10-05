@@ -21,8 +21,9 @@ Run one file: `npm run test -- src/pages/api/settings.test.ts`.
 ## Driver APIs
 
 - Prefix: `/api/driver/*` — arrivals, departures, occupancy, reservation arrival/departure PATCH.
-- `GET /api/driver/reservations/:id/quote?check_out=` — live price for the arrival/departure dialogs; unchanged date returns stored `total_cost`, otherwise `calculate_total_cost` (same rule as `trg_update_cost`).
-- `POST /api/driver/reservations` — driver adds a reservation (`driverCreateReservationSchema`: no price/agency/payment fields, `source=walk_in`, audited as the user); `GET /api/driver/price` previews the price-list total for it.
+- `GET /api/driver/reservations/:id/quote?check_out=` — live price for the arrival/departure dialogs; unchanged date returns stored `total_cost`, otherwise `calculate_total_cost` (same rule as `trg_update_cost`); optional `vehicle_count` overrides the stored car count until the arrival is recorded.
+- `POST /api/driver/reservations` — driver adds a reservation (`driverCreateReservationSchema`: no price/agency/payment fields, `source=walk_in`, audited as the user); `GET /api/driver/price` previews the price-list total for it (`vehicle_count` multiplies it).
+- Multi-car reservations: `vehicle_count` (1–10) × price-list amount (before the agency discount, surcharge stays flat); car 1 plate = `license_plate`, cars 2..N = `extra_license_plates`. Internal forms/APIs only — `POST /api/reservations/external` stays single-car. `GET /api/calculate-cost` takes `vehicle_count`.
 - `POST /api/driver/walk-in-arrivals` — client arrived without a reservation (driver panel + staff dashboard): `driverWalkInArrivalSchema`, creates the stay with check-in = now, then `DriverService.confirmArrival` (same rules as a booked arrival). Not atomic — if confirmation fails the reservation stays `confirmed` on the arrivals list.
 - Allowed roles: `driver` and `staff`. Staff-only APIs remain blocked for drivers in `authMiddleware`.
 - List window: overdue + calendar today (Warsaw), extended to now + 12h when that reaches past midnight (`pendingWindowEndIso`), for both `/api/driver/*` lists and staff dashboard `getTodaysArrivals` / `getTodaysDepartures`.

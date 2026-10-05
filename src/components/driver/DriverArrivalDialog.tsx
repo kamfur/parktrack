@@ -10,6 +10,8 @@ import {
 } from "@/lib/schemas/driver-form.schema";
 import { driverWalkInArrivalSchema, type DriverWalkInArrival } from "@/lib/schemas/driver.schema";
 import { driverDisplayName, isAgencyPaid } from "@/lib/driver/display";
+import { joinLicensePlates, platesForInputs } from "@/lib/vehicles";
+import { VehicleCountInput } from "@/components/shared/VehicleCountInput";
 import { PARKING_TYPES, PARKING_TYPE_LABELS } from "@/lib/pricing/parking-type";
 import {
   Dialog,
@@ -81,6 +83,8 @@ function emptyValues(): ArrivalFormValues {
     passenger_count: null,
     parking_sector: "",
     license_plate: "",
+    vehicle_count: 1,
+    extra_license_plates: [],
     paid_at_arrival: true,
     keys_left: false,
   };
@@ -113,6 +117,8 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
         passenger_count: reservation.passenger_count,
         parking_sector: reservation.parking_sector ?? "",
         license_plate: reservation.license_plate ?? "",
+        vehicle_count: reservation.vehicle_count ?? 1,
+        extra_license_plates: platesForInputs(reservation, reservation.vehicle_count ?? 1).slice(1),
         paid_at_arrival: true,
         keys_left: reservation.keys_left ?? false,
       });
@@ -124,10 +130,27 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
   const paymentDue = walkIn || (reservation ? !reservation.is_paid : false);
   const checkoutIso = datetimeLocalToIso(form.watch("planned_check_out") ?? "") ?? null;
   const openedAtIso = useMemo(() => openedAt.toISOString(), [openedAt]);
-  const reservationQuote = useCheckoutQuote(reservation?.id ?? null, checkoutIso, open && !walkIn && paymentDue);
+  const vehicleCount = form.watch("vehicle_count") ?? 1;
+  const reservationQuote = useCheckoutQuote(
+    reservation?.id ?? null,
+    checkoutIso,
+    open && !walkIn && paymentDue,
+    vehicleCount
+  );
   const parkingType = form.watch("parking_type");
-  const walkInQuote = useNewStayQuote(open && walkIn ? openedAtIso : null, checkoutIso, parkingType);
+  const walkInQuote = useNewStayQuote(open && walkIn ? openedAtIso : null, checkoutIso, parkingType, vehicleCount);
   const quote = walkIn ? walkInQuote : reservationQuote;
+
+  // One plate input per extra car; existing entries survive a count change.
+  const changeVehicleCount = (next: number) => {
+    const current = form.getValues("extra_license_plates") ?? [];
+    form.setValue(
+      "extra_license_plates",
+      Array.from({ length: next - 1 }, (_, i) => current[i] ?? ""),
+      { shouldDirty: true }
+    );
+    form.setValue("vehicle_count", next, { shouldDirty: true });
+  };
 
   const sectorField = (
     <FormField
@@ -152,6 +175,8 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
       license_plate: data.license_plate?.trim() ? data.license_plate.trim().toUpperCase() : null,
       flight_direction: data.flight_direction?.trim() ? data.flight_direction.trim() : null,
     };
+    const count = data.vehicle_count ?? 1;
+    const extraPlates = (data.extra_license_plates ?? []).slice(0, count - 1).map((p) => p.trim().toUpperCase());
 
     if (props.mode === "walk-in") {
       const parsed = driverWalkInArrivalSchema.safeParse({
@@ -159,6 +184,8 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
         first_name: data.first_name.trim() || undefined,
         phone: data.phone.replace(/\s/g, "") || undefined,
         license_plate: trimmed.license_plate ?? undefined,
+        vehicle_count: count,
+        extra_license_plates: extraPlates,
         flight_direction: trimmed.flight_direction ?? undefined,
         planned_check_out: checkoutIso ?? "",
         parking_type: data.parking_type,
@@ -191,6 +218,8 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
         ...(agencyPaid ? {} : { paid_at_arrival: data.paid_at_arrival }),
         passenger_count: data.passenger_count ?? null,
         keys_left: data.keys_left,
+        vehicle_count: count,
+        extra_license_plates: extraPlates,
         ...trimmed,
       };
       if (checkoutIso) body.planned_check_out = checkoutIso;
@@ -217,7 +246,7 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
           ) : reservation ? (
             <p className="text-sm text-muted-foreground">
               {driverDisplayName(reservation)}
-              {reservation.license_plate ? ` · ${reservation.license_plate}` : ""}
+              {joinLicensePlates(reservation) ? ` · ${joinLicensePlates(reservation)}` : ""}
             </p>
           ) : null}
         </DialogHeader>
@@ -267,10 +296,22 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
               ) : null}
               <FormField
                 control={form.control}
+                name="vehicle_count"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Liczba aut</FormLabel>
+                    <FormControl>
+                      <VehicleCountInput value={field.value ?? 1} onChange={changeVehicleCount} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="license_plate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Numer rejestracyjny</FormLabel>
+                    <FormLabel>{vehicleCount > 1 ? "Numer rejestracyjny – auto 1" : "Numer rejestracyjny"}</FormLabel>
                     <FormControl>
                       <Input
                         className="min-h-11"
@@ -285,6 +326,29 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                   </FormItem>
                 )}
               />
+              {Array.from({ length: vehicleCount - 1 }, (_, i) => (
+                <FormField
+                  key={i}
+                  control={form.control}
+                  name={`extra_license_plates.${i}`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Numer rejestracyjny – auto {i + 2}</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="min-h-11"
+                          placeholder="np. WX 12345"
+                          maxLength={15}
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ))}
               <FormField
                 control={form.control}
                 name="planned_check_out"

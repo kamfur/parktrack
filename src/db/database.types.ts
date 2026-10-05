@@ -414,6 +414,8 @@ export type Database = {
           total_cost: number
           travel_agency_id: string | null
           updated_at: string
+          vehicle_count: number
+          extra_license_plates: string[]
         }
         Insert: {
           actual_check_in?: string | null
@@ -445,6 +447,8 @@ export type Database = {
           total_cost: number
           travel_agency_id?: string | null
           updated_at?: string
+          vehicle_count?: number
+          extra_license_plates?: string[]
         }
         Update: {
           actual_check_in?: string | null
@@ -476,6 +480,8 @@ export type Database = {
           total_cost?: number
           travel_agency_id?: string | null
           updated_at?: string
+          vehicle_count?: number
+          extra_license_plates?: string[]
         }
         Relationships: [
           {

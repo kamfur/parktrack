@@ -158,9 +158,11 @@ export class ReservationService {
     checkIn: string,
     checkOut: string,
     parkingType: ParkingType = "open_air",
-    travelAgencyId?: string | null
+    travelAgencyId?: string | null,
+    vehicleCount = 1
   ): Promise<CostQuote> {
-    const baseCost = await this.calculateCost(checkIn, checkOut, parkingType);
+    // Price list amount per car × cars; the agency discount applies to the whole.
+    const baseCost = (await this.calculateCost(checkIn, checkOut, parkingType)) * vehicleCount;
     if (!travelAgencyId) return { baseCost, discountPct: 0, totalCost: baseCost };
 
     const { data: agency, error } = await this.supabase
@@ -296,11 +298,12 @@ export class ReservationService {
     // client total is ignored; the base price is computed here only to surface NO_PRICE_LIST early.
     let totalCost = validatedData.travel_agency_id ? undefined : validatedData.total_cost;
     if (!totalCost) {
-      totalCost = await this.calculateCost(
-        validatedData.planned_check_in,
-        validatedData.planned_check_out,
-        validatedData.parking_type
-      );
+      totalCost =
+        (await this.calculateCost(
+          validatedData.planned_check_in,
+          validatedData.planned_check_out,
+          validatedData.parking_type
+        )) * validatedData.vehicle_count;
     }
 
     // Get user ID for audit fields (use provided userId or system user)

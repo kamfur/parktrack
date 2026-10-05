@@ -12,7 +12,8 @@ export function isOverdue(plannedIso: string, now: Date = new Date()): boolean {
  * dashes are ignored so "kr12345" finds "KR 12345".
  */
 export function matchesDriverSearch(
-  r: Pick<ReservationDto, "first_name" | "last_name" | "license_plate" | "phone">,
+  r: Pick<ReservationDto, "first_name" | "last_name" | "license_plate" | "phone"> &
+    Partial<Pick<ReservationDto, "extra_license_plates">>,
   query: string
 ): boolean {
   const normalize = (value: string) => value.toLowerCase().replace(/[\s-]/g, "");
@@ -22,6 +23,7 @@ export function matchesDriverSearch(
     r.last_name,
     r.first_name,
     r.license_plate,
+    ...(r.extra_license_plates ?? []),
     r.phone,
     `${r.first_name ?? ""}${r.last_name}`,
     `${r.last_name}${r.first_name ?? ""}`,

@@ -123,6 +123,61 @@ describe("DriverService status guards", () => {
     expect(client.update).toHaveBeenCalledWith(expect.objectContaining({ license_plate: "KR 999AA" }));
   });
 
+  it("confirmArrival saves the plates of all cars and the corrected car count", async () => {
+    const client = mockSupabase({
+      id: "r1",
+      status: "confirmed",
+      paid_at_arrival: false,
+      paid_at_departure: false,
+      planned_check_out: "2026-09-10T10:00:00.000Z",
+      license_plate: null,
+      vehicle_count: 2,
+      extra_license_plates: [],
+    });
+    await new DriverService(client as never).confirmArrival("r1", {
+      license_plate: "WX 1",
+      extra_license_plates: ["KR 2", "PO 3"],
+      vehicle_count: 3,
+    });
+
+    expect(client.update).toHaveBeenCalledWith(
+      expect.objectContaining({ vehicle_count: 3, extra_license_plates: ["KR 2", "PO 3"], license_plate: "WX 1" })
+    );
+  });
+
+  it("confirmArrival keeps the stored car count and extra plates when not provided", async () => {
+    const client = mockSupabase({
+      id: "r1",
+      status: "confirmed",
+      paid_at_arrival: false,
+      paid_at_departure: false,
+      planned_check_out: "2026-09-10T10:00:00.000Z",
+      vehicle_count: 2,
+      extra_license_plates: ["KR 2"],
+    });
+    await new DriverService(client as never).confirmArrival("r1", { paid_at_arrival: true });
+
+    expect(client.update).toHaveBeenCalledWith(
+      expect.objectContaining({ vehicle_count: 2, extra_license_plates: ["KR 2"] })
+    );
+  });
+
+  it("confirmArrival rejects more extra plates than cars", async () => {
+    const client = mockSupabase({
+      id: "r1",
+      status: "confirmed",
+      paid_at_arrival: false,
+      paid_at_departure: false,
+      planned_check_out: "2026-09-10T10:00:00.000Z",
+      vehicle_count: 2,
+      extra_license_plates: [],
+    });
+    await expect(
+      new DriverService(client as never).confirmArrival("r1", { extra_license_plates: ["A", "B"] })
+    ).rejects.toBeInstanceOf(DriverServiceError);
+    expect(client.update).not.toHaveBeenCalled();
+  });
+
   it("confirmArrival records that the client left the keys", async () => {
     const client = mockSupabase({
       id: "r1",
@@ -286,6 +341,43 @@ describe("quoteCheckout", () => {
     const client = { ...mockSupabase({ ...current, status: "confirmed", is_paid: true }) };
     const rpc = vi.fn();
     const total = await new DriverService({ ...client, rpc } as never).quoteCheckout("r1", current.planned_check_out);
+    expect(total).toBe(150);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("multiplies the price-list amount by the stored car count", async () => {
+    const client = { ...mockSupabase({ ...current, vehicle_count: 3 }) };
+    const rpc = vi.fn().mockResolvedValue({ data: 210, error: null });
+    const total = await new DriverService({ ...client, rpc } as never).quoteCheckout("r1", "2026-09-17T08:00:00.000Z");
+    expect(total).toBe(630);
+  });
+
+  it("honours a corrected car count while the arrival is being recorded, even on an unchanged date", async () => {
+    const client = { ...mockSupabase({ ...current, status: "confirmed", is_paid: true, vehicle_count: 1 }) };
+    const rpc = vi.fn().mockResolvedValue({ data: 150, error: null });
+    const total = await new DriverService({ ...client, rpc } as never).quoteCheckout(
+      "r1",
+      current.planned_check_out,
+      2
+    );
+    expect(total).toBe(300);
+  });
+
+  it("ignores a car count override once the car is on the parking", async () => {
+    const client = {
+      ...mockSupabase({
+        ...current,
+        status: "in_progress",
+        actual_check_in: current.planned_check_in,
+        vehicle_count: 1,
+      }),
+    };
+    const rpc = vi.fn();
+    const total = await new DriverService({ ...client, rpc } as never).quoteCheckout(
+      "r1",
+      current.planned_check_out,
+      4
+    );
     expect(total).toBe(150);
     expect(rpc).not.toHaveBeenCalled();
   });

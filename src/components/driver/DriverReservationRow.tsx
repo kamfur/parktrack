@@ -17,6 +17,7 @@ import {
 } from "@/lib/driver/display";
 import { formatKtwHourList } from "@/lib/ktw/format-hours";
 import { formatCost } from "@/lib/utils/reservation.formatters";
+import { joinLicensePlates } from "@/lib/vehicles";
 import { Banknote, Car, Clock, Mail, Phone, PlaneLanding, Users, Warehouse } from "lucide-react";
 
 interface DriverReservationRowProps {
@@ -87,10 +88,15 @@ export function DriverReservationRow({
                 </a>
               </div>
             ) : null}
-            {reservation.license_plate ? (
+            {joinLicensePlates(reservation) || (reservation.vehicle_count ?? 1) > 1 ? (
               <div className="flex items-center gap-2">
                 <Car className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="font-mono">{reservation.license_plate}</span>
+                <span className="font-mono">{joinLicensePlates(reservation)}</span>
+                {(reservation.vehicle_count ?? 1) > 1 ? (
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
+                    {reservation.vehicle_count} auta
+                  </span>
+                ) : null}
               </div>
             ) : null}
             <div className="flex items-center gap-2">

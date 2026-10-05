@@ -100,6 +100,13 @@ export function ReservationDetailsView({
       notes: data.notes?.trim() || "",
     };
 
+    // The count is price-relevant (same rule as the parking type); plates follow the new count.
+    const nextCount = editRules.canEditParkingType ? data.vehicleCount : (reservation.vehicle_count ?? 1);
+    if (nextCount !== (reservation.vehicle_count ?? 1)) payload.vehicle_count = nextCount;
+    payload.extra_license_plates = data.extraLicensePlates
+      .slice(0, nextCount - 1)
+      .map((plate) => plate.trim().toUpperCase());
+
     if (editRules.canEditCheckIn) {
       payload.planned_check_in = data.checkInDate.toISOString();
     }
@@ -271,6 +278,8 @@ export function ReservationDetailsView({
                       email={reservation.email}
                       phone={reservation.phone}
                       licensePlate={reservation.license_plate}
+                      extraLicensePlates={reservation.extra_license_plates}
+                      vehicleCount={reservation.vehicle_count}
                     />
 
                     <ReservationDetailsCard

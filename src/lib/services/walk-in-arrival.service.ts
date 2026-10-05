@@ -32,6 +32,8 @@ export async function createWalkInArrival(
       first_name: data.first_name,
       phone: data.phone,
       license_plate: data.license_plate,
+      vehicle_count: data.vehicle_count,
+      extra_license_plates: data.extra_license_plates,
       flight_direction: data.flight_direction,
       planned_check_in: nowIso,
       planned_check_out: data.planned_check_out,

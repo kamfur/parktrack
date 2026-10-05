@@ -1,12 +1,15 @@
 import type { APIRoute } from "astro";
 import { z } from "zod";
 import { DriverService, DriverServiceError } from "../../../../../lib/services/driver.service";
+import { MAX_VEHICLE_COUNT } from "../../../../../lib/vehicles";
 
 export const prerender = false;
 
 const querySchema = z.object({
   id: z.string().uuid(),
   check_out: z.string().datetime({ offset: true }),
+  /** Car count being entered in the arrival dialog (honoured only until the arrival is recorded). */
+  vehicle_count: z.coerce.number().int().min(1).max(MAX_VEHICLE_COUNT).optional(),
 });
 
 /**
@@ -27,7 +30,11 @@ export const GET: APIRoute = async ({ params, url, locals }) => {
     });
   }
 
-  const parsed = querySchema.safeParse({ id: params.id, check_out: url.searchParams.get("check_out") });
+  const parsed = querySchema.safeParse({
+    id: params.id,
+    check_out: url.searchParams.get("check_out"),
+    vehicle_count: url.searchParams.get("vehicle_count") || undefined,
+  });
   if (!parsed.success) {
     return new Response(JSON.stringify({ error: "Validation failed", details: parsed.error.format() }), {
       status: 400,
@@ -37,7 +44,7 @@ export const GET: APIRoute = async ({ params, url, locals }) => {
 
   try {
     const service = new DriverService(locals.supabase);
-    const totalCost = await service.quoteCheckout(parsed.data.id, parsed.data.check_out);
+    const totalCost = await service.quoteCheckout(parsed.data.id, parsed.data.check_out, parsed.data.vehicle_count);
     return new Response(JSON.stringify({ total_cost: totalCost }), {
       status: 200,
       headers: { "Content-Type": "application/json" },

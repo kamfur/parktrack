@@ -58,6 +58,7 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
       email: data.email?.trim() || undefined,
       phone: data.phone?.replace(/\s/g, "") || undefined,
       license_plate: data.licensePlate?.toUpperCase().trim() || undefined,
+      vehicle_count: data.vehicleCount,
       flight_direction: data.flightDirection?.trim() || undefined,
       notes: data.notes?.trim() || undefined,
       planned_check_in: data.checkInDate.toISOString(),

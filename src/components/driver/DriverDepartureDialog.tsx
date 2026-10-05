@@ -20,6 +20,7 @@ import { useCheckoutQuote } from "@/hooks/useCheckoutQuote";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
 import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
 import { cn } from "@/lib/utils";
+import { joinLicensePlates } from "@/lib/vehicles";
 
 interface DriverDepartureDialogProps {
   reservation: ReservationDto | null;
@@ -100,7 +101,7 @@ export function DriverDepartureDialog({
           {reservation ? (
             <p className="text-sm text-muted-foreground">
               {driverDisplayName(reservation)}
-              {reservation.license_plate ? ` · ${reservation.license_plate}` : ""}
+              {joinLicensePlates(reservation) ? ` · ${joinLicensePlates(reservation)}` : ""}
             </p>
           ) : null}
         </DialogHeader>
