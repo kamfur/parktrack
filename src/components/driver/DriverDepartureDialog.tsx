@@ -18,7 +18,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Banknote, Loader2 } from "lucide-react";
 import { useCheckoutQuote } from "@/hooks/useCheckoutQuote";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
-import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import {
+  TABLET_FORM_GUTTER,
+  TABLET_FULLSCREEN_DIALOG,
+  TOUCH_FORM_READABILITY,
+} from "@/components/common/dialog-layout";
 import { cn } from "@/lib/utils";
 import { joinLicensePlates } from "@/lib/vehicles";
 
@@ -94,9 +98,13 @@ export function DriverDepartureDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={cn(MOBILE_FULLSCREEN_DIALOG, "flex max-h-[90dvh] max-w-md flex-col gap-0 overflow-hidden p-0")}
+        className={cn(
+          TABLET_FULLSCREEN_DIALOG,
+          TOUCH_FORM_READABILITY,
+          "flex max-h-[90dvh] max-w-md flex-col gap-0 overflow-hidden p-0"
+        )}
       >
-        <DialogHeader className="shrink-0 px-6 pb-4 pt-6">
+        <DialogHeader className={cn("shrink-0 px-6 pb-4 pt-6", TABLET_FORM_GUTTER)}>
           <DialogTitle>Zakończ wyjazd</DialogTitle>
           {reservation ? (
             <p className="text-sm text-muted-foreground">
@@ -107,7 +115,9 @@ export function DriverDepartureDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-4">
+            <div
+              className={cn("min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-4 max-lg:space-y-5", TABLET_FORM_GUTTER)}
+            >
               {showDateField ? (
                 <FormField
                   control={form.control}

@@ -17,7 +17,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import {
+  TABLET_FORM_BLEED,
+  TABLET_FORM_GUTTER,
+  TABLET_FULLSCREEN_DIALOG,
+  TOUCH_FORM_READABILITY,
+} from "@/components/common/dialog-layout";
 import { cn } from "@/lib/utils";
 import { useVoiceSession } from "@/hooks/useVoiceSession";
 import { useVoiceFormFill } from "@/hooks/useVoiceFormFill";
@@ -139,13 +144,24 @@ export function DriverNewReservationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(MOBILE_FULLSCREEN_DIALOG, "max-h-[90dvh] max-w-md overflow-y-auto")}>
+      <DialogContent
+        className={cn(
+          TABLET_FULLSCREEN_DIALOG,
+          TOUCH_FORM_READABILITY,
+          TABLET_FORM_GUTTER,
+          "max-h-[90dvh] max-w-md overflow-y-auto sm:max-w-xl"
+        )}
+      >
         <DialogHeader>
           <DialogTitle>Nowa rezerwacja</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={handleSubmit} onChange={() => setError(null)} className="space-y-4">
-            <div className="space-y-2">
+          <form
+            onSubmit={handleSubmit}
+            onChange={() => setError(null)}
+            className="grid grid-cols-2 gap-x-4 gap-y-4 max-lg:gap-y-5"
+          >
+            <div className="col-span-2 space-y-2">
               <VoiceCaptureButton
                 size="lg"
                 className="w-full"
@@ -164,7 +180,7 @@ export function DriverNewReservationDialog({
               control={form.control}
               name="lastName"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-2 sm:col-span-1">
                   <div className="flex items-center gap-2">
                     <FormLabel>Nazwisko *</FormLabel>
                     {voiceBadge("lastName")}
@@ -187,7 +203,7 @@ export function DriverNewReservationDialog({
               control={form.control}
               name="firstName"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-2 sm:col-span-1">
                   <div className="flex items-center gap-2">
                     <FormLabel>Imię</FormLabel>
                     {voiceBadge("firstName")}
@@ -210,7 +226,7 @@ export function DriverNewReservationDialog({
               control={form.control}
               name="phone"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-2 sm:col-span-1">
                   <div className="flex items-center gap-2">
                     <FormLabel>Telefon</FormLabel>
                     {voiceBadge("phone")}
@@ -234,7 +250,7 @@ export function DriverNewReservationDialog({
               control={form.control}
               name="licensePlate"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-2 sm:col-span-1">
                   <div className="flex items-center gap-2">
                     <FormLabel>Numer rejestracyjny</FormLabel>
                     {voiceBadge("licensePlate")}
@@ -265,7 +281,7 @@ export function DriverNewReservationDialog({
               control={form.control}
               name="vehicleCount"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-2 sm:col-span-1">
                   <FormLabel>Liczba aut</FormLabel>
                   <FormControl>
                     <VehicleCountInput value={field.value} onChange={field.onChange} />
@@ -275,53 +291,9 @@ export function DriverNewReservationDialog({
             />
             <FormField
               control={form.control}
-              name="checkIn"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Przyjazd *</FormLabel>
-                    {voiceBadge("checkIn")}
-                  </div>
-                  <FormControl>
-                    <DateTimePicker
-                      value={field.value ? new Date(field.value) : null}
-                      onChange={(d) => {
-                        voiceFill.markManual("checkIn");
-                        field.onChange(d ? isoToDatetimeLocal(d.toISOString()) : "");
-                      }}
-                      placeholder="Wybierz datę"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="checkOut"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Powrót *</FormLabel>
-                    {voiceBadge("checkOut")}
-                  </div>
-                  <FormControl>
-                    <DateTimePicker
-                      value={field.value ? new Date(field.value) : null}
-                      onChange={(d) => {
-                        voiceFill.markManual("checkOut");
-                        field.onChange(d ? isoToDatetimeLocal(d.toISOString()) : "");
-                      }}
-                      placeholder="Wybierz datę"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
               name="parkingType"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-2 sm:col-span-1">
                   <div className="flex items-center gap-2">
                     <FormLabel>Typ miejsca</FormLabel>
                     {voiceBadge("parkingType")}
@@ -349,12 +321,56 @@ export function DriverNewReservationDialog({
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="checkIn"
+              render={({ field }) => (
+                <FormItem className="col-span-2 sm:col-span-1">
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Przyjazd *</FormLabel>
+                    {voiceBadge("checkIn")}
+                  </div>
+                  <FormControl>
+                    <DateTimePicker
+                      value={field.value ? new Date(field.value) : null}
+                      onChange={(d) => {
+                        voiceFill.markManual("checkIn");
+                        field.onChange(d ? isoToDatetimeLocal(d.toISOString()) : "");
+                      }}
+                      placeholder="Wybierz datę"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="checkOut"
+              render={({ field }) => (
+                <FormItem className="col-span-2 sm:col-span-1">
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Powrót *</FormLabel>
+                    {voiceBadge("checkOut")}
+                  </div>
+                  <FormControl>
+                    <DateTimePicker
+                      value={field.value ? new Date(field.value) : null}
+                      onChange={(d) => {
+                        voiceFill.markManual("checkOut");
+                        field.onChange(d ? isoToDatetimeLocal(d.toISOString()) : "");
+                      }}
+                      placeholder="Wybierz datę"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
             {parkingType === "garage" || parkingType === "carport" ? (
               <FormField
                 control={form.control}
                 name="garageSpotId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="col-span-2">
                     <FormLabel>{parkingType === "garage" ? "Garaż" : "Wiata"}</FormLabel>
                     <GarageSpotSelect
                       parkingType={parkingType}
@@ -372,7 +388,7 @@ export function DriverNewReservationDialog({
               control={form.control}
               name="flightDirection"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-2">
                   <div className="flex items-center gap-2">
                     <FormLabel>Kierunek lotu</FormLabel>
                     {voiceBadge("flightDirection")}
@@ -396,7 +412,7 @@ export function DriverNewReservationDialog({
               control={form.control}
               name="notes"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-2">
                   <FormLabel>Notatki</FormLabel>
                   <FormControl>
                     <Textarea className="min-h-20" maxLength={1000} {...field} />
@@ -404,14 +420,24 @@ export function DriverNewReservationDialog({
                 </FormItem>
               )}
             />
-            {checkInIso && checkOutIso ? <PaymentQuote {...quote} /> : null}
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {checkInIso && checkOutIso ? (
+              <div className="col-span-2">
+                <PaymentQuote {...quote} />
+              </div>
+            ) : null}
+            {error ? <p className="col-span-2 text-sm text-destructive">{error}</p> : null}
             {voiceFill.needsPlateConfirmation ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="col-span-2 text-sm text-muted-foreground">
                 Potwierdź numer rejestracyjny z dyktowania, aby dodać rezerwację.
               </p>
             ) : null}
-            <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 flex-row gap-2 border-t bg-white px-6 py-3">
+            <DialogFooter
+              className={cn(
+                "sticky bottom-0 col-span-2 -mx-6 -mb-6 flex-row gap-2 border-t bg-white px-6 py-3",
+                TABLET_FORM_BLEED,
+                TABLET_FORM_GUTTER
+              )}
+            >
               <Button
                 type="button"
                 variant="outline"

@@ -9,7 +9,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { QuickReservationForm } from "./QuickReservationForm";
 import { FullReservationForm } from "./FullReservationForm";
 import { useCreateReservation } from "@/hooks/useCreateReservation";
-import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import {
+  TABLET_FORM_GUTTER,
+  TABLET_FULLSCREEN_DIALOG,
+  TOUCH_FORM_READABILITY,
+} from "@/components/common/dialog-layout";
 import { cn } from "@/lib/utils";
 import { useVoiceSession } from "@/hooks/useVoiceSession";
 import type { VoiceFieldKey } from "@/lib/voice/merge";
@@ -157,7 +161,14 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className={cn(MOBILE_FULLSCREEN_DIALOG, "max-h-[90vh] overflow-y-auto sm:max-w-[600px]")}>
+      <DialogContent
+        className={cn(
+          TABLET_FULLSCREEN_DIALOG,
+          TOUCH_FORM_READABILITY,
+          TABLET_FORM_GUTTER,
+          "max-h-[90vh] overflow-y-auto lg:max-w-[600px]"
+        )}
+      >
         <DialogHeader>
           <DialogTitle>Nowa rezerwacja</DialogTitle>
           <DialogDescription>

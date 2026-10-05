@@ -18,7 +18,7 @@ import { DriverArrivalDialog } from "@/components/driver/DriverArrivalDialog";
 import { DriverDepartureDialog } from "@/components/driver/DriverDepartureDialog";
 import { useReservationDetails } from "@/hooks/useReservationDetails";
 import { useTravelAgency } from "@/hooks/useTravelAgencies";
-import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import { TABLET_FULLSCREEN_DIALOG, TOUCH_FORM_READABILITY } from "@/components/common/dialog-layout";
 import { cn } from "@/lib/utils";
 
 /**
@@ -234,7 +234,8 @@ export function ReservationDetailsView({
       <Dialog open={isOpen} onOpenChange={handleDialogChange}>
         <DialogContent
           className={cn(
-            MOBILE_FULLSCREEN_DIALOG,
+            TABLET_FULLSCREEN_DIALOG,
+            TOUCH_FORM_READABILITY,
             "max-w-3xl max-h-[90vh] md:max-h-[90vh] overflow-hidden flex flex-col p-0 sm:rounded-lg gap-0"
           )}
         >

@@ -31,7 +31,11 @@ import { useCheckoutQuote, useNewStayQuote } from "@/hooks/useCheckoutQuote";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
 import { GarageSpotSelect } from "@/components/reservations/GarageSpotSelect";
-import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
+import {
+  TABLET_FORM_GUTTER,
+  TABLET_FULLSCREEN_DIALOG,
+  TOUCH_FORM_READABILITY,
+} from "@/components/common/dialog-layout";
 import { cn } from "@/lib/utils";
 
 interface CommonProps {
@@ -66,6 +70,10 @@ type ArrivalFormValues = DriverArrivalFormData & {
 
 /** Walk-in validation issues shown under their field; anything else goes to the form-level error. */
 const WALK_IN_FIELDS = ["last_name", "planned_check_out", "parking_sector", "license_plate"] as const;
+
+/** Two-column form grid: short fields share a row, wide ones (and everything on a phone) take the full width. */
+const FIELD_HALF = "col-span-2 sm:col-span-1";
+const FIELD_FULL = "col-span-2";
 
 function formatClock(date: Date): string {
   return date.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
@@ -157,7 +165,7 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
       control={form.control}
       name="parking_sector"
       render={({ field }) => (
-        <FormItem>
+        <FormItem className="col-span-1">
           <FormLabel>Sektor</FormLabel>
           <FormControl>
             <Input className="min-h-11" placeholder="np. A12" {...field} value={field.value ?? ""} />
@@ -218,7 +226,6 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
         ...(agencyPaid ? {} : { paid_at_arrival: data.paid_at_arrival }),
         passenger_count: data.passenger_count ?? null,
         keys_left: data.keys_left,
-        vehicle_count: count,
         extra_license_plates: extraPlates,
         ...trimmed,
       };
@@ -233,9 +240,13 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={cn(MOBILE_FULLSCREEN_DIALOG, "flex max-h-[90dvh] max-w-md flex-col gap-0 overflow-hidden p-0")}
+        className={cn(
+          TABLET_FULLSCREEN_DIALOG,
+          TOUCH_FORM_READABILITY,
+          "flex max-h-[90dvh] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+        )}
       >
-        <DialogHeader className="shrink-0 px-6 pb-4 pt-6">
+        <DialogHeader className={cn("shrink-0 px-6 pb-4 pt-6", TABLET_FORM_GUTTER)}>
           <DialogTitle>{walkIn ? "Przyjazd bez rezerwacji" : "Potwierdź przyjazd"}</DialogTitle>
           {walkIn ? (
             <DialogDescription>
@@ -252,14 +263,19 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-4">
+            <div
+              className={cn(
+                "grid min-h-0 flex-1 grid-cols-2 content-start gap-x-4 gap-y-4 overflow-y-auto px-6 pb-4 max-lg:gap-y-5",
+                TABLET_FORM_GUTTER
+              )}
+            >
               {walkIn ? (
                 <>
                   <FormField
                     control={form.control}
                     name="last_name"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={FIELD_HALF}>
                         <FormLabel>Nazwisko *</FormLabel>
                         <FormControl>
                           <Input className="min-h-11" maxLength={100} autoComplete="off" {...field} />
@@ -272,7 +288,7 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                     control={form.control}
                     name="first_name"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={FIELD_HALF}>
                         <FormLabel>Imię</FormLabel>
                         <FormControl>
                           <Input className="min-h-11" maxLength={100} autoComplete="off" {...field} />
@@ -284,7 +300,7 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                     control={form.control}
                     name="phone"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={FIELD_HALF}>
                         <FormLabel>Telefon</FormLabel>
                         <FormControl>
                           <Input type="tel" className="min-h-11" maxLength={20} autoComplete="off" {...field} />
@@ -294,23 +310,26 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                   />
                 </>
               ) : null}
-              <FormField
-                control={form.control}
-                name="vehicle_count"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Liczba aut</FormLabel>
-                    <FormControl>
-                      <VehicleCountInput value={field.value ?? 1} onChange={changeVehicleCount} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              {/* The car count is fixed by the reservation; only an arrival without one chooses it. */}
+              {walkIn ? (
+                <FormField
+                  control={form.control}
+                  name="vehicle_count"
+                  render={({ field }) => (
+                    <FormItem className={FIELD_HALF}>
+                      <FormLabel>Liczba aut</FormLabel>
+                      <FormControl>
+                        <VehicleCountInput value={field.value ?? 1} onChange={changeVehicleCount} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              ) : null}
               <FormField
                 control={form.control}
                 name="license_plate"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={vehicleCount > 1 ? "col-span-1" : FIELD_FULL}>
                     <FormLabel>{vehicleCount > 1 ? "Numer rejestracyjny – auto 1" : "Numer rejestracyjny"}</FormLabel>
                     <FormControl>
                       <Input
@@ -332,7 +351,7 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                   control={form.control}
                   name={`extra_license_plates.${i}`}
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-1">
                       <FormLabel>Numer rejestracyjny – auto {i + 2}</FormLabel>
                       <FormControl>
                         <Input
@@ -353,7 +372,7 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                 control={form.control}
                 name="planned_check_out"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={FIELD_HALF}>
                     <FormLabel>{walkIn ? "Planowany wyjazd *" : "Planowany wyjazd"}</FormLabel>
                     <FormControl>
                       <Input type="datetime-local" className="min-h-11" {...field} value={field.value ?? ""} />
@@ -368,7 +387,7 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                     control={form.control}
                     name="parking_type"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className={FIELD_HALF}>
                         <FormLabel>Typ miejsca</FormLabel>
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl>
@@ -395,7 +414,7 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                       control={form.control}
                       name="garage_spot_id"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="col-span-1">
                           <FormLabel>{parkingType === "garage" ? "Miejsce w garażu" : "Miejsce pod wiatą"}</FormLabel>
                           <GarageSpotSelect
                             parkingType={parkingType}
@@ -413,28 +432,9 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
               ) : null}
               <FormField
                 control={form.control}
-                name="flight_direction"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kierunek lotu</FormLabel>
-                    <FlightDirectionInput
-                      className="min-h-11"
-                      placeholder="np. Londyn, LO 392"
-                      maxLength={100}
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                    />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="passenger_count"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="col-span-1">
                     <FormLabel>Liczba pasażerów</FormLabel>
                     <FormControl>
                       <Input
@@ -453,9 +453,28 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
               {walkIn ? null : sectorField}
               <FormField
                 control={form.control}
+                name="flight_direction"
+                render={({ field }) => (
+                  <FormItem className={walkIn ? FIELD_FULL : "col-span-1"}>
+                    <FormLabel>Kierunek lotu</FormLabel>
+                    <FlightDirectionInput
+                      className="min-h-11"
+                      placeholder="np. Londyn, LO 392"
+                      maxLength={100}
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="keys_left"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
+                  <FormItem className="col-span-2 flex flex-row items-center gap-3 space-y-0 rounded-md border p-3">
                     <FormControl>
                       <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(v === true)} />
                     </FormControl>
@@ -467,19 +486,23 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                 )}
               />
               {agencyPaid ? (
-                <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                <p className="col-span-2 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
                   Biuro podróży – opłacone. Nie pobieraj płatności od klienta.
                 </p>
               ) : (
                 <>
-                  {paymentDue && (!walkIn || checkoutIso) ? <PaymentQuote {...quote} /> : null}
+                  {paymentDue && (!walkIn || checkoutIso) ? (
+                    <div className="col-span-2">
+                      <PaymentQuote {...quote} />
+                    </div>
+                  ) : null}
                   <FormField
                     control={form.control}
                     name="paid_at_arrival"
                     render={({ field }) => (
                       <FormItem
                         className={cn(
-                          "flex flex-row items-center gap-3 space-y-0 rounded-lg border-2 p-4 shadow-sm",
+                          "col-span-2 flex flex-row items-center gap-3 space-y-0 rounded-lg border-2 p-4 shadow-sm",
                           field.value ? "border-emerald-500 bg-emerald-50" : "border-amber-500 bg-amber-50"
                         )}
                       >
@@ -507,9 +530,9 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                   />
                 </>
               )}
-              {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
+              {submitError ? <p className="col-span-2 text-sm text-destructive">{submitError}</p> : null}
             </div>
-            <DialogFooter className="shrink-0 flex-row gap-2 border-t bg-white px-6 py-3">
+            <DialogFooter className={cn("shrink-0 flex-row gap-2 border-t bg-white px-6 py-3", TABLET_FORM_GUTTER)}>
               <Button
                 type="button"
                 variant="outline"
