@@ -10,6 +10,7 @@ import {
   Car,
   Truck,
   LayoutGrid,
+  BarChart3,
   Plane,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/kalendarz", label: "Kalendarz", icon: CalendarClock, staffOnly: true },
   { href: "/rezerwacje", label: "Rezerwacje", icon: CalendarDays },
   { href: "/faktury", label: "Faktury", icon: FileText, staffOnly: true },
+  { href: "/statystyki", label: "Statystyki", icon: BarChart3, staffOnly: true },
   { href: "/biura-podrozy", label: "Biura podróży", icon: Plane, staffOnly: true },
   { href: "/garage-occupancy", label: "Obłożenie garaży", icon: LayoutGrid, staffOnly: true },
   { href: "/kierowca", label: "Kierowca", icon: Truck },

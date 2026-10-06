@@ -18,6 +18,7 @@ const STAFF_ONLY_PAGE_PREFIXES = [
   "/kalendarz",
   "/garage-spots",
   "/biura-podrozy",
+  "/statystyki",
 ];
 
 /** Staff-only API prefixes. Drivers receive 403. */

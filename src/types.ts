@@ -294,6 +294,53 @@ export interface StatsData {
   period: StatsPeriod;
 }
 
+export type AnalyticsGranularity = "day" | "month";
+
+export interface AnalyticsRevenuePoint {
+  /** Klucz kubełka: YYYY-MM-DD (dzień) lub YYYY-MM (miesiąc) */
+  bucket: string;
+  revenue: number;
+}
+
+export interface AnalyticsOccupancyPoint {
+  bucket: string;
+  /** Średnia liczba zajętych miejsc w kubełku */
+  occupied: number;
+  occupancyPct: number;
+  /** true, gdy kubełek leży w przyszłości (prognoza z rezerwacji potwierdzonych) */
+  forecast: boolean;
+}
+
+export interface AnalyticsBreakdownItem {
+  key: string;
+  count: number;
+}
+
+/** Odpowiedź /api/stats/analytics dla strony /statystyki. */
+export interface AnalyticsData {
+  range: { from: string; to: string; granularity: AnalyticsGranularity };
+  revenue: {
+    total: number;
+    previousTotal: number;
+    /** null, gdy poprzedni okres miał zerowy przychód */
+    changePct: number | null;
+    avgPerReservation: number;
+    avgPerDay: number;
+    series: AnalyticsRevenuePoint[];
+  };
+  occupancy: {
+    totalSpots: number;
+    peakPct: number;
+    series: AnalyticsOccupancyPoint[];
+  };
+  breakdown: {
+    parkingType: AnalyticsBreakdownItem[];
+    source: AnalyticsBreakdownItem[];
+    customerType: AnalyticsBreakdownItem[];
+    stayLength: AnalyticsBreakdownItem[];
+  };
+}
+
 /**
  * ViewModel dla metryk dashboardu.
  * Reprezentuje kluczowe wskaźniki wyświetlane w sekcji metryk.

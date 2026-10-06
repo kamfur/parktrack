@@ -109,6 +109,8 @@ describe("isStaffOnlyPath", () => {
     expect(isStaffOnlyPath("/api/travel-agencies")).toBe(true);
     expect(isStaffOnlyPath("/api/travel-agencies/11111111-1111-4111-8111-111111111111")).toBe(true);
     expect(isStaffOnlyPath("/biura-podrozy")).toBe(true);
+    expect(isStaffOnlyPath("/statystyki")).toBe(true);
+    expect(isStaffOnlyPath("/api/stats/analytics")).toBe(true);
     expect(isStaffOnlyPath("/biura-podrozy/11111111-1111-4111-8111-111111111111")).toBe(true);
     expect(isStaffOnlyPath("/api/rpc/get_todays_arrivals")).toBe(true);
     expect(isStaffOnlyPath("/api/reservations/some-id")).toBe(true);
