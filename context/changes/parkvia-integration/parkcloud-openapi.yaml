@@ -1,0 +1,260 @@
+openapi: 3.0.1
+info:
+  title: Operator
+  description: Provides access to booking events and booking details.
+  version: '1.0'
+servers:
+  - url: https://parkcloud.azure-api.net/rest/operator/v1.svc
+paths:
+  /operators:
+    get:
+      summary: Get Operators
+      description: Returns the operators for which the group identification key has access to.
+      operationId: 54184804e17fd10d48257ffd
+      parameters:
+        - name: key
+          in: query
+          description: 'Private key, this can be obtained via your <a target="_blank" href="https://www.parkcloud.net/operator/api.aspx">ParkCloud.Net Account</a>'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+  '/operator/{operator_id}':
+    get:
+      summary: Get Operator Details
+      description: Returns the name of the operator with the specified identifier.
+      operationId: 54ad5bd7304a7a0cec8a8a5d
+      parameters:
+        - name: operator_id
+          in: path
+          description: Identifier of the operator.
+          required: true
+          schema:
+            type: number
+        - name: key
+          in: query
+          description: 'Private key, this can be obtained via your <a target="_blank" href="https://www.parkcloud.net/operator/api.aspx">ParkCloud.Net Account</a>'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+  '/operator/{operator_id}/bookings/arrivals/{date}':
+    get:
+      summary: Get Arrivals
+      description: Returns the operator's arrivals for a specific date.
+      operationId: 54bd2bf4304a7a030828b93a
+      parameters:
+        - name: operator_id
+          in: path
+          description: Identifier of the operator.
+          required: true
+          schema:
+            type: number
+        - name: date
+          in: path
+          description: 'Arrival date. {yyyy-MM-dd}'
+          required: true
+          schema:
+            type: dateTime
+        - name: key
+          in: query
+          description: 'Private key, this can be obtained via your <a target="_blank" href="https://www.parkcloud.net/operator/api.aspx">ParkCloud.Net Account</a>'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+  '/operator/{operator_id}/bookings/departures/{date}':
+    get:
+      summary: Get Departures
+      description: Returns the operator's departures for a specific date.
+      operationId: 54bd2e65304a7a030828b93b
+      parameters:
+        - name: operator_id
+          in: path
+          description: Identifier of the operator.
+          required: true
+          schema:
+            type: number
+        - name: date
+          in: path
+          description: 'Departure date. {yyyy-MM-dd}'
+          required: true
+          schema:
+            type: dateTime
+        - name: key
+          in: query
+          description: 'Private key, this can be obtained via your <a target="_blank" href="https://www.parkcloud.net/operator/api.aspx">ParkCloud.Net Account</a>'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+  '/operator/{operator_id}/bookings/events/date/{date}':
+    get:
+      summary: Get Events by Date
+      description: "Returns all events on a specific date.\n\nEvent types are as follows:<br />\n<ul>\n<li>NEW - New booking has been created.</li>\n<li>AMEND - Booking has been amended.</li>\n<li>CANCEL - Booking has been cancelled.</li>\n<li>NOSHOW - Operator has indicated that the customer did not show up for the booking.</li>\n</ul>\nUse Get Booking Details to obtain the most update to date booking details."
+      operationId: 54bd2ef3304a7a030828b93c
+      parameters:
+        - name: operator_id
+          in: path
+          description: Identifier of the operator.
+          required: true
+          schema:
+            type: number
+        - name: date
+          in: path
+          description: 'Event date. {yyyy-MM-dd}'
+          required: true
+          schema:
+            type: dateTime
+        - name: key
+          in: query
+          description: 'Private key, this can be obtained via your <a target="_blank" href="https://www.parkcloud.net/operator/api.aspx">ParkCloud.Net Account</a>'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+  '/operator/{operator_id}/bookings/events/age/{hours}':
+    get:
+      summary: Get Events by Age
+      description: "Returns events which are less than a specific number of hours old.\n\nEvent types are as follows:<br />\n<ul>\n<li>NEW - New booking has been created.</li>\n<li>AMEND - Booking has been amended.</li>\n<li>CANCEL - Booking has been cancelled.</li>\n<li>NOSHOW - Operator has indicated that the customer did not show up for the booking.</li>\n</ul>\nUse Get Booking Details to obtain the most update to date booking details."
+      operationId: 54bd3028304a7a030828b93d
+      parameters:
+        - name: operator_id
+          in: path
+          description: Identifier of the operator.
+          required: true
+          schema:
+            type: number
+        - name: hours
+          in: path
+          description: Maximum age of events in integer hours.
+          required: true
+          schema:
+            type: number
+        - name: key
+          in: query
+          description: 'Private key, this can be obtained via your <a target="_blank" href="https://www.parkcloud.net/operator/api.aspx">ParkCloud.Net Account</a>'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+  '/operator/{operator_id}/bookings/events/since/{id}':
+    get:
+      summary: Get Recent Events
+      description: "Returns events which have occurred since a specific event.\n\nEvent types are as follows:<br />\n<ul>\n<li>NEW - New booking has been created.</li>\n<li>AMEND - Booking has been amended.</li>\n<li>CANCEL - Booking has been cancelled.</li>\n<li>NOSHOW - Operator has indicated that the customer did not show up for the booking.</li>\n</ul>\nUse Get Booking Details to obtain the most update to date booking details."
+      operationId: 54bd3210304a7a030828b93e
+      parameters:
+        - name: operator_id
+          in: path
+          description: Identifier of the operator.
+          required: true
+          schema:
+            type: number
+        - name: id
+          in: path
+          description: Events occurring after this event id will be returned.
+          required: true
+          schema:
+            type: number
+        - name: key
+          in: query
+          description: 'Private key, this can be obtained via your <a target="_blank" href="https://www.parkcloud.net/operator/api.aspx">ParkCloud.Net Account</a>'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+  '/operator/{operator_id}/booking/{reference}':
+    get:
+      summary: Get Booking Details
+      description: "Returns the most up to date details of a booking.\n\nStatuses are as follows:\n<ul>\n<li>ENQUIRY - Booking has not been confirmed.</li>\n<li>CONFIRMED - Booking has been confirmed.</li>\n<li>CANCELLED - Booking has been cancelled or refunded.</li>\n</ul>"
+      operationId: 54bd3322304a7a030828b93f
+      parameters:
+        - name: operator_id
+          in: path
+          description: Identifier of the operator.
+          required: true
+          schema:
+            type: number
+        - name: reference
+          in: path
+          description: Booking Reference
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: query
+          description: 'Private key, this can be obtained via your <a target="_blank" href="https://www.parkcloud.net/operator/api.aspx">ParkCloud.Net Account</a>'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+  /image:
+    post:
+      summary: image
+      description: Submit a barcode image.
+      operationId: 5964b7b776102b094c2ff72a
+      parameters:
+        - name: key
+          in: query
+          description: 'Private key, this can be obtained via your <a target="_blank" href="https://www.parkcloud.net/operator/api.aspx">ParkCloud.Net Account</a>'
+          required: true
+          schema:
+            type: string
+        - name: random
+          in: query
+          description: The identifier to link the barcode with a booking
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+  '/operator/{operator_id}/booking/{reference}/NoShow':
+    put:
+      summary: Register No Show
+      operationId: 5a0579cc76102b1628897ba7
+      parameters:
+        - name: operator_id
+          in: path
+          description: ''
+          required: true
+          schema:
+            type: string
+        - name: reference
+          in: path
+          description: ''
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+components:
+  securitySchemes:
+    apiKeyHeader:
+      type: apiKey
+      name: Ocp-Apim-Subscription-Key
+      in: header
+    apiKeyQuery:
+      type: apiKey
+      name: subscription-key
+      in: query
+security:
+  - apiKeyHeader: [ ]
+  - apiKeyQuery: [ ]

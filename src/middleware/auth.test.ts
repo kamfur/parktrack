@@ -108,6 +108,8 @@ describe("isStaffOnlyPath", () => {
     expect(isStaffOnlyPath("/api/price-lists/11111111-1111-4111-8111-111111111111")).toBe(true);
     expect(isStaffOnlyPath("/api/travel-agencies")).toBe(true);
     expect(isStaffOnlyPath("/api/travel-agencies/11111111-1111-4111-8111-111111111111")).toBe(true);
+    expect(isStaffOnlyPath("/api/integrations/parkvia/sync")).toBe(true);
+    expect(isPublicPath("/api/integrations/parkvia/sync")).toBe(false);
     expect(isStaffOnlyPath("/biura-podrozy")).toBe(true);
     expect(isStaffOnlyPath("/statystyki")).toBe(true);
     expect(isStaffOnlyPath("/api/stats/analytics")).toBe(true);

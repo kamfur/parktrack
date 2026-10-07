@@ -23,6 +23,14 @@ interface ImportMetaEnv {
   readonly OPENROUTER_API_KEY: string;
   readonly API_SECRET_KEY?: string;
   readonly KTW_ARRIVALS_URL?: string;
+  /** ParkCloud.net → Operator API private key (ParkVia import). */
+  readonly PARKCLOUD_API_KEY?: string;
+  /** ParkCloud developer portal (Azure APIM) subscription key. */
+  readonly PARKCLOUD_SUBSCRIPTION_KEY?: string;
+  /** "true" starts the in-process ParkVia import — it writes to SUPABASE_URL, so enable it in production only. */
+  readonly PARKVIA_SYNC_ENABLED?: string;
+  /** Minutes between ParkVia imports (default 60, min 5). */
+  readonly PARKVIA_SYNC_INTERVAL_MINUTES?: string;
   readonly SONIOX_API_KEY?: string;
   /** "eu" (default) or "us"/"global" — must match the Soniox project region of SONIOX_API_KEY. */
   readonly SONIOX_REGION?: string;

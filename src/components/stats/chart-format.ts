@@ -23,6 +23,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   phone: "Telefon",
   walk_in: "Walk-in",
   api: "API / strona",
+  parkvia: "ParkVia",
 };
 
 export const CUSTOMER_LABELS: Record<string, string> = {

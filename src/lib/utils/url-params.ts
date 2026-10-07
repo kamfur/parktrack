@@ -24,7 +24,9 @@ export function parseQueryParams(url: string | URLSearchParams): Partial<Reserva
   // Parsowanie źródła
   const sourceParam = params.get("source");
   const source: ReservationSource | null =
-    sourceParam === "phone" || sourceParam === "walk_in" || sourceParam === "api" ? sourceParam : null;
+    sourceParam === "phone" || sourceParam === "walk_in" || sourceParam === "api" || sourceParam === "parkvia"
+      ? sourceParam
+      : null;
 
   // Parsowanie zakresu dat
   const dateFromStr = params.get("date_from");

@@ -108,8 +108,8 @@ export const updateReservationSchema = z.object({
   planned_check_in: z.string().datetime("Invalid check-in date format").optional(),
   planned_check_out: z.string().datetime("Invalid check-out date format").optional(),
   source: z
-    .enum(["phone", "walk_in", "api"], {
-      errorMap: () => ({ message: "Source must be one of: phone, walk_in, api" }),
+    .enum(["phone", "walk_in", "api", "parkvia"], {
+      errorMap: () => ({ message: "Source must be one of: phone, walk_in, api, parkvia" }),
     })
     .optional(),
   total_cost: z.number().positive("Total cost must be a positive number").optional(),

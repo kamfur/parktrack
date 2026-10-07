@@ -1,4 +1,4 @@
-import { Phone, User, Code } from "lucide-react";
+import { Phone, User, Code, Plane } from "lucide-react";
 import type { ReservationSource } from "../../types";
 import { getSourceLabel } from "../../lib/utils/reservation.formatters";
 import { Label } from "../ui/label";
@@ -23,6 +23,7 @@ function getSourceIcon(source: ReservationSource | "all", className?: string) {
     phone: <Phone className={iconClass} />,
     walk_in: <User className={iconClass} />,
     api: <Code className={iconClass} />,
+    parkvia: <Plane className={iconClass} />,
     all: null,
   };
 
@@ -39,6 +40,7 @@ export function SourceFilter({ selectedSource, onChange, disabled = false }: Sou
     { value: "phone", label: getSourceLabel("phone"), icon: getSourceIcon("phone") },
     { value: "walk_in", label: getSourceLabel("walk_in"), icon: getSourceIcon("walk_in") },
     { value: "api", label: getSourceLabel("api"), icon: getSourceIcon("api") },
+    { value: "parkvia", label: getSourceLabel("parkvia"), icon: getSourceIcon("parkvia") },
   ];
 
   // Handler dla zmiany źródła

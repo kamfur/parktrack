@@ -95,7 +95,12 @@ export const GET: APIRoute = async ({ url, locals }) => {
     // Filtrowanie po źródle (eq)
     const source = searchParams.get("source");
     if (source) {
-      const allowedSources: Database["public"]["Enums"]["reservation_source"][] = ["phone", "walk_in", "api"];
+      const allowedSources: Database["public"]["Enums"]["reservation_source"][] = [
+        "phone",
+        "walk_in",
+        "api",
+        "parkvia",
+      ];
       if (allowedSources.includes(source as Database["public"]["Enums"]["reservation_source"])) {
         query = query.eq("source", source as Database["public"]["Enums"]["reservation_source"]);
       }

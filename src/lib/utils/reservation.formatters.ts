@@ -124,6 +124,7 @@ export function getSourceLabel(source: ReservationSource): string {
     phone: "Telefon",
     walk_in: "Na miejscu",
     api: "API",
+    parkvia: "ParkVia",
   };
 
   return labels[source] || source;

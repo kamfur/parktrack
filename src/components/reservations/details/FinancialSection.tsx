@@ -36,6 +36,7 @@ export function FinancialSection({
       phone: "Telefon",
       walk_in: "Walk-in",
       api: "API",
+      parkvia: "ParkVia",
     };
     return labels[sourceValue] || sourceValue;
   };

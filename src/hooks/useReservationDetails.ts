@@ -692,6 +692,7 @@ function getSourceLabel(source: string): string {
     phone: "Telefon",
     walk_in: "Walk-in",
     api: "API",
+    parkvia: "ParkVia",
   };
   return labels[source] || source;
 }

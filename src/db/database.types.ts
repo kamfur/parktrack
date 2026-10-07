@@ -383,6 +383,30 @@ export type Database = {
         }
         Relationships: []
       }
+      parkvia_sync_state: {
+        Row: {
+          last_error: string | null
+          last_event_id: number | null
+          last_run_at: string | null
+          operator_id: string
+          updated_at: string
+        }
+        Insert: {
+          last_error?: string | null
+          last_event_id?: number | null
+          last_run_at?: string | null
+          operator_id: string
+          updated_at?: string
+        }
+        Update: {
+          last_error?: string | null
+          last_event_id?: number | null
+          last_run_at?: string | null
+          operator_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reservations: {
         Row: {
           actual_check_in: string | null
@@ -416,6 +440,8 @@ export type Database = {
           updated_at: string
           vehicle_count: number
           extra_license_plates: string[]
+          external_source: string | null
+          external_reference: string | null
         }
         Insert: {
           actual_check_in?: string | null
@@ -449,6 +475,8 @@ export type Database = {
           updated_at?: string
           vehicle_count?: number
           extra_license_plates?: string[]
+          external_source?: string | null
+          external_reference?: string | null
         }
         Update: {
           actual_check_in?: string | null
@@ -482,6 +510,8 @@ export type Database = {
           updated_at?: string
           vehicle_count?: number
           extra_license_plates?: string[]
+          external_source?: string | null
+          external_reference?: string | null
         }
         Relationships: [
           {
@@ -710,7 +740,7 @@ export type Database = {
     }
     Enums: {
       payment_status: "pending" | "completed" | "refunded"
-      reservation_source: "phone" | "walk_in" | "api"
+      reservation_source: "phone" | "walk_in" | "api" | "parkvia"
       reservation_status:
         | "confirmed"
         | "in_progress"
@@ -845,7 +875,7 @@ export const Constants = {
   public: {
     Enums: {
       payment_status: ["pending", "completed", "refunded"],
-      reservation_source: ["phone", "walk_in", "api"],
+      reservation_source: ["phone", "walk_in", "api", "parkvia"],
       reservation_status: [
         "confirmed",
         "in_progress",

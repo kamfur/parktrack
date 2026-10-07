@@ -37,6 +37,7 @@ const STAFF_ONLY_API_PREFIXES = [
   "/api/garage-assignments",
   "/api/price-lists",
   "/api/travel-agencies",
+  "/api/integrations/",
 ];
 
 export const DRIVER_HOME = "/kierowca";

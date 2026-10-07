@@ -55,3 +55,10 @@ Run one file: `npm run test -- src/pages/api/settings.test.ts`.
 - `/api/travel-agencies[/id]` (CRUD, `PATCH {archived}`), `/[id]/summary?month=YYYY-MM`, `/[id]/invoices` (GET, POST `{month}`) — staff-only.
 - Money rules live in Postgres: discount + `is_paid` in `trg_update_cost`, month summary / issuing in `agency_month_summary` / `create_agency_invoice`, invoice locks in `trg_block_invoiced_reservation`. Handlers only map `P0001` codes (e.g. `BLOCKING_RESERVATIONS` → 409, `MONTH_NOT_CLOSED` → 422, `RESERVATION_INVOICED` → 409). Cover rule changes with pgTAP (`supabase/tests/`).
 - Billing month = planned check-in in Europe/Warsaw. Agency reservations never get individual invoices.
+
+## ParkVia import (ParkCloud Operator API)
+
+- `POST /api/integrations/parkvia/sync` — staff-only manual run; the same run happens hourly in-process when `PARKVIA_SYNC_ENABLED=true` (`src/lib/parkvia/scheduler.ts`, started from `src/middleware/index.ts`). 409 while a run is in progress, 503 without keys.
+- Logic: `ParkViaSyncService` (cursor = last ParkCloud event id in `parkvia_sync_state`; first run = 30 days of events + 120 days of arrivals). Mapping/decisions are pure in `src/lib/parkvia/booking-mapper.ts`.
+- ParkCloud allows **10 calls/min** — `ParkCloudClient` paces calls and waits out 429s; never parallelise calls around it.
+- Imported rows: `source='parkvia'` (label "ParkVia"), `external_source='parkvia'`, `external_reference=<PC…>`, `is_paid=true`, `total_cost` = ParkVia amount. `trg_update_cost` does not re-price rows with `external_source`. Only `confirmed` stays are updated/cancelled by the sync.
