@@ -316,6 +316,13 @@ export interface AnalyticsBreakdownItem {
   count: number;
 }
 
+export interface AnalyticsAgencyItem {
+  id: string;
+  name: string;
+  stays: number;
+  revenue: number;
+}
+
 /** Odpowiedź /api/stats/analytics dla strony /statystyki. */
 export interface AnalyticsData {
   range: { from: string; to: string; granularity: AnalyticsGranularity };
@@ -333,6 +340,17 @@ export interface AnalyticsData {
     peakPct: number;
     series: AnalyticsOccupancyPoint[];
   };
+  quality: {
+    /** Rezerwacje z planowanym przyjazdem w zakresie (wszystkie statusy) */
+    total: number;
+    cancelled: number;
+    noShow: number;
+    cancelledPct: number;
+    noShowPct: number;
+  };
+  /** Zakończone pobyty klientów indywidualnych z przyjazdem w zakresie, nadal nieopłacone */
+  receivables: { count: number; amount: number };
+  topAgencies: AnalyticsAgencyItem[];
   breakdown: {
     parkingType: AnalyticsBreakdownItem[];
     source: AnalyticsBreakdownItem[];

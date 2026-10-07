@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../db/database.types";
 import type {
+  AnalyticsAgencyItem,
   AnalyticsBreakdownItem,
   AnalyticsData,
   AnalyticsGranularity,
@@ -180,6 +181,62 @@ export function buildBreakdown(rows: BookingRow[], startMs: number, endMs: numbe
   };
 }
 
+export interface StatusRow {
+  status: string;
+}
+
+export interface MoneyRow {
+  total_cost: number | string | null;
+  surcharge_amount: number | string | null;
+}
+
+export interface AgencyStayRow extends MoneyRow {
+  travel_agency_id: string | null;
+  travel_agencies: { name: string } | null;
+}
+
+const TOP_AGENCIES_LIMIT = 5;
+
+const amountOf = (row: MoneyRow): number => (Number(row.total_cost) || 0) + (Number(row.surcharge_amount) || 0);
+
+const pct = (part: number, total: number): number => (total > 0 ? Math.round((part / total) * 100) : 0);
+
+export function buildQuality(rows: StatusRow[]): AnalyticsData["quality"] {
+  const cancelled = rows.filter((row) => row.status === "cancelled").length;
+  const noShow = rows.filter((row) => row.status === "no_show").length;
+  return {
+    total: rows.length,
+    cancelled,
+    noShow,
+    cancelledPct: pct(cancelled, rows.length),
+    noShowPct: pct(noShow, rows.length),
+  };
+}
+
+export function buildReceivables(rows: MoneyRow[]): AnalyticsData["receivables"] {
+  return { count: rows.length, amount: round2(rows.reduce((sum, row) => sum + amountOf(row), 0)) };
+}
+
+export function buildTopAgencies(rows: AgencyStayRow[]): AnalyticsAgencyItem[] {
+  const byAgency = new Map<string, AnalyticsAgencyItem>();
+  for (const row of rows) {
+    if (!row.travel_agency_id) continue;
+    const entry = byAgency.get(row.travel_agency_id) ?? {
+      id: row.travel_agency_id,
+      name: row.travel_agencies?.name ?? "—",
+      stays: 0,
+      revenue: 0,
+    };
+    entry.stays += 1;
+    entry.revenue += amountOf(row);
+    byAgency.set(row.travel_agency_id, entry);
+  }
+  return [...byAgency.values()]
+    .map((item) => ({ ...item, revenue: round2(item.revenue) }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, TOP_AGENCIES_LIMIT);
+}
+
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -204,12 +261,44 @@ export class AnalyticsService {
     const prevStart = warsawDayBounds(prevFrom).start;
     const prevStartMs = Date.parse(prevStart);
 
-    const [revenueRows, previousRevenueRows, bookings, spotsResult] = await Promise.all([
-      this.fetchRevenueRows(start, end),
-      this.fetchRevenueRows(prevStart, start),
-      this.fetchBookings(start, end),
-      this.supabase.from("settings").select("value").eq("key", "total_parking_spots").maybeSingle(),
-    ]);
+    const [revenueRows, previousRevenueRows, bookings, statusRows, unpaidRows, agencyRows, spotsResult] =
+      await Promise.all([
+        this.fetchRevenueRows(start, end),
+        this.fetchRevenueRows(prevStart, start),
+        this.fetchBookings(start, end),
+        this.fetchAll<StatusRow>((lo, hi) =>
+          this.supabase
+            .from("reservations")
+            .select("status")
+            .gte("planned_check_in", start)
+            .lt("planned_check_in", end)
+            .order("id")
+            .range(lo, hi)
+        ),
+        this.fetchAll<MoneyRow>((lo, hi) =>
+          this.supabase
+            .from("reservations")
+            .select("total_cost, surcharge_amount")
+            .eq("status", "completed")
+            .eq("is_paid", false)
+            .is("travel_agency_id", null)
+            .gte("actual_check_in", start)
+            .lt("actual_check_in", end)
+            .order("id")
+            .range(lo, hi)
+        ),
+        this.fetchAll<AgencyStayRow>((lo, hi) =>
+          this.supabase
+            .from("reservations")
+            .select("total_cost, surcharge_amount, travel_agency_id, travel_agencies(name)")
+            .not("travel_agency_id", "is", null)
+            .gte("actual_check_in", start)
+            .lt("actual_check_in", end)
+            .order("id")
+            .range(lo, hi)
+        ),
+        this.supabase.from("settings").select("value").eq("key", "total_parking_spots").maybeSingle(),
+      ]);
     if (spotsResult.error) throw new AnalyticsServiceError(`Settings: ${spotsResult.error.message}`);
 
     const totalSpots = parseTotalSpots(spotsResult.data?.value);
@@ -239,6 +328,9 @@ export class AnalyticsService {
         peakPct: occupancySeries.reduce((max, point) => Math.max(max, point.occupancyPct), 0),
         series: occupancySeries,
       },
+      quality: buildQuality(statusRows),
+      receivables: buildReceivables(unpaidRows),
+      topAgencies: buildTopAgencies(agencyRows),
       breakdown: buildBreakdown(bookings, startMs, endMs),
     };
   }

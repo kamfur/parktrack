@@ -11,6 +11,7 @@ import type { AnalyticsGranularity } from "@/types";
 import { RevenueChart } from "./RevenueChart";
 import { OccupancyChart } from "./OccupancyChart";
 import { BreakdownCharts } from "./BreakdownCharts";
+import { QualitySection } from "./QualitySection";
 import { formatPln } from "./chart-format";
 
 const MAX_DAILY_RANGE_DAYS = 93;
@@ -129,6 +130,7 @@ export function StatsContainer() {
               <RevenueChart data={data} />
               <OccupancyChart data={data} />
               <BreakdownCharts data={data} />
+              <QualitySection data={data} />
             </div>
           )}
         </>

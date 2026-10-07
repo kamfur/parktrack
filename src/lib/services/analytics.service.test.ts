@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildBreakdown,
+  buildQuality,
+  buildReceivables,
+  buildTopAgencies,
   buildOccupancySeries,
   buildRevenueSeries,
   revenueEventAt,
@@ -132,5 +135,47 @@ describe("buildBreakdown", () => {
       { key: "8-14", count: 0 },
       { key: "15+", count: 1 },
     ]);
+  });
+});
+
+describe("buildQuality", () => {
+  it("computes cancellation and no-show shares of all bookings", () => {
+    const rows = ["completed", "completed", "cancelled", "no_show"].map((status) => ({ status }));
+    expect(buildQuality(rows)).toEqual({ total: 4, cancelled: 1, noShow: 1, cancelledPct: 25, noShowPct: 25 });
+  });
+
+  it("returns zeros for an empty range", () => {
+    expect(buildQuality([])).toEqual({ total: 0, cancelled: 0, noShow: 0, cancelledPct: 0, noShowPct: 0 });
+  });
+});
+
+describe("buildReceivables", () => {
+  it("sums cost plus surcharge of unpaid stays", () => {
+    const rows = [
+      { total_cost: 100, surcharge_amount: 20 },
+      { total_cost: "50.50", surcharge_amount: null },
+    ];
+    expect(buildReceivables(rows)).toEqual({ count: 2, amount: 170.5 });
+  });
+});
+
+describe("buildTopAgencies", () => {
+  it("groups stays per agency, ranks by revenue and keeps the top five", () => {
+    const stay = (id: string, name: string, cost: number) => ({
+      total_cost: cost,
+      surcharge_amount: 0,
+      travel_agency_id: id,
+      travel_agencies: { name },
+    });
+    const rows = [
+      stay("a", "Alfa", 100),
+      stay("b", "Beta", 500),
+      stay("a", "Alfa", 150),
+      ...["c", "d", "e", "f"].map((id, i) => stay(id, id.toUpperCase(), 10 + i)),
+    ];
+    const top = buildTopAgencies(rows);
+    expect(top).toHaveLength(5);
+    expect(top[0]).toEqual({ id: "b", name: "Beta", stays: 1, revenue: 500 });
+    expect(top[1]).toEqual({ id: "a", name: "Alfa", stays: 2, revenue: 250 });
   });
 });
