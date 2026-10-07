@@ -2,12 +2,31 @@ import { useState, useEffect, useRef } from "react";
 import type {
   DashboardState,
   DashboardMetrics,
+  DepartureListItem,
   ReservationDto,
-  CheckInCommand,
-  CheckOutCommand,
   StatsPeriod,
   StatsData,
 } from "@/types";
+import { fetchGarageSpotNameMap, type GarageSpotNameMap } from "@/lib/garage/spot-names";
+import { isCoveredParkingType } from "@/lib/pricing/parking-type";
+import type { CreateLegacyDepartureCommand } from "@/lib/schemas/reservation.schema";
+import type { DriverWalkInArrival } from "@/lib/schemas/driver.schema";
+
+function withGarageSpotName(items: DepartureListItem[], spotNames: GarageSpotNameMap): DepartureListItem[] {
+  return items.map((item) =>
+    isCoveredParkingType(item.parking_type) ? { ...item, garage_spot_name: spotNames[item.id] ?? null } : item
+  );
+}
+
+/** Fail-soft: the handled lists are secondary — a failed fetch must not break the dashboard. */
+async function readHandled(res: Response): Promise<DepartureListItem[]> {
+  if (!res.ok) {
+    console.warn(`Failed to fetch handled list (status: ${res.status})`);
+    return [];
+  }
+  const payload = (await res.json()) as { handled?: DepartureListItem[] };
+  return payload.handled ?? [];
+}
 
 function calculateMetrics(
   arrivals: ReservationDto[],
@@ -37,19 +56,33 @@ export function useDashboard() {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      const [arrivalsRes, departuresRes, settingsRes, statsRes] = await Promise.all([
+      const [
+        arrivalsRes,
+        departuresRes,
+        settingsRes,
+        statsRes,
+        garageSpotNames,
+        handledArrivalsRes,
+        handledDeparturesRes,
+      ] = await Promise.all([
         fetch("/api/rpc/get_todays_arrivals", { method: "POST" }),
         fetch("/api/reservations/departures", { method: "POST" }),
         fetch("/api/settings?key=eq.total_parking_spots"),
         fetch(`/api/stats?period=${activePeriod}`),
+        fetchGarageSpotNameMap("/api/garage-assignments"),
+        // Driver list routes (driver + staff) also return the "handled" window.
+        fetch("/api/driver/arrivals"),
+        fetch("/api/driver/departures"),
       ]);
 
       if (!arrivalsRes.ok || !departuresRes.ok) {
         throw new Error("Failed to fetch dashboard data");
       }
 
-      const arrivals: ReservationDto[] = await arrivalsRes.json();
-      const departures: ReservationDto[] = await departuresRes.json();
+      const arrivals = withGarageSpotName(await arrivalsRes.json(), garageSpotNames);
+      const departures = withGarageSpotName(await departuresRes.json(), garageSpotNames);
+      const handledArrivals = withGarageSpotName(await readHandled(handledArrivalsRes), garageSpotNames);
+      const handledDepartures = withGarageSpotName(await readHandled(handledDeparturesRes), garageSpotNames);
 
       let totalSpots = 100;
       if (settingsRes.ok) {
@@ -82,6 +115,8 @@ export function useDashboard() {
         data: {
           todaysArrivals: arrivals,
           todaysDepartures: departures,
+          handledArrivals,
+          handledDepartures,
           metrics,
           stats,
         },
@@ -98,40 +133,113 @@ export function useDashboard() {
     }
   };
 
-  const handleCheckIn = async (reservationId: string) => {
+  const handleCheckIn = async (reservationId: string, body: Record<string, unknown>) => {
     setState((prev) => ({ ...prev, isProcessing: true }));
     try {
-      const command: CheckInCommand = {
-        status: "in_progress",
-        actual_check_in: new Date().toISOString(),
-      };
-      const response = await fetch(`/api/reservations?id=eq.${reservationId}`, {
+      const response = await fetch(`/api/driver/reservations/${reservationId}/arrival`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(command),
+        body: JSON.stringify(body),
       });
-      if (!response.ok) throw new Error("Failed to check-in");
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Failed to check-in");
+      }
       await fetchDashboardData(period);
     } finally {
       setState((prev) => ({ ...prev, isProcessing: false }));
     }
   };
 
-  const handleCheckOut = async (reservationId: string) => {
+  const handleCheckOut = async (reservationId: string, body: Record<string, unknown>) => {
     setState((prev) => ({ ...prev, isProcessing: true }));
     try {
-      const command: CheckOutCommand = {
-        status: "completed",
-        actual_check_out: new Date().toISOString(),
-      };
+      const response = await fetch(`/api/driver/reservations/${reservationId}/departure`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Failed to check-out");
+      }
+      await fetchDashboardData(period);
+    } finally {
+      setState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
+  const handleCancel = async (reservation: ReservationDto, reason?: string) => {
+    setState((prev) => ({ ...prev, isProcessing: true }));
+    try {
+      const body: { status: "cancelled"; notes?: string } = { status: "cancelled" };
+      if (reason) {
+        body.notes = reservation.notes
+          ? `${reservation.notes}\n\nPowód anulowania: ${reason}`
+          : `Powód anulowania: ${reason}`;
+      }
+      const response = await fetch(`/api/reservations?id=eq.${reservation.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error("Failed to cancel reservation");
+      await fetchDashboardData(period);
+    } finally {
+      setState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
+  const handleChangeReturnDate = async (reservationId: string, plannedCheckOut: string) => {
+    setState((prev) => ({ ...prev, isProcessing: true }));
+    try {
       const response = await fetch(`/api/reservations?id=eq.${reservationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(command),
+        body: JSON.stringify({ planned_check_out: plannedCheckOut }),
       });
-      if (!response.ok) throw new Error("Failed to check-out");
+      if (!response.ok) throw new Error("Failed to update return date");
       await fetchDashboardData(period);
     } finally {
+      setState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
+  // TEMPORARY (go-live migration): car already on the lot before ParkTrack.
+  const handleCreateLegacyDeparture = async (command: CreateLegacyDepartureCommand) => {
+    setState((prev) => ({ ...prev, isProcessing: true }));
+    try {
+      const response = await fetch("/api/reservations/legacy-departure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(command),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Nie udało się dodać wyjazdu");
+      }
+      await fetchDashboardData(period);
+    } finally {
+      setState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
+  /** Client arrived without a reservation — create it and confirm the arrival in one call. */
+  const handleWalkInArrival = async (command: DriverWalkInArrival) => {
+    setState((prev) => ({ ...prev, isProcessing: true }));
+    try {
+      const response = await fetch("/api/driver/walk-in-arrivals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(command),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Nie udało się dodać przyjazdu");
+      }
+    } finally {
+      // Refetch on failure too: the reservation may exist even if the arrival was not confirmed.
+      await fetchDashboardData(period);
       setState((prev) => ({ ...prev, isProcessing: false }));
     }
   };
@@ -161,5 +269,9 @@ export function useDashboard() {
     refetch: () => fetchDashboardData(period),
     handleCheckIn,
     handleCheckOut,
+    handleCancel,
+    handleChangeReturnDate,
+    handleCreateLegacyDeparture,
+    handleWalkInArrival,
   };
 }

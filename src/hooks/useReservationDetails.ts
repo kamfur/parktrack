@@ -5,14 +5,16 @@ import type {
   ConditionalEditRules,
   TimelineEvent,
   FinancialInfoViewModel,
-  CheckInCommand,
-  CheckOutCommand,
   InvoiceDto,
+  GarageOccupancyEntryDto,
 } from "@/types";
+import { garageSpotLabel } from "@/lib/driver/display";
+import { isCoveredParkingType } from "@/lib/pricing/parking-type";
 
 interface UseReservationDetailsParams {
   reservationId: string;
   enabled: boolean;
+  initialEditMode?: boolean;
 }
 
 interface UseReservationDetailsResult {
@@ -32,11 +34,13 @@ interface UseReservationDetailsResult {
   isEditMode: boolean;
   isDirty: boolean;
   editRules: ConditionalEditRules;
+  /** Active garage/carport assignment's spot id (covered types), or null. */
+  garageSpotId: string | null;
 
   // Actions
   enterEditMode: () => void;
   exitEditMode: () => void;
-  updateReservation: (data: Partial<ReservationDto>) => Promise<void>;
+  updateReservation: (data: Partial<ReservationDto> & { garage_spot_id?: string }) => Promise<void>;
   updateNotes: (notes: string) => Promise<void>;
 
   // Modal states
@@ -50,10 +54,14 @@ interface UseReservationDetailsResult {
   openCancelDialog: () => void;
   closeCancelDialog: () => void;
 
-  // Operations
-  performCheckIn: (data: CheckInCommand) => Promise<void>;
-  performCheckOut: (data: CheckOutCommand) => Promise<void>;
+  // Operations (same payload/endpoints as driver module)
+  performCheckIn: (body: Record<string, unknown>) => Promise<void>;
+  performCheckOut: (body: Record<string, unknown>) => Promise<void>;
   cancelReservation: (reason?: string) => Promise<void>;
+  /** Marks a confirmed reservation whose client never arrived (status no_show). */
+  markNoShow: () => Promise<void>;
+  /** Reverts a cancelled reservation to confirmed (a free spot is re-assigned for covered parking). */
+  restoreReservation: () => Promise<void>;
 
   // Processing state
   isProcessing: boolean;
@@ -66,14 +74,17 @@ interface UseReservationDetailsResult {
 export function useReservationDetails({
   reservationId,
   enabled,
+  initialEditMode = false,
 }: UseReservationDetailsParams): UseReservationDetailsResult {
   // State
   const [reservation, setReservation] = useState<ReservationDto | null>(null);
+  const [garageSpotName, setGarageSpotName] = useState<string | null>(null);
+  const [garageSpotId, setGarageSpotId] = useState<string | null>(null);
   const [existingInvoice, setExistingInvoice] = useState<InvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(initialEditMode);
   const [isDirty, setIsDirty] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -83,65 +94,88 @@ export function useReservationDetails({
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Fetch reservation data
-  const fetchReservation = useCallback(async () => {
-    if (!enabled || !reservationId) return;
+  const fetchReservation = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!enabled || !reservationId) return;
 
-    setIsLoading(true);
-    setError(null);
+      if (!options?.silent) {
+        setIsLoading(true);
+      }
+      setError(null);
 
-    try {
-      const [reservationRes, invoiceRes] = await Promise.all([
-        fetch(`/api/reservations?id=eq.${reservationId}`),
-        fetch(`/api/invoices?reservation_id=${reservationId}`),
-      ]);
+      try {
+        const [reservationRes, invoiceRes] = await Promise.all([
+          fetch(`/api/reservations?id=eq.${reservationId}`),
+          fetch(`/api/invoices?reservation_id=${reservationId}`),
+        ]);
 
-      if (!reservationRes.ok) {
-        if (reservationRes.status === 404) {
+        if (!reservationRes.ok) {
+          if (reservationRes.status === 404) {
+            throw new Error("Reservation not found");
+          }
+          throw new Error("Failed to fetch reservation");
+        }
+
+        const data = await reservationRes.json();
+
+        if (!data) {
           throw new Error("Reservation not found");
         }
-        throw new Error("Failed to fetch reservation");
+
+        // API returns single object
+        setReservation(data);
+
+        if (isCoveredParkingType(data.parking_type)) {
+          try {
+            const garageRes = await fetch(`/api/garage-assignments`);
+            const entries: GarageOccupancyEntryDto[] = garageRes.ok ? await garageRes.json() : [];
+            const match = entries.find((entry) => entry.reservationId === reservationId);
+            setGarageSpotName(match?.garageSpotName ?? null);
+            setGarageSpotId(match?.garageSpotId ?? null);
+          } catch {
+            setGarageSpotName(null);
+            setGarageSpotId(null);
+          }
+        } else {
+          setGarageSpotName(null);
+          setGarageSpotId(null);
+        }
+
+        if (invoiceRes.ok) {
+          setExistingInvoice(await invoiceRes.json());
+        } else {
+          setExistingInvoice(null);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error("Unknown error"));
+      } finally {
+        if (!options?.silent) {
+          setIsLoading(false);
+        }
       }
-
-      const data = await reservationRes.json();
-
-      if (!data) {
-        throw new Error("Reservation not found");
-      }
-
-      // API returns single object
-      setReservation(data);
-
-      if (invoiceRes.ok) {
-        setExistingInvoice(await invoiceRes.json());
-      } else {
-        setExistingInvoice(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [reservationId, enabled]);
+    },
+    [reservationId, enabled]
+  );
 
   // Initial fetch
   useEffect(() => {
     fetchReservation();
   }, [fetchReservation]);
 
-  // Polling mechanism - refresh every 30 seconds
+  // Polling mechanism - refresh every 30 seconds, but not while editing
   useEffect(() => {
-    if (!enabled || !reservationId) return;
+    if (!enabled || !reservationId || isEditMode) return;
 
     const intervalId = setInterval(() => {
-      fetchReservation();
+      fetchReservation({ silent: true });
     }, 30000); // 30 seconds
 
     return () => clearInterval(intervalId);
-  }, [enabled, reservationId, fetchReservation]);
+  }, [enabled, reservationId, fetchReservation, isEditMode]);
 
   // Update reservation
   const updateReservation = useCallback(
-    async (data: Partial<ReservationDto>) => {
+    async (data: Partial<ReservationDto> & { garage_spot_id?: string }) => {
       if (!reservationId) return;
 
       setIsUpdating(true);
@@ -155,18 +189,21 @@ export function useReservationDetails({
         });
 
         if (!response.ok) {
-          throw new Error("Failed to update reservation");
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.error ?? "Failed to update reservation");
         }
 
         const updated = await response.json();
         // API returns single object
         setReservation(updated);
         setIsDirty(false);
+        // A parking type or spot change moves the reservation to another garage/carport spot (or none).
+        if (data.parking_type || data.garage_spot_id) void fetchReservation({ silent: true });
       } finally {
         setIsUpdating(false);
       }
     },
-    [reservationId]
+    [reservationId, fetchReservation]
   );
 
   // Update notes
@@ -176,6 +213,16 @@ export function useReservationDetails({
     },
     [updateReservation]
   );
+
+  // Drop edit mode when the reservation cannot be edited (completed / cancelled)
+  useEffect(() => {
+    if (!reservation || !isEditMode) return;
+    const canEdit = reservation.status === "confirmed" || reservation.status === "in_progress";
+    if (!canEdit) {
+      setIsEditMode(false);
+      setIsDirty(false);
+    }
+  }, [reservation, isEditMode]);
 
   // Edit mode actions
   const enterEditMode = useCallback(() => {
@@ -199,31 +246,53 @@ export function useReservationDetails({
   const openCancelDialog = useCallback(() => setShowCancelDialog(true), []);
   const closeCancelDialog = useCallback(() => setShowCancelDialog(false), []);
 
-  // Operations
+  // Operations — same arrival/departure endpoints and field capture as driver ops
   const performCheckIn = useCallback(
-    async (data: CheckInCommand) => {
+    async (body: Record<string, unknown>) => {
+      if (!reservationId) return;
       setIsProcessing(true);
       try {
-        await updateReservation(data);
+        const response = await fetch(`/api/driver/reservations/${reservationId}/arrival`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(payload?.error ?? `Błąd potwierdzenia (${response.status})`);
+        }
+        const updated = (await response.json()) as ReservationDto;
+        setReservation(updated);
         closeCheckInModal();
       } finally {
         setIsProcessing(false);
       }
     },
-    [updateReservation, closeCheckInModal]
+    [reservationId, closeCheckInModal]
   );
 
   const performCheckOut = useCallback(
-    async (data: CheckOutCommand) => {
+    async (body: Record<string, unknown>) => {
+      if (!reservationId) return;
       setIsProcessing(true);
       try {
-        await updateReservation(data);
+        const response = await fetch(`/api/driver/reservations/${reservationId}/departure`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(payload?.error ?? `Błąd wyjazdu (${response.status})`);
+        }
+        const updated = (await response.json()) as ReservationDto;
+        setReservation(updated);
         closeCheckOutModal();
       } finally {
         setIsProcessing(false);
       }
     },
-    [updateReservation, closeCheckOutModal]
+    [reservationId, closeCheckOutModal]
   );
 
   const cancelReservation = useCallback(
@@ -250,11 +319,35 @@ export function useReservationDetails({
     [updateReservation, closeCancelDialog, reservation]
   );
 
+  const markNoShow = useCallback(async () => {
+    setIsProcessing(true);
+    try {
+      await updateReservation({ status: "no_show" });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [updateReservation]);
+
+  const restoreReservation = useCallback(async () => {
+    setIsProcessing(true);
+    try {
+      await updateReservation({ status: "confirmed" });
+      // The spot is re-assigned server-side; refresh it for the details card.
+      await fetchReservation({ silent: true });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [updateReservation, fetchReservation]);
+
   // Build ViewModel
-  const viewModel: ReservationDetailsViewModel | null = reservation ? buildViewModel(reservation) : null;
+  const viewModel: ReservationDetailsViewModel | null = reservation
+    ? buildViewModel(reservation, garageSpotName)
+    : null;
 
   // Get edit rules
-  const editRules = reservation ? getEditRules(reservation.status) : getDefaultEditRules();
+  const editRules = reservation
+    ? withInvoiceLock(getEditRules(reservation.status), existingInvoice?.invoice_number ?? null)
+    : getDefaultEditRules();
 
   return {
     reservation,
@@ -266,6 +359,7 @@ export function useReservationDetails({
     isEditMode,
     isDirty,
     editRules,
+    garageSpotId,
     enterEditMode,
     exitEditMode,
     updateReservation,
@@ -282,14 +376,20 @@ export function useReservationDetails({
     performCheckIn,
     performCheckOut,
     cancelReservation,
+    markNoShow,
+    restoreReservation,
     isProcessing,
   };
 }
 
 /**
- * Builds ReservationDetailsViewModel from ReservationDto
+ * Builds ReservationDetailsViewModel from ReservationDto. Exported for direct
+ * unit testing without needing React hook-testing infrastructure.
  */
-function buildViewModel(reservation: ReservationDto): ReservationDetailsViewModel {
+export function buildViewModel(
+  reservation: ReservationDto,
+  garageSpotName: string | null
+): ReservationDetailsViewModel {
   const fullName = reservation.first_name
     ? `${reservation.first_name} ${reservation.last_name}`
     : reservation.last_name;
@@ -317,7 +417,9 @@ function buildViewModel(reservation: ReservationDto): ReservationDetailsViewMode
     days: calculateDays(reservation.planned_check_in, reservation.planned_check_out),
     flightDirection: reservation.flight_direction,
     flightDirectionLabel: getFlightDirectionLabel(reservation.flight_direction),
-    flightDirectionIcon: getFlightDirectionIcon(reservation.flight_direction),
+    flightDirectionIcon: reservation.flight_direction ? "✈️" : null,
+    garageSpotLabel: garageSpotLabel(reservation.parking_type, garageSpotName),
+    garageSpotIcon: garageSpotName ? "🅿️" : null,
     financial,
     notes: reservation.notes,
     timeline,
@@ -329,14 +431,16 @@ function buildViewModel(reservation: ReservationDto): ReservationDetailsViewMode
  * Builds FinancialInfoViewModel
  */
 function buildFinancialViewModel(reservation: ReservationDto): FinancialInfoViewModel {
+  const paymentMethod: FinancialInfoViewModel["paymentMethod"] = null;
+
   return {
     totalCost: reservation.total_cost,
     formattedCost: formatCurrency(reservation.total_cost),
     isPaid: reservation.is_paid,
     paymentStatusLabel: reservation.is_paid ? "Opłacone" : "Nieopłacone",
     paymentStatusColor: reservation.is_paid ? "success" : "warning",
-    paymentMethod: reservation.payment_method,
-    paymentMethodLabel: getPaymentMethodLabel(reservation.payment_method),
+    paymentMethod,
+    paymentMethodLabel: getPaymentMethodLabel(paymentMethod),
     source: reservation.source,
     sourceLabel: getSourceLabel(reservation.source),
   };
@@ -394,6 +498,11 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditPersonalInfo: true,
         canEditVehicleInfo: true,
         canEditNotes: true,
+        canEditTravelAgency: true,
+        canEditParkingType: true,
+        canEditKeysLeft: false,
+        canEditPayment: true,
+        lockedByInvoiceNumber: null,
       };
 
     case "in_progress":
@@ -403,6 +512,11 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditPersonalInfo: true,
         canEditVehicleInfo: true,
         canEditNotes: true,
+        canEditTravelAgency: true,
+        canEditParkingType: true,
+        canEditKeysLeft: true,
+        canEditPayment: true,
+        lockedByInvoiceNumber: null,
       };
 
     case "completed":
@@ -414,11 +528,30 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditPersonalInfo: false,
         canEditVehicleInfo: false,
         canEditNotes: true, // ONLY NOTES
+        canEditTravelAgency: false,
+        canEditParkingType: true,
+        canEditKeysLeft: false,
+        canEditPayment: true,
+        lockedByInvoiceNumber: null,
       };
 
     default:
-      return getDefaultEditRules();
+      // Parking type stays editable whatever the status.
+      return { ...getDefaultEditRules(), canEditParkingType: true };
   }
+}
+
+/** An invoiced reservation keeps its billing fields (dates, payer, parking type) — mirrors the DB lock trigger. */
+function withInvoiceLock(rules: ConditionalEditRules, invoiceNumber: string | null): ConditionalEditRules {
+  if (!invoiceNumber) return rules;
+  return {
+    ...rules,
+    canEditCheckIn: false,
+    canEditCheckOut: false,
+    canEditTravelAgency: false,
+    canEditParkingType: false,
+    lockedByInvoiceNumber: invoiceNumber,
+  };
 }
 
 function getDefaultEditRules(): ConditionalEditRules {
@@ -428,6 +561,11 @@ function getDefaultEditRules(): ConditionalEditRules {
     canEditPersonalInfo: false,
     canEditVehicleInfo: false,
     canEditNotes: false,
+    canEditTravelAgency: false,
+    canEditParkingType: false,
+    canEditKeysLeft: false,
+    canEditPayment: false,
+    lockedByInvoiceNumber: null,
   };
 }
 
@@ -533,15 +671,10 @@ function getStatusColor(status: string): string {
 }
 
 function getFlightDirectionLabel(direction: string | null): string | null {
+  if (!direction) return null;
   if (direction === "departure") return "Wylot";
   if (direction === "arrival") return "Przylot";
-  return null;
-}
-
-function getFlightDirectionIcon(direction: string | null): string | null {
-  if (direction === "departure") return "✈️";
-  if (direction === "arrival") return "🛬";
-  return null;
+  return direction;
 }
 
 function getPaymentMethodLabel(method: string | null): string | null {

@@ -10,7 +10,7 @@ declare global {
       user?: {
         id: string;
         email: string;
-        role?: string;
+        role: "staff" | "driver";
       };
     }
   }
@@ -21,7 +21,15 @@ interface ImportMetaEnv {
   readonly SUPABASE_KEY: string;
   readonly SUPABASE_SERVICE_ROLE_KEY?: string;
   readonly OPENROUTER_API_KEY: string;
-  readonly API_SECRET_KEY: string;
+  readonly API_SECRET_KEY?: string;
+  readonly KTW_ARRIVALS_URL?: string;
+  readonly SONIOX_API_KEY?: string;
+  /** "eu" (default) or "us"/"global" — must match the Soniox project region of SONIOX_API_KEY. */
+  readonly SONIOX_REGION?: string;
+  /** "true" shows the voice dictation button in reservation forms. */
+  readonly PUBLIC_VOICE_ENABLED?: string;
+  /** E2E only: "true" swaps Soniox for the scripted window.__parktrackFakeVoice source. */
+  readonly PUBLIC_VOICE_FAKE?: string;
 }
 
 interface ImportMeta {

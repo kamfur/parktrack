@@ -1,5 +1,13 @@
 import type { APIRoute } from "astro";
-import { ReservationService } from "../../lib/services/reservation.service";
+import {
+  KeysLeftNotEditableError,
+  NoGarageAvailableError,
+  NoPriceListError,
+  ReservationInvoicedError,
+  ReservationService,
+  TravelAgencyUnavailableError,
+} from "../../lib/services/reservation.service";
+import { GarageBufferViolationError } from "../../lib/services/garage-allocation.service";
 import type { CreateReservationCommand, UpdateReservationCommand, ReservationsListResponse } from "../../types";
 import { createReservationSchema, updateReservationSchema } from "../../lib/schemas/reservation.schema";
 import type { Database } from "../../db/database.types";
@@ -91,6 +99,12 @@ export const GET: APIRoute = async ({ url, locals }) => {
       if (allowedSources.includes(source as Database["public"]["Enums"]["reservation_source"])) {
         query = query.eq("source", source as Database["public"]["Enums"]["reservation_source"]);
       }
+    }
+
+    // Filtrowanie po biurze podróży (eq, UUID)
+    const travelAgencyId = searchParams.get("travel_agency_id");
+    if (travelAgencyId && UUID_REGEX.test(travelAgencyId)) {
+      query = query.eq("travel_agency_id", travelAgencyId);
     }
 
     // Filtrowanie po datach
@@ -219,6 +233,38 @@ export const POST: APIRoute = async ({ request, locals }) => {
   } catch (error) {
     console.error("Error creating reservation:", error);
 
+    // No price list covers the check-in date — staff must configure pricing in settings
+    if (error instanceof NoPriceListError) {
+      return new Response(JSON.stringify({ error: "Brak cennika obejmującego datę przyjazdu" }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Travel agency archived or missing — pick an active agency
+    if (error instanceof TravelAgencyUnavailableError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Invoiced reservation (billing fields locked) or an already-invoiced agency-month
+    if (error instanceof ReservationInvoicedError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // No garage/carport spot available within the buffer, or a manual swap would violate it
+    if (error instanceof NoGarageAvailableError || error instanceof GarageBufferViolationError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // Handle database constraint violations (e.g., overbooking)
     if (
       (error instanceof Error && error.message.includes("duplicate key")) ||
@@ -290,6 +336,43 @@ export const PATCH: APIRoute = async ({ request, locals, url }) => {
     });
   } catch (error) {
     console.error("Error updating reservation:", error);
+
+    // No price list covers the check-in date — staff must configure pricing in settings
+    if (error instanceof NoPriceListError) {
+      return new Response(JSON.stringify({ error: "Brak cennika obejmującego datę przyjazdu" }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Travel agency archived or missing — pick an active agency
+    if (error instanceof TravelAgencyUnavailableError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Invoiced reservation (billing fields locked) or an already-invoiced agency-month
+    if (error instanceof ReservationInvoicedError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Editing planned dates would violate the assigned garage's 10h buffer,
+    // or a parking type change found no free garage/carport spot
+    if (
+      error instanceof GarageBufferViolationError ||
+      error instanceof NoGarageAvailableError ||
+      error instanceof KeysLeftNotEditableError
+    ) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     // Handle reservation not found
     if (error instanceof Error && error.message.includes("not found")) {

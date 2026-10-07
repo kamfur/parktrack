@@ -1,0 +1,43 @@
+import { z } from "zod";
+import { MAX_VEHICLE_COUNT } from "../vehicles";
+
+/** Form schema for driver arrival card — maps to driverArrivalUpdateSchema on submit. */
+export const driverArrivalFormSchema = z.object({
+  planned_check_out: z.string().optional(),
+  flight_direction: z.string().max(100).optional().nullable(),
+  passenger_count: z.number().int().min(0).max(99).nullable().optional(),
+  parking_sector: z.string().max(50).optional(),
+  license_plate: z.string().max(15).optional(),
+  vehicle_count: z.number().int().min(1).max(MAX_VEHICLE_COUNT).optional(),
+  /** Plates of cars 2..N (index 0 = car 2). */
+  extra_license_plates: z.array(z.string().max(15)).optional(),
+  paid_at_arrival: z.boolean(),
+  keys_left: z.boolean(),
+});
+
+export type DriverArrivalFormData = z.infer<typeof driverArrivalFormSchema>;
+
+export const driverDepartureFormSchema = z.object({
+  notes: z.string().max(1000).optional(),
+  paid_at_departure: z.boolean(),
+  surcharge_amount: z.number().nonnegative().nullable().optional(),
+  planned_check_out: z.string().optional(),
+});
+
+export type DriverDepartureFormData = z.infer<typeof driverDepartureFormSchema>;
+
+/** Convert datetime-local value to ISO, or undefined if empty. */
+export function datetimeLocalToIso(value: string | undefined): string | undefined {
+  if (!value || value.trim() === "") return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString();
+}
+
+export function isoToDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}

@@ -1,0 +1,228 @@
+import { useEffect, useState } from "react";
+import { useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { ReservationDto } from "@/types";
+import {
+  driverDepartureFormSchema,
+  datetimeLocalToIso,
+  isoToDatetimeLocal,
+  type DriverDepartureFormData,
+} from "@/lib/schemas/driver-form.schema";
+import { driverDisplayName, isAgencyPaid } from "@/lib/driver/display";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Banknote, Loader2 } from "lucide-react";
+import { useCheckoutQuote } from "@/hooks/useCheckoutQuote";
+import { PaymentQuote } from "@/components/driver/PaymentQuote";
+import {
+  TABLET_FORM_GUTTER,
+  TABLET_FULLSCREEN_DIALOG,
+  TOUCH_FORM_READABILITY,
+} from "@/components/common/dialog-layout";
+import { cn } from "@/lib/utils";
+import { joinLicensePlates } from "@/lib/vehicles";
+
+interface DriverDepartureDialogProps {
+  reservation: ReservationDto | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (id: string, body: Record<string, unknown>) => Promise<void>;
+  isProcessing: boolean;
+}
+
+export function DriverDepartureDialog({
+  reservation,
+  open,
+  onOpenChange,
+  onSubmit,
+  isProcessing,
+}: DriverDepartureDialogProps) {
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showDateField, setShowDateField] = useState(false);
+  const alreadyPaid = reservation?.is_paid ?? false;
+  const agencyPaid = reservation ? isAgencyPaid(reservation) : false;
+
+  const form = useForm<DriverDepartureFormData>({
+    resolver: zodResolver(driverDepartureFormSchema) as Resolver<DriverDepartureFormData>,
+    defaultValues: {
+      notes: "",
+      paid_at_departure: false,
+      surcharge_amount: null,
+      planned_check_out: "",
+    },
+  });
+
+  useEffect(() => {
+    if (!reservation || !open) return;
+    form.reset({
+      notes: reservation.notes ?? "",
+      paid_at_departure: reservation.paid_at_departure ?? false,
+      surcharge_amount: reservation.surcharge_amount,
+      planned_check_out: isoToDatetimeLocal(reservation.planned_check_out),
+    });
+    setSubmitError(null);
+    setShowDateField(false);
+  }, [reservation, open, form]);
+
+  const watchedCheckout = form.watch("planned_check_out");
+  const watchedSurcharge = form.watch("surcharge_amount");
+  const quoteCheckoutIso = showDateField
+    ? datetimeLocalToIso(watchedCheckout ?? "")
+    : (reservation?.planned_check_out ?? null);
+  const quote = useCheckoutQuote(reservation?.id ?? null, quoteCheckoutIso ?? null, open && !alreadyPaid);
+
+  const handleSubmit = form.handleSubmit(async (data) => {
+    if (!reservation) return;
+    setSubmitError(null);
+    try {
+      const body: Record<string, unknown> = {
+        notes: data.notes?.trim() ? data.notes.trim() : null,
+        ...(agencyPaid ? {} : { surcharge_amount: data.surcharge_amount ?? null }),
+      };
+      if (!alreadyPaid) body.paid_at_departure = data.paid_at_departure;
+      if (showDateField) {
+        const checkoutIso = datetimeLocalToIso(data.planned_check_out);
+        if (checkoutIso) body.planned_check_out = checkoutIso;
+      }
+      await onSubmit(reservation.id, body);
+      onOpenChange(false);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Nie udało się zakończyć wyjazdu");
+    }
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn(
+          TABLET_FULLSCREEN_DIALOG,
+          TOUCH_FORM_READABILITY,
+          "flex max-h-[90dvh] max-w-md flex-col gap-0 overflow-hidden p-0"
+        )}
+      >
+        <DialogHeader className={cn("shrink-0 px-6 pb-4 pt-6", TABLET_FORM_GUTTER)}>
+          <DialogTitle>Zakończ wyjazd</DialogTitle>
+          {reservation ? (
+            <p className="text-sm text-muted-foreground">
+              {driverDisplayName(reservation)}
+              {joinLicensePlates(reservation) ? ` · ${joinLicensePlates(reservation)}` : ""}
+            </p>
+          ) : null}
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div
+              className={cn("min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-4 max-lg:space-y-5", TABLET_FORM_GUTTER)}
+            >
+              {showDateField ? (
+                <FormField
+                  control={form.control}
+                  name="planned_check_out"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Planowany / skorygowany wyjazd</FormLabel>
+                      <FormControl>
+                        <Input type="datetime-local" className="min-h-11" {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto px-0 underline"
+                  onClick={() => setShowDateField(true)}
+                >
+                  Zmień datę wyjazdu
+                </Button>
+              )}
+              {agencyPaid ? (
+                <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                  Biuro podróży – opłacone. Nie pobieraj płatności ani dopłaty od klienta.
+                </p>
+              ) : null}
+              {agencyPaid ? null : (
+                <FormField
+                  control={form.control}
+                  name="surcharge_amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dopłata (PLN)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="min-h-11"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notatki</FormLabel>
+                    <FormControl>
+                      <Textarea className="min-h-24" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {alreadyPaid ? null : <PaymentQuote {...quote} surcharge={watchedSurcharge} />}
+              {alreadyPaid ? null : (
+                <FormField
+                  control={form.control}
+                  name="paid_at_departure"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border-2 border-emerald-500 bg-emerald-50 p-4 shadow-sm">
+                      <FormControl>
+                        <Checkbox
+                          className="h-7 w-7 border-emerald-600 data-[state=checked]:bg-emerald-600"
+                          checked={field.value}
+                          onCheckedChange={(v) => field.onChange(v === true)}
+                        />
+                      </FormControl>
+                      <FormLabel className="flex flex-1 cursor-pointer items-center gap-2 text-base font-semibold text-emerald-900">
+                        <Banknote className="h-5 w-5 text-emerald-700" aria-hidden />
+                        Opłacono przy wyjeździe
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              )}
+              {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
+            </div>
+            <DialogFooter className="shrink-0 flex-row gap-2 border-t bg-white px-6 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 flex-1 sm:flex-none"
+                onClick={() => onOpenChange(false)}
+              >
+                Anuluj
+              </Button>
+              <Button type="submit" className="min-h-11 flex-[2] sm:flex-none" disabled={isProcessing}>
+                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Zakończ wyjazd
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}

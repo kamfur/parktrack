@@ -2,18 +2,181 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   CreateExternalReservationCommand,
   CreateReservationCommand,
+  DepartureListItem,
   ReservationDto,
   UpdateReservationCommand,
 } from "../../types";
 import {
   createExternalReservationSchema,
+  createLegacyDepartureSchema,
   createReservationSchema,
   updateReservationSchema,
+  type CreateLegacyDepartureCommand,
 } from "../schemas/reservation.schema";
 import { createSupabaseAdminClient } from "../supabase-admin";
+import { pendingWindowEndIso } from "../driver/operating-window";
+import { uniqueFlightDirections } from "../reservations/flight-directions";
+import { enrichDepartures } from "./ktw-arrival-hours.service";
+import { GarageAllocationService } from "./garage-allocation.service";
+import { isCoveredParkingType, type CoveredParkingType, type ParkingType } from "../pricing/parking-type";
+import { applyAgencyDiscount } from "../pricing/agency-discount";
+import { syncIsPaid } from "./driver.service";
+
+/** Statuses whose stay still needs a physical spot (a garage/carport assignment). */
+const ACTIVE_STAY_STATUSES: readonly string[] = ["pending", "confirmed", "in_progress"];
+
+export class NoGarageAvailableError extends Error {
+  constructor(message = "No garage/carport spot is available within the required buffer") {
+    super(message);
+    this.name = "NoGarageAvailableError";
+  }
+}
+
+export class NoPriceListError extends Error {
+  constructor(message = "No price list covers the reservation's check-in date") {
+    super(message);
+    this.name = "NoPriceListError";
+  }
+}
+
+/** Travel agency is archived (cannot be newly assigned) or does not exist. */
+export class TravelAgencyUnavailableError extends Error {
+  constructor(message = "Biuro podróży jest zarchiwizowane lub nie istnieje") {
+    super(message);
+    this.name = "TravelAgencyUnavailableError";
+  }
+}
+
+/** "Zostawił kluczyki" changed on a reservation whose car is not on the parking. */
+export class KeysLeftNotEditableError extends Error {
+  constructor(message = "Kluczyki można oznaczyć tylko dla auta stojącego na parkingu") {
+    super(message);
+    this.name = "KeysLeftNotEditableError";
+  }
+}
+
+/** Reservation is on an issued invoice (billing fields locked) or would enter an invoiced agency-month. */
+export class ReservationInvoicedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ReservationInvoicedError";
+  }
+}
+
+/**
+ * The spot to assign for a covered stay: the requested one if it is free for the window
+ * (and of the right type), otherwise — when none was requested — the first free one.
+ */
+async function pickGarageSpot(
+  allocationService: GarageAllocationService,
+  parkingType: CoveredParkingType,
+  checkIn: string,
+  checkOut: string,
+  requestedSpotId?: string,
+  excludeReservationId?: string
+): Promise<string> {
+  const available = await allocationService.listAvailableSpots(checkIn, checkOut, parkingType, excludeReservationId);
+  if (requestedSpotId) {
+    if (!available.some((spot) => spot.id === requestedSpotId)) {
+      throw new NoGarageAvailableError(
+        parkingType === "garage"
+          ? "Wybrany garaż jest zajęty w tym terminie"
+          : "Wybrana wiata jest zajęta w tym terminie"
+      );
+    }
+    return requestedSpotId;
+  }
+  if (available.length === 0) {
+    throw new NoGarageAvailableError(
+      parkingType === "garage" ? "Brak wolnego garażu w tym terminie" : "Brak wolnej wiaty w tym terminie"
+    );
+  }
+  return available[0].id;
+}
+
+/** Translates the DB's NO_PRICE_LIST exception (calculate_total_cost / cost trigger) into a typed error. */
+function asPriceListError(message: string | undefined): NoPriceListError | null {
+  return message?.includes("NO_PRICE_LIST") ? new NoPriceListError() : null;
+}
+
+/** Typed error for DB exceptions raised by the pricing trigger (price list, agency). */
+function asPricingError(message: string | undefined): Error | null {
+  const invoiced = message?.match(/RESERVATION_INVOICED: (\S+)/);
+  if (invoiced) {
+    return new ReservationInvoicedError(
+      `Rezerwacja jest na fakturze ${invoiced[1]} — nie można zmienić biura, dat, typu miejsca, ceny ani jej anulować`
+    );
+  }
+  const month = message?.match(/AGENCY_MONTH_INVOICED: (\S+)/);
+  if (month) {
+    return new ReservationInvoicedError(
+      `Biuro ma już wystawioną fakturę za ${month[1]} — wybierz inny termin lub biuro`
+    );
+  }
+  if (message?.includes("AGENCY_ARCHIVED") || message?.includes("AGENCY_NOT_FOUND")) {
+    return new TravelAgencyUnavailableError();
+  }
+  return asPriceListError(message);
+}
+
+export interface CostQuote {
+  /** Price-list total before any discount */
+  baseCost: number;
+  /** Agency discount in % (0 when no agency) */
+  discountPct: number;
+  /** Price to pay (after the discount) */
+  totalCost: number;
+}
 
 export class ReservationService {
   constructor(private readonly supabase: SupabaseClient) {}
+
+  /** Total price from the price list covering the check-in date, for the given parking type. */
+  async calculateCost(checkIn: string, checkOut: string, parkingType: ParkingType = "open_air"): Promise<number> {
+    // Parameter names must match the DB function definition exactly.
+    const { data, error } = await this.supabase.rpc("calculate_total_cost", {
+      p_check_in: checkIn,
+      p_check_out: checkOut,
+      p_parking_type: parkingType,
+    });
+
+    if (error) {
+      throw asPriceListError(error.message) ?? new Error(`Failed to calculate reservation cost: ${error.message}`);
+    }
+    if (data === null || data === undefined) {
+      throw new Error("Failed to calculate reservation cost");
+    }
+
+    return Number(data);
+  }
+
+  /**
+   * Preview price including the travel agency discount (current agency value — the DB
+   * snapshots it on assignment and stays authoritative).
+   */
+  async quoteCost(
+    checkIn: string,
+    checkOut: string,
+    parkingType: ParkingType = "open_air",
+    travelAgencyId?: string | null,
+    vehicleCount = 1
+  ): Promise<CostQuote> {
+    // Price list amount per car × cars; the agency discount applies to the whole.
+    const baseCost = (await this.calculateCost(checkIn, checkOut, parkingType)) * vehicleCount;
+    if (!travelAgencyId) return { baseCost, discountPct: 0, totalCost: baseCost };
+
+    const { data: agency, error } = await this.supabase
+      .from("travel_agencies")
+      .select("discount_pct, archived_at")
+      .eq("id", travelAgencyId)
+      .maybeSingle();
+
+    if (error) throw new Error(`Failed to fetch travel agency: ${error.message}`);
+    if (!agency || agency.archived_at) throw new TravelAgencyUnavailableError();
+
+    const discountPct = Number(agency.discount_pct);
+    return { baseCost, discountPct, totalCost: applyAgencyDiscount(baseCost, discountPct) };
+  }
 
   /**
    * Creates a new reservation from an external source (e.g. public website).
@@ -73,19 +236,18 @@ export class ReservationService {
       }
     }
 
-    // Calculate total cost using database function
-    // Note: Parameter names must match exactly with function definition (p_check_in, p_check_out)
-    const { data: costData } = await this.supabase.rpc("calculate_total_cost", {
-      p_check_in: validatedData.checkInDate,
-      p_check_out: validatedData.checkOutDate,
-    });
+    // External (website) reservations are always regular open-air parking.
+    const costData = await this.calculateCost(validatedData.checkInDate, validatedData.checkOutDate, "open_air");
 
-    if (!costData) {
-      throw new Error("Failed to calculate reservation cost");
+    // Admin client: external requests are anonymous, and both get_system_user
+    // (not executable by anon) and the INSERT must bypass RLS.
+    const adminClient = createSupabaseAdminClient();
+    if (!adminClient) {
+      throw new Error("Admin client not available. Please configure SUPABASE_SERVICE_ROLE_KEY.");
     }
 
     // Get system user ID for audit fields
-    const { data: systemUserId, error: systemUserError } = await this.supabase.rpc("get_system_user");
+    const { data: systemUserId, error: systemUserError } = await adminClient.rpc("get_system_user");
     if (systemUserError || !systemUserId) {
       throw new Error(`Failed to get system user: ${systemUserError?.message || "Unknown error"}`);
     }
@@ -96,7 +258,7 @@ export class ReservationService {
       first_name: validatedData.firstName,
       email: validatedData.email,
       phone: validatedData.phone,
-      license_plate: validatedData.licensePlate,
+      license_plate: validatedData.licensePlate ?? null,
       planned_check_in: validatedData.checkInDate,
       planned_check_out: validatedData.checkOutDate,
       source: "api" as const,
@@ -104,12 +266,6 @@ export class ReservationService {
       created_by: systemUserId,
       last_modified_by: systemUserId,
     };
-
-    // Use admin client for INSERT operation to bypass RLS
-    const adminClient = createSupabaseAdminClient();
-    if (!adminClient) {
-      throw new Error("Admin client not available. Please configure SUPABASE_SERVICE_ROLE_KEY.");
-    }
 
     // Insert reservation using admin client (bypasses RLS)
     const { data: reservation, error } = await adminClient
@@ -135,20 +291,19 @@ export class ReservationService {
    */
   async createReservation(command: CreateReservationCommand, userId?: string): Promise<ReservationDto> {
     // Validate input data
-    const validatedData = await createReservationSchema.parseAsync(command);
+    const { garage_spot_id: requestedSpotId, ...validatedData } = await createReservationSchema.parseAsync(command);
 
-    // Calculate total cost if not provided
-    let totalCost = validatedData.total_cost;
+    // Calculate total cost if not provided — the price list row follows the requested parking type.
+    // Agency reservations are always priced by the DB (price list − agency discount), so a
+    // client total is ignored; the base price is computed here only to surface NO_PRICE_LIST early.
+    let totalCost = validatedData.travel_agency_id ? undefined : validatedData.total_cost;
     if (!totalCost) {
-      const { data: costData } = await this.supabase.rpc("calculate_total_cost", {
-        p_check_in: validatedData.planned_check_in,
-        p_check_out: validatedData.planned_check_out,
-      });
-
-      if (!costData) {
-        throw new Error("Failed to calculate reservation cost");
-      }
-      totalCost = costData;
+      totalCost =
+        (await this.calculateCost(
+          validatedData.planned_check_in,
+          validatedData.planned_check_out,
+          validatedData.parking_type
+        )) * validatedData.vehicle_count;
     }
 
     // Get user ID for audit fields (use provided userId or system user)
@@ -185,6 +340,88 @@ export class ReservationService {
       .single();
 
     if (error) {
+      throw asPricingError(error.message) ?? new Error(`Failed to create reservation: ${error.message}`);
+    }
+
+    if (isCoveredParkingType(validatedData.parking_type)) {
+      try {
+        const allocationService = new GarageAllocationService(adminClient);
+        const spotId = await pickGarageSpot(
+          allocationService,
+          validatedData.parking_type,
+          reservation.planned_check_in,
+          reservation.planned_check_out,
+          requestedSpotId
+        );
+        await allocationService.assign(reservation.id, spotId, requestedSpotId ? "staff" : "system");
+      } catch (allocationError) {
+        // Roll back the reservation — a garage request that can't be fulfilled must not leave an orphaned row.
+        await adminClient.from("reservations").delete().eq("id", reservation.id);
+        throw allocationError;
+      }
+    }
+
+    return reservation;
+  }
+
+  /**
+   * TEMPORARY (go-live migration): registers a car that was parked before ParkTrack
+   * went live. The real arrival date is unknown/irrelevant, so check-in is set to now.
+   * Inserted straight as `in_progress` so it appears on the departures list and can be
+   * checked out normally. Open-air only — no garage allocation.
+   */
+  async createLegacyDeparture(command: CreateLegacyDepartureCommand, userId?: string): Promise<ReservationDto> {
+    const data = await createLegacyDepartureSchema.parseAsync(command);
+    const checkIn = new Date().toISOString();
+
+    const totalCost = data.total_cost ?? (await this.calculateCost(checkIn, data.planned_check_out));
+
+    const adminClient = createSupabaseAdminClient();
+    if (!adminClient) {
+      throw new Error("Admin client not available. Please configure SUPABASE_SERVICE_ROLE_KEY.");
+    }
+
+    let auditUserId = userId;
+    if (!auditUserId) {
+      const { data: systemUserId, error: systemUserError } = await adminClient.rpc("get_system_user");
+      if (systemUserError || !systemUserId) {
+        throw new Error(`Failed to get system user: ${systemUserError?.message || "Unknown error"}`);
+      }
+      auditUserId = systemUserId as string;
+    }
+
+    const marker = "[Migracja] Samochód na parkingu przed wdrożeniem systemu";
+    const { data: reservation, error } = await adminClient
+      .from("reservations")
+      .insert({
+        last_name: data.last_name,
+        first_name: data.first_name || null,
+        phone: data.phone || null,
+        license_plate: data.license_plate || null,
+        notes: data.notes
+          ? `${marker}
+${data.notes}`
+          : marker,
+        flight_direction: data.flight_direction || null,
+        parking_sector: data.parking_sector || null,
+        passenger_count: data.passenger_count ?? null,
+        planned_check_in: checkIn,
+        planned_check_out: data.planned_check_out,
+        actual_check_in: checkIn,
+        status: "in_progress" as const,
+        source: "walk_in" as const,
+        parking_type: "open_air" as const,
+        total_cost: totalCost,
+        // Paid unless marked otherwise — flag survives the is_paid sync at departure.
+        paid_at_arrival: !data.unpaid,
+        is_paid: !data.unpaid,
+        created_by: auditUserId,
+        last_modified_by: auditUserId,
+      })
+      .select()
+      .single();
+
+    if (error) {
       throw new Error(`Failed to create reservation: ${error.message}`);
     }
 
@@ -202,17 +439,110 @@ export class ReservationService {
    */
   async updateReservation(id: string, command: UpdateReservationCommand): Promise<ReservationDto> {
     // Validate input data
-    const validatedData = await updateReservationSchema.parseAsync(command);
+    const { garage_spot_id: requestedSpotId, ...validatedData } = await updateReservationSchema.parseAsync(command);
+    let allocationService: GarageAllocationService | null = null;
 
-    // Prepare update data with audit fields
-    const updateData = {
-      ...validatedData,
-    };
+    // Spot change, decided up front before anything is written:
+    // - parking type change (allowed in any status): the old garage/carport spot no longer
+    //   matches, so it is released and — for a stay that still needs a spot — the requested
+    //   (or first free) spot of the new type is assigned;
+    // - same covered type, another spot requested: the reservation moves to that spot.
+    // - status leaves / re-enters the active set (cancel, no-show, restore): the spot is released,
+    //   or a free one is assigned again.
+    let spotChange: { previousType: ParkingType | null; previousStatus: string; spotId: string | null } | null = null;
+
+    if (
+      validatedData.status ||
+      validatedData.planned_check_in ||
+      validatedData.planned_check_out ||
+      validatedData.parking_type ||
+      requestedSpotId ||
+      validatedData.keys_left !== undefined ||
+      validatedData.paid_at_arrival !== undefined ||
+      validatedData.paid_at_departure !== undefined
+    ) {
+      allocationService = new GarageAllocationService(this.supabase);
+      const { data: current, error: currentError } = await this.supabase
+        .from("reservations")
+        .select(
+          "planned_check_in, planned_check_out, parking_type, status, keys_left, paid_at_arrival, paid_at_departure, travel_agency_id"
+        )
+        .eq("id", id)
+        .single();
+
+      if (currentError || !current) {
+        throw new Error(`Reservation with ID ${id} not found`);
+      }
+
+      // Keys are physically handed over at arrival, so the flag only changes while the car is parked.
+      if (
+        validatedData.keys_left !== undefined &&
+        validatedData.keys_left !== current.keys_left &&
+        current.status !== "in_progress"
+      ) {
+        throw new KeysLeftNotEditableError();
+      }
+
+      // is_paid mirrors the driver payment flags (agency stays are always paid — the DB trigger owns those).
+      const agencyAfter =
+        validatedData.travel_agency_id === undefined ? current.travel_agency_id : validatedData.travel_agency_id;
+      if (
+        agencyAfter == null &&
+        (validatedData.paid_at_arrival !== undefined || validatedData.paid_at_departure !== undefined)
+      ) {
+        validatedData.is_paid = syncIsPaid(
+          validatedData.paid_at_arrival ?? current.paid_at_arrival,
+          validatedData.paid_at_departure ?? current.paid_at_departure
+        );
+      }
+
+      const nextCheckIn = validatedData.planned_check_in ?? current.planned_check_in;
+      const nextCheckOut = validatedData.planned_check_out ?? current.planned_check_out;
+      const nextStatus = validatedData.status ?? current.status;
+      const nextType = validatedData.parking_type ?? current.parking_type;
+      const needsSpot = isCoveredParkingType(nextType) && ACTIVE_STAY_STATUSES.includes(nextStatus);
+
+      const wasActive = ACTIVE_STAY_STATUSES.includes(current.status);
+      const willBeActive = ACTIVE_STAY_STATUSES.includes(nextStatus);
+
+      if (nextType !== current.parking_type) {
+        const spotId = needsSpot
+          ? await pickGarageSpot(allocationService, nextType, nextCheckIn, nextCheckOut, requestedSpotId, id)
+          : null;
+        spotChange = { previousType: current.parking_type as ParkingType, previousStatus: current.status, spotId };
+      } else if (wasActive && !willBeActive) {
+        spotChange = { previousType: null, previousStatus: current.status, spotId: null };
+      } else if (!wasActive && willBeActive && needsSpot) {
+        const spotId = await pickGarageSpot(
+          allocationService,
+          nextType,
+          nextCheckIn,
+          nextCheckOut,
+          requestedSpotId,
+          id
+        );
+        spotChange = { previousType: null, previousStatus: current.status, spotId };
+      } else if (requestedSpotId && needsSpot && requestedSpotId !== (await allocationService.activeSpotId(id))) {
+        const spotId = await pickGarageSpot(
+          allocationService,
+          nextType,
+          nextCheckIn,
+          nextCheckOut,
+          requestedSpotId,
+          id
+        );
+        spotChange = { previousType: null, previousStatus: current.status, spotId };
+      } else if (validatedData.planned_check_in || validatedData.planned_check_out) {
+        // If planned dates are changing, re-validate the 10h garage buffer before writing —
+        // an edit must not be able to silently break the invariant `assign`/`swap` enforce.
+        await allocationService.revalidateAssignment(id, nextCheckIn, nextCheckOut);
+      }
+    }
 
     // Perform update operation
     const { data: reservation, error } = await this.supabase
       .from("reservations")
-      .update(updateData)
+      .update(validatedData)
       .eq("id", id)
       .select()
       .single();
@@ -222,44 +552,93 @@ export class ReservationService {
         // No rows found/updated
         throw new Error(`Reservation with ID ${id} not found`);
       }
-      throw new Error(`Failed to update reservation: ${error.message}`);
+      // The cost trigger re-prices on date/parking type changes and raises when no list covers the date.
+      throw asPricingError(error.message) ?? new Error(`Failed to update reservation: ${error.message}`);
+    }
+
+    if (spotChange && allocationService) {
+      const releasedSpotId = await allocationService.release(id);
+      if (spotChange.spotId) {
+        try {
+          await allocationService.assign(id, spotChange.spotId, "staff");
+        } catch (allocationError) {
+          // Spot was taken in the meantime — restore the previous type (the trigger re-prices back)
+          // and the previous spot.
+          if (spotChange.previousType) {
+            await this.supabase.from("reservations").update({ parking_type: spotChange.previousType }).eq("id", id);
+          }
+          // A failed restore must not leave the reservation active without a spot.
+          if (!ACTIVE_STAY_STATUSES.includes(spotChange.previousStatus)) {
+            await this.supabase.from("reservations").update({ status: spotChange.previousStatus }).eq("id", id);
+          }
+          if (releasedSpotId) await allocationService.assign(id, releasedSpotId, "staff").catch(() => undefined);
+          throw allocationError;
+        }
+      }
     }
 
     return reservation;
   }
 
   /**
-   * Retrieves all reservations where the planned check-in date is today.
-   * Used for displaying today's arrivals in the admin panel.
-   *
-   * @returns Array of reservations for today's arrivals, sorted by check-in time
-   * @throws Error if database operation fails
+   * Staff dashboard arrivals: Warsaw today (or the next 12h, whichever reaches further)
+   * plus any earlier confirmed arrivals that have not been checked in yet.
    */
-  async getTodaysArrivals(): Promise<ReservationDto[]> {
-    const { data, error } = await this.supabase.rpc("get_todays_arrivals");
+  async getTodaysArrivals(now: Date = new Date()): Promise<ReservationDto[]> {
+    const upper = pendingWindowEndIso(now);
+    const { data, error } = await this.supabase
+      .from("reservations")
+      .select("*")
+      .eq("status", "confirmed")
+      .lt("planned_check_in", upper)
+      .order("planned_check_in", { ascending: true })
+      .limit(200);
 
     if (error) {
       throw new Error(`Failed to fetch today's arrivals: ${error.message}`);
     }
 
-    return data || [];
+    return (data as ReservationDto[]) || [];
   }
 
   /**
-   * Retrieves all reservations where the planned check-out date is today.
-   * Used for displaying today's departures in the admin panel.
-   *
-   * @returns Array of reservations for today's departures, sorted by check-out time
-   * @throws Error if database operation fails
+   * Staff dashboard departures: Warsaw today (or the next 12h, whichever reaches further)
+   * plus delayed in-progress returns that have not been checked out yet.
    */
-  async getTodaysDepartures(): Promise<ReservationDto[]> {
-    const { data, error } = await this.supabase.rpc("get_todays_departures");
+  async getTodaysDepartures(now: Date = new Date()): Promise<DepartureListItem[]> {
+    const upper = pendingWindowEndIso(now);
+    const { data, error } = await this.supabase
+      .from("reservations")
+      .select("*")
+      .eq("status", "in_progress")
+      .lt("planned_check_out", upper)
+      .order("planned_check_out", { ascending: true })
+      .limit(200);
 
     if (error) {
       throw new Error(`Failed to fetch today's departures: ${error.message}`);
     }
 
-    return data || [];
+    return enrichDepartures((data as ReservationDto[]) || [], now);
+  }
+
+  /**
+   * Distinct free-text flight directions already stored on reservations.
+   * Used as suggestions while still allowing a new value to be typed.
+   */
+  async listFlightDirections(): Promise<string[]> {
+    const { data, error } = await this.supabase
+      .from("reservations")
+      .select("flight_direction")
+      .not("flight_direction", "is", null)
+      .neq("flight_direction", "")
+      .limit(5000);
+
+    if (error) {
+      throw new Error(`Failed to fetch flight directions: ${error.message}`);
+    }
+
+    return uniqueFlightDirections((data ?? []).map((row) => row.flight_direction));
   }
 
   /**

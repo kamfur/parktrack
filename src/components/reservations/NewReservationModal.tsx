@@ -9,7 +9,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { QuickReservationForm } from "./QuickReservationForm";
 import { FullReservationForm } from "./FullReservationForm";
 import { useCreateReservation } from "@/hooks/useCreateReservation";
-import { useCostCalculation } from "@/hooks/useCostCalculation";
+import {
+  TABLET_FORM_GUTTER,
+  TABLET_FULLSCREEN_DIALOG,
+  TOUCH_FORM_READABILITY,
+} from "@/components/common/dialog-layout";
+import { cn } from "@/lib/utils";
+import { useVoiceSession } from "@/hooks/useVoiceSession";
+import type { VoiceFieldKey } from "@/lib/voice/merge";
+import { VoiceCaptureButton } from "@/components/voice/VoiceCaptureButton";
+import { TranscriptPreview } from "@/components/voice/TranscriptPreview";
 
 /**
  * Główny kontener modala nowej rezerwacji.
@@ -18,11 +27,11 @@ import { useCostCalculation } from "@/hooks/useCostCalculation";
 export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = "quick" }: NewReservationModalProps) {
   const [mode, setMode] = useState<"quick" | "full">(defaultMode);
   const [formData, setFormData] = useState<Partial<FullReservationFormData>>({});
+  // Dictation lives here so the session survives the quick → full switch.
+  const voice = useVoiceSession();
+  const [voiceManual, setVoiceManual] = useState<readonly VoiceFieldKey[]>([]);
 
   const { createReservation, isCreating } = useCreateReservation();
-
-  // Get estimated cost for both modes
-  const { estimatedCost } = useCostCalculation(formData.checkInDate || null, formData.checkOutDate || null);
 
   // Transform Quick Mode data to API command
   const transformQuickToCommand = (data: QuickReservationFormData): CreateReservationCommand => {
@@ -37,11 +46,7 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
       source: "phone",
     };
 
-    // Only include total_cost if it's a positive number (server will calculate if not provided)
-    if (estimatedCost && estimatedCost > 0) {
-      command.total_cost = estimatedCost;
-    }
-
+    // total_cost omitted — the server prices it from the price list
     return command;
   };
 
@@ -57,18 +62,18 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
       email: data.email?.trim() || undefined,
       phone: data.phone?.replace(/\s/g, "") || undefined,
       license_plate: data.licensePlate?.toUpperCase().trim() || undefined,
-      flight_direction: data.flightDirection || undefined,
+      vehicle_count: data.vehicleCount,
+      flight_direction: data.flightDirection?.trim() || undefined,
       notes: data.notes?.trim() || undefined,
       planned_check_in: data.checkInDate.toISOString(),
       planned_check_out: data.checkOutDate.toISOString(),
       source: "phone",
+      parking_type: data.parkingType ?? "open_air",
+      garage_spot_id: data.garageSpotId || undefined,
+      travel_agency_id: data.travelAgencyId || null,
     };
 
-    // Only include total_cost if it's a positive number (server will calculate if not provided)
-    if (estimatedCost && estimatedCost > 0) {
-      command.total_cost = estimatedCost;
-    }
-
+    // total_cost omitted — the server prices it from the price list row for the parking type
     return command;
   };
 
@@ -111,26 +116,41 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
     setMode("full");
   };
 
+  // Mic in quick mode: carry typed values to full mode and start listening
+  const handleStartVoiceFromQuick = (
+    data: Partial<QuickReservationFormData>,
+    manualFields: readonly ("lastName" | "checkIn" | "checkOut")[]
+  ) => {
+    setFormData({ lastName: data.lastName, checkInDate: data.checkInDate, checkOutDate: data.checkOutDate });
+    setVoiceManual(manualFields);
+    setMode("full");
+    void voice.start();
+  };
+
   // Switch from Full to Quick Mode
   const handleSwitchToQuick = () => {
+    voice.cancel();
     // Keep only common fields
     setFormData({
       lastName: formData.lastName || "",
-      checkInDate: formData.checkInDate || null,
-      checkOutDate: formData.checkOutDate || null,
+      checkInDate: formData.checkInDate,
+      checkOutDate: formData.checkOutDate,
     });
     setMode("quick");
   };
 
   // Reset modal state
   const resetModal = () => {
+    voice.cancel();
     setMode(defaultMode);
     setFormData({});
+    setVoiceManual([]);
   };
 
   // Handle modal close with unsaved changes detection
   const handleOpenChange = (open: boolean) => {
     if (!open) {
+      voice.cancel();
       // TODO: Add unsaved changes detection and warning
       // For now, just close
       onClose();
@@ -141,7 +161,14 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
+      <DialogContent
+        className={cn(
+          TABLET_FULLSCREEN_DIALOG,
+          TOUCH_FORM_READABILITY,
+          TABLET_FORM_GUTTER,
+          "max-h-[90vh] overflow-y-auto lg:max-w-[600px]"
+        )}
+      >
         <DialogHeader>
           <DialogTitle>Nowa rezerwacja</DialogTitle>
           <DialogDescription>
@@ -155,15 +182,32 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
           <QuickReservationForm
             onSubmit={handleQuickSubmit}
             onSwitchToFull={handleSwitchToFull}
+            onStartVoice={handleStartVoiceFromQuick}
             isSubmitting={isCreating}
           />
         ) : (
-          <FullReservationForm
-            initialData={formData}
-            onSubmit={handleFullSubmit}
-            onSwitchToQuick={handleSwitchToQuick}
-            isSubmitting={isCreating}
-          />
+          <>
+            <div className="space-y-2">
+              <VoiceCaptureButton
+                state={voice.state}
+                onStart={() => void voice.start()}
+                onStop={() => void voice.stop()}
+              />
+              <TranscriptPreview
+                state={voice.state}
+                finalText={voice.finalText}
+                partialText={voice.partialText}
+                error={voice.error}
+              />
+            </div>
+            <FullReservationForm
+              initialData={formData}
+              onSubmit={handleFullSubmit}
+              onSwitchToQuick={handleSwitchToQuick}
+              isSubmitting={isCreating}
+              voice={{ parsed: voice.parsed, initialManual: voiceManual }}
+            />
+          </>
         )}
       </DialogContent>
     </Dialog>

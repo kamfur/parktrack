@@ -1,46 +1,54 @@
 # Repository Guidelines
 
-ParkTrack is a server-rendered web app for parking lot management staff. Stack: Astro 5 (SSR, file-based routing) + React 19 (interactive islands) + TypeScript 5 + Supabase (PostgreSQL + Auth + RLS) + Tailwind CSS 4 + Shadcn/ui.
+ParkTrack — Astro 5 SSR + React 19 islands + Supabase. Staff-facing parking management.
+
+**Context map:** `@context/README.md` · **Maturity:** `@context/maturity.md`
 
 ## Hard Rules
 
-- **API routes**: export `const prerender = false` at the top of every file in `src/pages/api/`. Handlers are named exports: `export const GET`, `export const POST` (uppercase).
-- **Supabase client**: read from `context.locals.supabase` in Astro routes — never import the client directly in page files. Type with `SupabaseClient` from `src/db/supabase.client.ts`, not from `@supabase/supabase-js`.
-- **React only for interactivity**: use `.astro` components for static/layout content. React is for client-side state and events only.
-- **No Next.js directives**: `"use client"`, `"use server"`, `getServerSideProps` have no effect in Astro and signal a wrong mental model.
-- **Validate at the boundary**: all incoming API payloads must pass a Zod schema before any processing.
+- **API routes:** `export const prerender = false`; handlers `export const GET` / `POST` (uppercase). Nested guide: `@src/pages/api/AGENTS.md`.
+- **Supabase in pages:** `context.locals.supabase` only — type from `@src/db/supabase.client.ts`.
+- **React:** interactive UI only; static content in `.astro`. No Next.js directives (`"use client"`, etc.).
+- **Boundaries:** Zod-validate every API payload before business logic.
 
-## Project Structure
-
-- `src/pages/` — Astro pages (file-based routing)
-- `src/pages/api/` — server-only endpoints; see hard rules above
-- `src/layouts/` — Astro layout components
-- `src/components/` — Astro (static) and React (interactive) components
-- `src/components/ui/` — Shadcn/ui components (do not hand-edit; regenerate via Shadcn CLI)
-- `src/lib/services/` — business logic extracted from handlers; keep handlers thin
-- `src/db/` — Supabase client config and auto-generated `database.types.ts`
-- `src/types.ts` — shared Entities and DTOs for frontend and backend
-- `src/middleware/index.ts` — single Astro middleware file
-- `supabase/migrations/` — SQL migrations; apply locally with `supabase db reset`
-
-For extended conventions see `@CLAUDE.md`; for Tailwind, accessibility, and React hooks patterns see `@.github/copilot-instructions.md`.
-
-## Build & Development Commands
+## Commands
 
 | Command | Purpose |
 |---|---|
-| `npm run dev` | Dev server at `http://localhost:3000` |
-| `npm run build` | Production build — run before pushing to catch type errors |
-| `npm run lint` | ESLint (TypeScript strict + Astro + React rules) |
-| `npm run lint:fix` | ESLint with auto-fix |
-| `npm run format` | Prettier |
+| `npm run dev` | Dev server — port 3000 |
+| `npm run test` | Vitest (unit + integration) |
+| `npm run test:e2e` | Playwright E2E |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm run build` | Production build |
+| `npx supabase test db` | pgTAP DB tests (`supabase/tests/*.test.sql`) — needs local Supabase (`npx supabase start`) |
 
-**No test runner configured.** Run `npm run lint` and `npm run build` as the primary correctness gate before every commit. Husky runs lint-staged on commit automatically — do not skip with `--no-verify`.
+CI (`.github/workflows/ci.yml`): job `ci` test → lint → build; job `db-tests` runs pgTAP against a fresh local DB. DB triggers/RPCs that enforce money or access rules get a pgTAP test.
 
-## Coding Style & Naming
+## Depth — read on demand
 
-TypeScript strict mode enforced via `@tsconfig.json` (extends `astro/tsconfigs/strict`). No `any`. Files use `kebab-case`; React component exports are `PascalCase`; utilities and hooks are `camelCase`. See `@eslint.config.js` for the full rule set.
+| Topic | Doc |
+|---|---|
+| Product / roadmap | `@context/foundation/prd.md`, `@context/foundation/roadmap.md` |
+| Tests & risks | `@context/foundation/test-plan.md` |
+| Stack & deploy | `@context/foundation/tech-stack.md`, `@context/foundation/infrastructure.md` |
+| Recurring rules | `@context/foundation/lessons.md` |
+| Astro/React conventions | `@CLAUDE.md` (index only — no duplicate rules here) |
 
-## Commit Guidelines
+## Driver module (brownfield)
 
-Convention observed in history: `feat: <description>` and `chore: <description>`. No CI pipeline is configured yet — run `npm run lint` and `npm run build` locally before pushing.
+- Driver UI is mobile-first (tablet/smartphone): large tap targets, single-card operational flows; no staff admin chrome.
+- Roles: `staff` (full access, unchanged) and `driver` (driver module only — no invoices, statistics, or full reservation admin). Role comes from Supabase Auth `app_metadata.role` (never `user_metadata`); missing role defaults to `staff`.
+- Drivers and staff share the same reservation/payment records — never duplicate entities for field ops.
+- Driver home path: `/kierowca`. Operating lists: overdue (any past day while still open) + calendar today. Handled arrivals/departures: Warsaw today **or** last 12 hours (union), by `actual_check_in` / `actual_check_out`.
+- Staff dashboard `/`: same operating window as driver lists — Warsaw today plus overdue unconfirmed arrivals and delayed in-progress returns. Staff can check-in or cancel from arrivals, and check-out or change the return date from departures.
+- Staff calendar: `/kalendarz` is staff-only. It shows planned arrivals/departures and timed driver shifts; staff create, edit, and delete overlapping shifts from that view. Driver lists at `/kierowca` remain unscoped by shift.
+- RLS: JWT `app_metadata.role` — drivers SELECT reservations + operational UPDATE only; staff keep full table access; invoices/settings/payments are staff-only. Service role still bypasses RLS (external create, admin settings).
+- Driver-writable fields at arrival: confirm arrival, parking duration, flight direction, passenger count, sector, paid-at-arrival.
+- Driver-writable fields at departure: complete departure, notes, paid-at-departure, dopłata (`surcharge_amount`) when actual return differs from planned.
+- KTW hours: staff and driver departure lists enrich after the existing query. If the public board is down or times out, omit `ktw_arrival_hours` and still return 200. Do not fail the departures endpoint to “fix” a missing board.
+
+## Style & commits
+
+TypeScript strict, kebab-case files, PascalCase components — enforced by `@eslint.config.js`.  
+Commits: `feat:` / `chore:` / `fix:` (see `git log`). Husky runs lint-staged on commit.

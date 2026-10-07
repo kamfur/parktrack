@@ -6,7 +6,14 @@ import type { FinancialSectionProps } from "@/types";
 /**
  * Sekcja wyświetlająca informacje finansowe rezerwacji.
  */
-export function FinancialSection({ totalCost, isPaid, paymentMethod, source }: FinancialSectionProps) {
+export function FinancialSection({
+  totalCost,
+  isPaid,
+  paymentMethod,
+  source,
+  travelAgencyName,
+  agencyDiscountPct,
+}: FinancialSectionProps) {
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat("pl-PL", {
       style: "currency",
@@ -49,8 +56,24 @@ export function FinancialSection({ totalCost, isPaid, paymentMethod, source }: F
         <div className="flex items-center gap-3 flex-wrap">
           <div>
             <p className="text-sm text-muted-foreground mb-1">Status płatności</p>
-            <Badge variant={isPaid ? "default" : "secondary"}>{isPaid ? "Opłacone" : "Nieopłacone"}</Badge>
+            <Badge variant={isPaid ? "default" : "secondary"}>
+              {travelAgencyName !== undefined && travelAgencyName !== null
+                ? "Opłacone przez biuro"
+                : isPaid
+                  ? "Opłacone"
+                  : "Nieopłacone"}
+            </Badge>
           </div>
+
+          {travelAgencyName !== undefined && travelAgencyName !== null && (
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Biuro podróży</p>
+              <Badge variant="outline">
+                {travelAgencyName}
+                {agencyDiscountPct ? ` · rabat ${Number(agencyDiscountPct).toLocaleString("pl-PL")}%` : ""}
+              </Badge>
+            </div>
+          )}
 
           {/* Payment Method */}
           {isPaid && paymentMethod && (

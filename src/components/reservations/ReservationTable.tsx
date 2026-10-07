@@ -1,4 +1,4 @@
-import { ArrowUpDown, ArrowUp, ArrowDown, MoreVertical, Eye, Edit, XCircle } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, MoreVertical, Eye, Edit, XCircle, Warehouse } from "lucide-react";
 import type { ReservationDto, SortableColumn } from "../../types";
 import {
   formatPhone,
@@ -19,6 +19,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Skeleton } from "../ui/skeleton";
 import { cn } from "@/lib/utils";
+import { isCoveredParkingType, parkingTypeLabel } from "@/lib/pricing/parking-type";
 
 export interface ReservationTableProps {
   /** Lista rezerwacji do wyświetlenia */
@@ -197,12 +198,19 @@ export function ReservationTable({
                   {formatDateRange(reservation.planned_check_in, reservation.planned_check_out)}
                 </TableCell>
                 <TableCell>
-                  <Badge className={getStatusBadgeClasses(reservation.status)}>
-                    {getStatusLabel(reservation.status)}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Badge className={getStatusBadgeClasses(reservation.status)}>
+                      {getStatusLabel(reservation.status)}
+                    </Badge>
+                    {isCoveredParkingType(reservation.parking_type) ? (
+                      <Badge variant="outline" className="gap-1" title={parkingTypeLabel(reservation.parking_type)}>
+                        <Warehouse className="h-3 w-3" aria-hidden />
+                      </Badge>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className="font-medium">{formatCost(reservation.total_cost)}</TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -215,10 +223,12 @@ export function ReservationTable({
                         <Eye className="mr-2 h-4 w-4" />
                         Szczegóły
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => handleAction("edit", reservation, e)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edytuj
-                      </DropdownMenuItem>
+                      {(reservation.status === "confirmed" || reservation.status === "in_progress") && (
+                        <DropdownMenuItem onClick={(e) => handleAction("edit", reservation, e)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edytuj
+                        </DropdownMenuItem>
+                      )}
                       {reservation.status !== "cancelled" && reservation.status !== "completed" && (
                         <>
                           <DropdownMenuSeparator />

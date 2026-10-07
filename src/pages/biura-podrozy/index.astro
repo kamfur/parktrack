@@ -1,0 +1,13 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { AgenciesList } from "../../components/agencies/AgenciesList";
+import { previousBillingMonth } from "../../lib/services/agency-billing.service";
+
+export const prerender = false;
+
+const defaultMonth = previousBillingMonth();
+---
+
+<Layout title="Biura podróży - ParkTrack">
+  <AgenciesList client:load defaultMonth={defaultMonth} />
+</Layout>

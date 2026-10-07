@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from "astro";
 import { createSupabaseServerClient } from "../db/supabase.server";
+import { resolveAppRole } from "../lib/auth/resolve-app-role";
 
 /**
  * Initializes an SSR Supabase client from request cookies and populates locals.user.
@@ -7,7 +8,7 @@ import { createSupabaseServerClient } from "../db/supabase.server";
 export const supabaseMiddleware: MiddlewareHandler = async (context, next) => {
   try {
     const supabase = createSupabaseServerClient(context.request, context.cookies);
-    context.locals.supabase = supabase;
+    context.locals.supabase = supabase as unknown as App.Locals["supabase"];
 
     const {
       data: { user },
@@ -17,6 +18,7 @@ export const supabaseMiddleware: MiddlewareHandler = async (context, next) => {
       context.locals.user = {
         id: user.id,
         email: user.email ?? "",
+        role: resolveAppRole(user.app_metadata as Record<string, unknown> | undefined),
       };
     } else {
       context.locals.user = undefined;

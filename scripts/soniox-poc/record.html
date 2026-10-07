@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Soniox PoC – nagrania</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #1f2937; }
+      h1 { font-size: 1.4rem; }
+      .hint { background: #f3f4f6; padding: .75rem 1rem; border-radius: 8px; font-size: .9rem; }
+      .sc { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+      .sc.done { border-color: #16a34a; }
+      .id { font-weight: 600; }
+      .note { color: #6b7280; font-size: .85rem; margin: .25rem 0 .5rem; }
+      .script { font-size: 1.05rem; line-height: 1.5; }
+      button { font-size: 1rem; padding: .4rem 1rem; border-radius: 6px; border: 1px solid #9ca3af; background: #fff; cursor: pointer; }
+      button.rec { background: #dc2626; color: #fff; border-color: #dc2626; }
+      .row { display: flex; gap: .75rem; align-items: center; margin-top: .75rem; flex-wrap: wrap; }
+      .status { font-size: .85rem; color: #6b7280; }
+    </style>
+  </head>
+  <body>
+    <h1>Soniox PoC: nagrania dyktowań</h1>
+    <p class="hint">
+      Czytaj tekst <b>tak, jak w prawdziwej rozmowie</b>: naturalne tempo, możesz się zawahać.
+      Mikrofon jak w pracy (laptop/słuchawki), przeglądarka z domyślną redukcją szumów, jak w produkcji.
+      Plik zapisuje się jako <code>recordings/&lt;id&gt;.wav</code> (16 kHz mono). Nagranie ponownie nadpisuje plik.
+    </p>
+    <div id="list"></div>
+
+    <script>
+      const TARGET_RATE = 16000;
+      let active = null; // { id, ctx, stream, node, buffers, button }
+
+      function encodeWav(samples, rate) {
+        const buf = new ArrayBuffer(44 + samples.length * 2);
+        const v = new DataView(buf);
+        const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+        str(0, "RIFF"); v.setUint32(4, 36 + samples.length * 2, true); str(8, "WAVE");
+        str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+        v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+        str(36, "data"); v.setUint32(40, samples.length * 2, true);
+        for (let i = 0; i < samples.length; i++) {
+          const s = Math.max(-1, Math.min(1, samples[i]));
+          v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        }
+        return new Blob([buf], { type: "audio/wav" });
+      }
+
+      async function start(id, button, status) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
+        const ctx = new AudioContext({ sampleRate: TARGET_RATE });
+        const src = ctx.createMediaStreamSource(stream);
+        const node = ctx.createScriptProcessor(4096, 1, 1);
+        const buffers = [];
+        node.onaudioprocess = (e) => buffers.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+        src.connect(node);
+        node.connect(ctx.destination);
+        active = { id, ctx, stream, node, buffers, button, status, startedAt: Date.now() };
+        button.textContent = "■ Stop";
+        button.classList.add("rec");
+        status.textContent = "nagrywam…";
+      }
+
+      async function stop() {
+        const { id, ctx, stream, node, buffers, button, status, startedAt } = active;
+        active = null;
+        node.disconnect();
+        stream.getTracks().forEach((t) => t.stop());
+        const rate = ctx.sampleRate;
+        await ctx.close();
+        const total = buffers.reduce((n, b) => n + b.length, 0);
+        const samples = new Float32Array(total);
+        let off = 0;
+        for (const b of buffers) { samples.set(b, off); off += b.length; }
+        const blob = encodeWav(samples, rate);
+        button.textContent = "● Nagraj ponownie";
+        button.classList.remove("rec");
+        status.textContent = "zapisuję…";
+        const res = await fetch(`/upload?id=${encodeURIComponent(id)}`, { method: "POST", body: blob });
+        const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+        status.textContent = res.ok ? `zapisano (${secs} s, ${rate} Hz)` : `błąd zapisu: ${res.status}`;
+        if (res.ok) {
+          document.getElementById(id).classList.add("done");
+          const audio = document.querySelector(`#${CSS.escape(id)} audio`);
+          audio.src = URL.createObjectURL(blob);
+          audio.hidden = false;
+        }
+      }
+
+      fetch("/scenarios.json").then((r) => r.json()).then((scenarios) => {
+        const list = document.getElementById("list");
+        for (const sc of scenarios) {
+          const el = document.createElement("div");
+          el.className = "sc";
+          el.id = sc.id;
+          el.innerHTML = `<div class="id"></div><div class="note"></div><div class="script"></div>
+            <div class="row"><button>● Nagraj</button><span class="status"></span><audio controls hidden></audio></div>`;
+          el.querySelector(".id").textContent = sc.id;
+          el.querySelector(".note").textContent = sc.note;
+          el.querySelector(".script").textContent = sc.script;
+          const button = el.querySelector("button");
+          const status = el.querySelector(".status");
+          button.addEventListener("click", async () => {
+            try {
+              if (active && active.id === sc.id) return await stop();
+              if (active) await stop();
+              await start(sc.id, button, status);
+            } catch (err) {
+              status.textContent = `błąd: ${err.message}`;
+            }
+          });
+          list.appendChild(el);
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -119,7 +119,11 @@ export function DateRangePicker({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent
+        className="w-auto max-h-(--radix-popover-content-available-height) overflow-y-auto p-0"
+        align="start"
+        collisionPadding={8}
+      >
         <div className="p-3">
           <Calendar
             mode="single"

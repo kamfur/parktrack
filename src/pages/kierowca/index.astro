@@ -1,0 +1,27 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import DriverLayout from "../../layouts/DriverLayout.astro";
+import { DriverOpsApp } from "../../components/driver/DriverOpsApp";
+
+export const prerender = false;
+
+const user = Astro.locals.user;
+const isDriver = user?.role === "driver";
+---
+
+{
+  isDriver ? (
+    <DriverLayout title="Kierowca — ParkTrack" userEmail={user?.email}>
+      <DriverOpsApp client:load />
+    </DriverLayout>
+  ) : (
+    <Layout title="Kierowca — ParkTrack">
+      <main class="container mx-auto max-w-lg p-6 lg:max-w-6xl">
+        <div class="mb-6">
+          <h1 class="text-4xl font-bold">Kierowca</h1>
+        </div>
+        <DriverOpsApp client:load />
+      </main>
+    </Layout>
+  )
+}

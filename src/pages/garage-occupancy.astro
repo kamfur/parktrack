@@ -1,0 +1,24 @@
+---
+import Layout from "../layouts/Layout.astro";
+import DriverLayout from "../layouts/DriverLayout.astro";
+import { GarageOccupancyView } from "../components/garage/GarageOccupancyView";
+
+export const prerender = false;
+
+const user = Astro.locals.user;
+const isDriver = user?.role === "driver";
+---
+
+{
+  isDriver ? (
+    <DriverLayout title="Obłożenie garaży — ParkTrack" userEmail={user?.email}>
+      <GarageOccupancyView client:load readOnly />
+    </DriverLayout>
+  ) : (
+    <Layout title="Obłożenie garaży - ParkTrack">
+      <div class="p-6">
+        <GarageOccupancyView client:load />
+      </div>
+    </Layout>
+  )
+}

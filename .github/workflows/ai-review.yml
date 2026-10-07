@@ -1,0 +1,59 @@
+name: ai-code-review
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: AI Code Review
+    # Skip fork PRs (no secrets). On `labeled`, only run when ai-cr:review is present.
+    if: |
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (
+        github.event.action != 'labeled' ||
+        contains(join(github.event.pull_request.labels.*.name, ','), 'ai-cr:review')
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute PR diff
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          git fetch origin "$BASE_REF" --depth=1
+          git diff "origin/${BASE_REF}...HEAD" > "${{ runner.temp }}/pr.diff"
+          wc -c "${{ runner.temp }}/pr.diff"
+          if [ ! -s "${{ runner.temp }}/pr.diff" ]; then
+            echo "::warning::Empty diff — nothing to review."
+            echo "empty=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "empty=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run ParkTrack AI reviewer
+        if: steps.diff.outputs.empty != 'true'
+        uses: ./.github/actions/ai-code-review
+        with:
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
+          pr-title: ${{ github.event.pull_request.title }}
+          pr-body: ${{ github.event.pull_request.body || '' }}
+          diff-path: ${{ runner.temp }}/pr.diff
+          fail-on-fail: "true"
+          model: google/gemini-2.5-flash

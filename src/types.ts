@@ -1,4 +1,40 @@
 import type { Tables, TablesInsert, TablesUpdate, Database } from "./db/database.types";
+import type {
+  QuickReservationFormData,
+  FullReservationFormData,
+  EditReservationFormData,
+  ChangeReturnDateFormData,
+} from "./lib/schemas/reservation.schema";
+import type { AppRole } from "./lib/auth/resolve-app-role";
+import type { ParkingType } from "./lib/pricing/parking-type";
+import type { PriceListRates } from "./lib/pricing/price-list";
+import type { SavePriceListCommand } from "./lib/schemas/price-list.schema";
+import type { SaveTravelAgencyCommand, SaveTravelAgencyInput } from "./lib/schemas/travel-agency.schema";
+import type { VoiceFieldKey } from "./lib/voice/merge";
+import type { ParsedVoiceFields } from "./lib/voice/types";
+import type {
+  CalendarRangeQuery,
+  DriverShiftFormData,
+  DriverShiftWrite,
+  ShiftRangeQuery,
+} from "./lib/schemas/calendar.schema";
+
+export type {
+  QuickReservationFormData,
+  FullReservationFormData,
+  EditReservationFormData,
+  ChangeReturnDateFormData,
+  AppRole,
+  CalendarRangeQuery,
+  DriverShiftFormData,
+  DriverShiftWrite,
+  ShiftRangeQuery,
+  ParkingType,
+  PriceListRates,
+  SavePriceListCommand,
+  SaveTravelAgencyCommand,
+  SaveTravelAgencyInput,
+};
 
 // ############################################################################
 //
@@ -24,6 +60,134 @@ export type Reservation = Tables<"reservations">;
  */
 export type ReservationDto = Reservation;
 
+export interface KtwArrivalHourDto {
+  scheduled_at: string;
+  origin_label: string;
+  /** Official board status (current time or delay); omit when the board left it blank. */
+  status?: string;
+}
+
+/** Departure list row: reservation fields plus optional in-memory KTW hours (not a DB column). */
+export interface DepartureListItem extends ReservationDto {
+  ktw_arrival_hours?: KtwArrivalHourDto[];
+  /** Assigned garage/carport spot name, resolved client-side for garage reservations (not a DB column). */
+  garage_spot_name?: string | null;
+}
+
+export type DriverShiftDto = Tables<"driver_shifts">;
+
+/** A staff-configured garage/carport unit. Single/double is a capacity label, not a sub-spot hierarchy. */
+export type GarageSpotDto = Tables<"garage_spots">;
+
+/**
+ * Price list for a validity period; `rates` holds one row per parking type.
+ */
+export interface PriceListDto {
+  id: string;
+  /** YYYY-MM-DD */
+  valid_from: string;
+  /** YYYY-MM-DD, null = open-ended */
+  valid_to: string | null;
+  created_at: string;
+  updated_at: string;
+  rates: PriceListRates;
+}
+
+/** Travel agency billed monthly for its clients; `archived_at` set = hidden from reservation pickers. */
+export type TravelAgencyDto = Tables<"travel_agencies">;
+
+/**
+ * How a reservation counts for the agency's billing month:
+ * invoiceable (arrived) · blocking (arrival not confirmed) · excluded (cancelled / no-show) · invoiced.
+ */
+export type AgencyMonthCategory = "invoiceable" | "blocking" | "excluded" | "invoiced";
+
+/** Row of `agency_month_summary` (net/VAT/gross null for blocking and excluded rows). */
+export interface AgencyMonthRowDto {
+  reservation_id: string;
+  last_name: string;
+  first_name: string | null;
+  license_plate: string | null;
+  planned_check_in: string;
+  planned_check_out: string;
+  status: ReservationStatus;
+  actual_check_in: string | null;
+  actual_check_out: string | null;
+  parking_type: string;
+  total_cost: number;
+  category: AgencyMonthCategory;
+  invoice_id: string | null;
+  invoice_number: string | null;
+  net_amount: number | null;
+  vat_amount: number | null;
+  gross_amount: number | null;
+}
+
+export interface AgencyMonthSummaryDto {
+  /** `YYYY-MM` */
+  month: string;
+  rows: AgencyMonthRowDto[];
+  /** Amount to invoice (invoiceable rows only) */
+  totals: { net: number; vat: number; gross: number };
+  counts: Record<AgencyMonthCategory, number>;
+  /** The Warsaw month has ended — invoicing is possible */
+  monthClosed: boolean;
+  /** The agency's invoice for this month, if already issued */
+  invoice: { id: string; invoice_number: string } | null;
+}
+
+/** A reservation-to-garage-spot assignment; `superseded_at: null` means it is the currently active one. */
+export type GarageAssignmentDto = Tables<"garage_assignments">;
+
+/** Descriptive (non-applied) downtime-reduction suggestion for a garage spot. */
+export interface GarageOptimizationSuggestionDto {
+  garageSpotId: string;
+  description: string;
+}
+
+/** One active garage assignment, denormalized for the occupancy view. */
+export interface GarageOccupancyEntryDto {
+  assignmentId: string;
+  garageSpotId: string;
+  garageSpotName: string;
+  reservationId: string;
+  lastName: string;
+  plannedCheckIn: string;
+  plannedCheckOut: string;
+}
+
+export interface CalendarEventDto {
+  kind: "arrival" | "departure";
+  at: string;
+  reservationId: string;
+  firstName: string | null;
+  lastName: string;
+  licensePlate: string | null;
+  status: "confirmed" | "in_progress" | "completed";
+  handled: boolean;
+  parkingType: ParkingType;
+  /** Free-text flight direction (e.g. "Londyn, LO 392"); shown on departure chips. */
+  flightDirection: string | null;
+  /** Client left the car keys at arrival; shown on arrival and departure chips. */
+  keysLeft: boolean;
+  /** Staff notes of the reservation, shown on the chip. */
+  notes: string | null;
+  /** Assigned garage/carport spot name, resolved client-side (not part of the API response). */
+  garageSpotName?: string | null;
+}
+
+export interface CalendarMonthDayDto {
+  date: string;
+  arrivals: number;
+  departures: number;
+  occupancy: number;
+}
+
+export interface CalendarDriverDto {
+  id: string;
+  email: string;
+}
+
 /**
  * DTO for the successful creation of a reservation via the external API.
  */
@@ -43,27 +207,53 @@ export interface CreateExternalReservationResponseDto {
  * It selects a subset of fields from the database insert type that are
  * expected from the client, as other fields like `created_by` are set server-side.
  */
-export type CreateReservationCommand = Pick<
-  TablesInsert<"reservations">,
-  | "last_name"
-  | "planned_check_in"
-  | "planned_check_out"
-  | "source"
-  | "total_cost"
-  | "email"
-  | "first_name"
-  | "phone"
-  | "flight_direction"
-  | "license_plate"
-  | "notes"
->;
+export type CreateReservationCommand = Omit<
+  Pick<
+    TablesInsert<"reservations">,
+    | "last_name"
+    | "planned_check_in"
+    | "planned_check_out"
+    | "source"
+    | "email"
+    | "first_name"
+    | "phone"
+    | "flight_direction"
+    | "license_plate"
+    | "notes"
+    | "parking_type"
+    | "travel_agency_id"
+    | "vehicle_count"
+    | "extra_license_plates"
+  >,
+  never
+> & {
+  /** Optional — server calculates when omitted */
+  total_cost?: number;
+  /** Chosen garage/carport spot (covered types); omitted = auto-assign. Not a reservations column. */
+  garage_spot_id?: string;
+};
+
+/**
+ * Command model for creating a garage/carport spot (configurator).
+ */
+export type CreateGarageSpotCommand = Pick<TablesInsert<"garage_spots">, "name" | "spot_type" | "capacity_label"> & {
+  is_available?: boolean;
+};
+
+/**
+ * Command model for updating a garage/carport spot (partial update).
+ */
+export type UpdateGarageSpotCommand = TablesUpdate<"garage_spots">;
 
 /**
  * Command model for updating an existing reservation.
  * It uses the auto-generated `TablesUpdate` type, where all fields are optional,
  * allowing for partial updates.
  */
-export type UpdateReservationCommand = TablesUpdate<"reservations">;
+export type UpdateReservationCommand = TablesUpdate<"reservations"> & {
+  /** Move to this garage/carport spot — handled via garage_assignments, not a reservations column. */
+  garage_spot_id?: string;
+};
 /**
  * Command model for creating a reservation from an external source (e.g., public website).
  * Note the use of camelCase to match the external API's contract.
@@ -74,7 +264,7 @@ export interface CreateExternalReservationCommand {
   firstName: string;
   email: string;
   phone: string;
-  licensePlate: string;
+  licensePlate?: string;
   checkInDate: string;
   checkOutDate: string;
 }
@@ -94,7 +284,79 @@ export interface StatsData {
   freeSpots: number;
   totalSpots: number;
   revenue: number;
+  /** Nie-anulowane rezerwacje utworzone w okresie */
+  reservationsCount: number;
+  /** Miejsca garażowe zajęte teraz (aktywny przydział + auto na parkingu) */
+  garageOccupiedSpots: number;
+  /** Dostępne miejsca garażowe */
+  garageTotalSpots: number;
+  garageOccupancyPct: number;
   period: StatsPeriod;
+}
+
+export type AnalyticsGranularity = "day" | "month";
+
+export interface AnalyticsRevenuePoint {
+  /** Klucz kubełka: YYYY-MM-DD (dzień) lub YYYY-MM (miesiąc) */
+  bucket: string;
+  revenue: number;
+}
+
+export interface AnalyticsOccupancyPoint {
+  bucket: string;
+  /** Średnia liczba zajętych miejsc w kubełku */
+  occupied: number;
+  occupancyPct: number;
+  /** true, gdy kubełek leży w przyszłości (prognoza z rezerwacji potwierdzonych) */
+  forecast: boolean;
+}
+
+export interface AnalyticsBreakdownItem {
+  key: string;
+  count: number;
+}
+
+export interface AnalyticsAgencyItem {
+  id: string;
+  name: string;
+  stays: number;
+  revenue: number;
+}
+
+/** Odpowiedź /api/stats/analytics dla strony /statystyki. */
+export interface AnalyticsData {
+  range: { from: string; to: string; granularity: AnalyticsGranularity };
+  revenue: {
+    total: number;
+    previousTotal: number;
+    /** null, gdy poprzedni okres miał zerowy przychód */
+    changePct: number | null;
+    avgPerReservation: number;
+    avgPerDay: number;
+    series: AnalyticsRevenuePoint[];
+  };
+  occupancy: {
+    totalSpots: number;
+    peakPct: number;
+    series: AnalyticsOccupancyPoint[];
+  };
+  quality: {
+    /** Rezerwacje z planowanym przyjazdem w zakresie (wszystkie statusy) */
+    total: number;
+    cancelled: number;
+    noShow: number;
+    cancelledPct: number;
+    noShowPct: number;
+  };
+  /** Zakończone pobyty klientów indywidualnych z przyjazdem w zakresie, nadal nieopłacone */
+  receivables: { count: number; amount: number };
+  topAgencies: AnalyticsAgencyItem[];
+  breakdown: {
+    parkingType: AnalyticsBreakdownItem[];
+    source: AnalyticsBreakdownItem[];
+    customerType: AnalyticsBreakdownItem[];
+    stayLength: AnalyticsBreakdownItem[];
+  };
 }
 
 /**
@@ -119,10 +381,14 @@ export interface DashboardMetrics {
 export interface DashboardData {
   /** Metryki dashboardu */
   metrics: DashboardMetrics;
-  /** Lista rezerwacji z zaplanowanym check-in na dziś */
+  /** Przyjazdy na dziś (Warsaw) oraz zaległe, jeszcze nieprzyjęte */
   todaysArrivals: ReservationDto[];
-  /** Lista rezerwacji z zaplanowanym check-out na dziś */
-  todaysDepartures: ReservationDto[];
+  /** Wyjazdy na dziś (Warsaw) oraz opóźnione powroty bez check-out */
+  todaysDepartures: DepartureListItem[];
+  /** Przyjęte auta: dziś (Warsaw) lub w ostatnich 12h — jak "Obsłużone" w panelu kierowcy */
+  handledArrivals: DepartureListItem[];
+  /** Wydane auta: dziś (Warsaw) lub w ostatnich 12h */
+  handledDepartures: DepartureListItem[];
   /** Statystyki z endpointu /api/stats */
   stats: StatsData | null;
 }
@@ -178,7 +444,7 @@ export interface MetricCardProps {
   /** Etykieta opisowa */
   label: string;
   /** Kolor akcentu dla border-left */
-  accentColor: "green" | "blue" | "orange" | "purple";
+  accentColor: "green" | "blue" | "orange" | "purple" | "teal" | "indigo";
   /** Czy karta jest w stanie ładowania */
   isLoading?: boolean;
   /** Opcjonalny podtytuł wyświetlany pod wartością */
@@ -190,11 +456,15 @@ export interface MetricCardProps {
  */
 export interface ReservationCardProps {
   /** Obiekt rezerwacji do wyświetlenia */
-  reservation: ReservationDto;
+  reservation: DepartureListItem;
   /** Typ akcji dostępnej na karcie */
   actionType: "check-in" | "check-out";
-  /** Callback wywoływany po kliknięciu przycisku akcji */
-  onAction: (reservationId: string) => Promise<void>;
+  /** Callback otwierający formularz przyjęcia / wyjazdu */
+  onAction: (reservation: ReservationDto) => void;
+  /** Anulowanie rezerwacji z listy przyjazdów */
+  onCancel?: (reservation: ReservationDto) => void;
+  /** Zmiana planowanej daty powrotu z listy wyjazdów */
+  onChangeReturnDate?: (reservation: ReservationDto) => void;
   /** Czy akcja jest w trakcie wykonywania */
   isLoading?: boolean;
 }
@@ -345,30 +615,9 @@ export interface ReservationCardViewModel {
 // ############################################################################
 //
 // NEW RESERVATION MODAL TYPES
+// (QuickReservationFormData / FullReservationFormData — re-exported at top from Zod schemas)
 //
 // ############################################################################
-
-/**
- * ViewModel dla formularza Quick Mode
- */
-export interface QuickReservationFormData {
-  lastName: string;
-  checkInDate: Date;
-  checkOutDate: Date;
-}
-
-/**
- * ViewModel dla formularza Full Mode
- * Rozszerza QuickReservationFormData o dodatkowe pola
- */
-export interface FullReservationFormData extends QuickReservationFormData {
-  firstName: string;
-  email: string;
-  phone: string;
-  licensePlate: string;
-  flightDirection: "departure" | "arrival" | null;
-  notes: string;
-}
 
 /**
  * Props dla komponentu NewReservationModal
@@ -402,6 +651,11 @@ export interface QuickReservationFormProps {
   onSubmit: (data: QuickReservationFormData) => Promise<void>;
   /** Callback przełączenia do trybu Full z danymi z Quick Mode */
   onSwitchToFull: (data: QuickReservationFormData) => void;
+  /** Dyktowanie: przełącza do trybu Full z bieżącymi danymi i listą pól zmienionych ręcznie */
+  onStartVoice?: (
+    data: Partial<QuickReservationFormData>,
+    manualFields: readonly ("lastName" | "checkIn" | "checkOut")[]
+  ) => void;
   /** Czy formularz jest w trakcie wysyłania */
   isSubmitting: boolean;
 }
@@ -416,7 +670,25 @@ export interface FullReservationFormProps {
   onSubmit: (data: FullReservationFormData) => Promise<void>;
   /** Callback powrotu do trybu Quick */
   onSwitchToQuick: () => void;
+  /** Dyktowanie: rozpoznane pola i pola już wpisane ręcznie (nie nadpisywane głosem) */
+  voice?: {
+    parsed: ParsedVoiceFields;
+    initialManual?: readonly VoiceFieldKey[];
+  };
   /** Czy formularz jest w trakcie wysyłania */
+  isSubmitting: boolean;
+}
+
+/**
+ * Props dla EditReservationForm
+ */
+export interface EditReservationFormProps {
+  reservation: ReservationDto;
+  editRules: ConditionalEditRules;
+  /** Currently assigned garage/carport spot, preselected in the spot picker. */
+  currentGarageSpotId?: string | null;
+  onSubmit: (data: EditReservationFormData) => Promise<void>;
+  onCancel: () => void;
   isSubmitting: boolean;
 }
 
@@ -428,6 +700,12 @@ export interface CostPreviewProps {
   checkInDate: Date | null;
   /** Data wyjazdu */
   checkOutDate: Date | null;
+  /** Typ miejsca — wybiera wiersz cennika (domyślnie parking) */
+  parkingType?: ParkingType;
+  /** Biuro podróży — cena po jego rabacie, płaci biuro */
+  travelAgencyId?: string | null;
+  /** Liczba aut — cena = cena za auto × liczba aut (domyślnie 1) */
+  vehicleCount?: number;
   /** Czy koszt jest w trakcie obliczania */
   isCalculating: boolean;
 }
@@ -466,6 +744,10 @@ export interface CostCalculationResponse {
   days: number;
   /** Koszt za dzień */
   costPerDay: number;
+  /** Cena z cennika przed rabatem biura */
+  baseCost: number;
+  /** Rabat biura podróży w % (0 bez biura) */
+  discountPct: number;
 }
 
 /**
@@ -488,6 +770,10 @@ export interface UseAvailabilityCheckResult {
 export interface UseCostCalculationResult {
   /** Obliczony koszt (null jeśli nie obliczano) */
   estimatedCost: number | null;
+  /** Cena z cennika przed rabatem biura (null jeśli nie obliczano) */
+  baseCost: number | null;
+  /** Rabat biura w % (0 bez biura) */
+  discountPct: number;
   /** Liczba dni */
   days: number;
   /** Czy obliczanie jest w trakcie */
@@ -514,6 +800,8 @@ export interface ReservationDetailsViewProps {
   onClose: () => void;
   /** Callback po aktualizacji rezerwacji */
   onUpdate?: (reservation: ReservationDto) => void;
+  /** Otwórz od razu w trybie edycji (np. z listy rezerwacji) */
+  initialEditMode?: boolean;
 }
 
 /**
@@ -611,11 +899,15 @@ export interface ReservationDetailsViewModel {
   /** Liczba dni */
   days: number;
   /** Kierunek lotu */
-  flightDirection: "departure" | "arrival" | null;
+  flightDirection: string | null;
   /** Label kierunku lotu */
   flightDirectionLabel: string | null;
   /** Ikona kierunku lotu */
   flightDirectionIcon: string | null;
+  /** Nazwa przydzielonego miejsca garażowego (null dla zwykłych miejsc parkingowych) */
+  garageSpotLabel: string | null;
+  /** Ikona oznaczająca przydział garażowy */
+  garageSpotIcon: string | null;
   /** Dane finansowe */
   financial: FinancialInfoViewModel;
   /** Notatki */
@@ -645,6 +937,16 @@ export interface ConditionalEditRules {
   canEditVehicleInfo: boolean;
   /** Czy można edytować notatki */
   canEditNotes: boolean;
+  /** Czy można zmienić biuro podróży (płatnika) */
+  canEditTravelAgency: boolean;
+  /** Czy można zmienić typ miejsca (parking / wiata / garaż) — w każdym statusie, poza fakturą */
+  canEditParkingType: boolean;
+  /** Czy można zmienić „Zostawił kluczyki” — tylko gdy auto stoi na parkingu (in_progress) */
+  canEditKeysLeft: boolean;
+  /** Czy można zmienić „Opłacono przy przyjeździe/wyjeździe” (nie dla biur podróży) */
+  canEditPayment: boolean;
+  /** Numer faktury, na której jest rezerwacja — pola rozliczeniowe są wtedy zablokowane */
+  lockedByInvoiceNumber: string | null;
 }
 
 /**
@@ -664,6 +966,10 @@ export interface PersonalInfoCardProps {
   email: string | null;
   phone: string | null;
   licensePlate: string | null;
+  /** Numery aut 2..N */
+  extraLicensePlates?: string[];
+  /** Liczba aut w rezerwacji (domyślnie 1) */
+  vehicleCount?: number;
 }
 
 /**
@@ -672,7 +978,10 @@ export interface PersonalInfoCardProps {
 export interface ReservationDetailsCardProps {
   plannedCheckIn: string;
   plannedCheckOut: string;
-  flightDirection: "departure" | "arrival" | null;
+  flightDirection: string | null;
+  garageSpotLabel?: string | null;
+  /** Klient zostawił kluczyki — widoczne, gdy auto jest przyjęte */
+  keysLeft?: boolean;
 }
 
 /**
@@ -683,6 +992,10 @@ export interface FinancialSectionProps {
   isPaid: boolean;
   paymentMethod: "cash" | "card" | "transfer" | null;
   source: ReservationSource;
+  /** Paying travel agency (name), when the stay is billed to an agency */
+  travelAgencyName?: string | null;
+  /** Agency discount snapshot in % */
+  agencyDiscountPct?: number | null;
 }
 
 /**
@@ -720,8 +1033,14 @@ export interface ActionFooterProps {
   onCheckOut: () => void;
   onEdit: () => void;
   onCancel: () => void;
+  /** Marks a confirmed reservation as no-show (client never arrived) */
+  onNoShow: () => void;
+  /** Reverts a cancelled reservation back to confirmed (re-assigning a free garage spot if needed) */
+  onRestore: () => void;
   isProcessing: boolean;
   existingInvoiceId: string | null;
+  /** Agency reservations are billed on the agency's monthly invoice, never individually */
+  isAgencyReservation: boolean;
 }
 
 // ############################################################################
@@ -733,6 +1052,7 @@ export interface ActionFooterProps {
 export interface AuthUserDTO {
   id: string;
   email: string;
+  role: AppRole;
 }
 
 export interface LoginCommand {
@@ -762,9 +1082,14 @@ export interface ResetPasswordCommand {
 //
 // ############################################################################
 
+/**
+ * Pozycja faktury — snapshot rezerwacji z chwili wystawienia.
+ * net_amount / vat_amount są null na fakturach sprzed rozbicia VAT (legacy).
+ */
+export type InvoiceItemDto = Tables<"invoice_items">;
+
 export interface InvoiceDto {
   id: string;
-  reservation_id: string;
   invoice_number: string;
   invoice_year: number;
   invoice_month: number;
@@ -777,11 +1102,59 @@ export interface InvoiceDto {
   buyer_nip: string;
   buyer_address: string;
   buyer_email: string | null;
+  /** Kwota brutto (suma pozycji) */
   total_amount: number;
-  days_count: number;
-  daily_rate_snapshot: number;
+  total_net: number | null;
+  total_vat: number | null;
+  /** Stawka VAT w %; null = faktura legacy (tylko brutto) */
+  vat_rate: number | null;
+  issue_date: string;
+  sale_date: string | null;
+  payment_due_date: string | null;
+  travel_agency_id: string | null;
+  billing_year: number | null;
+  billing_month: number | null;
   created_at: string;
   created_by: string;
+  /** Pozycje w kolejności `position` */
+  items: InvoiceItemDto[];
+}
+
+/**
+ * Dozwolone kolumny do sortowania listy faktur
+ */
+export type InvoiceSortableColumn = "created_at" | "invoice_number" | "buyer_name" | "total_amount";
+
+/**
+ * Parametry zapytania o listę faktur
+ */
+export interface InvoicesQueryParams {
+  /** Wyszukiwanie po numerze faktury lub nabywcy */
+  search: string;
+  /** Kolumna sortowania */
+  sortBy: InvoiceSortableColumn;
+  /** Kierunek sortowania */
+  sortOrder: "asc" | "desc";
+  /** Numer strony (1-based) */
+  page: number;
+  /** Liczba wyników na stronę */
+  limit: number;
+}
+
+/**
+ * Odpowiedź API z listą faktur
+ */
+export interface InvoicesListResponse {
+  /** Lista faktur */
+  data: InvoiceDto[];
+  /** Całkowita liczba wyników (przed paginacją) */
+  total: number;
+  /** Numer strony */
+  page: number;
+  /** Liczba wyników na stronę */
+  limit: number;
+  /** Całkowita liczba stron */
+  totalPages: number;
 }
 
 export interface CreateInvoiceCommand {
