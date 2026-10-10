@@ -140,7 +140,16 @@ export function ReservationDetailsView({
       payload.garage_spot_id = data.garageSpotId;
     }
 
-    // total_cost is re-priced by the DB trigger (price list + parking type) when dates or type change.
+    // total_cost is re-priced by the DB trigger (price list + parking type) when dates or type change —
+    // unless staff agreed a price with the client (price_overridden), which stays until it is cleared.
+    if (editRules.canEditPrice && !(data.travelAgencyId || null)) {
+      const agreed = data.totalCost ?? null;
+      if (agreed !== null) {
+        if (!reservation.price_overridden || agreed !== Number(reservation.total_cost)) payload.total_cost = agreed;
+      } else if (reservation.price_overridden) {
+        payload.price_overridden = false;
+      }
+    }
 
     try {
       await updateReservation(payload);
@@ -341,6 +350,7 @@ export function ReservationDetailsView({
           {reservation && (
             <>
               <DriverArrivalDialog
+                canSetPrice
                 reservation={showCheckInModal ? reservation : null}
                 open={showCheckInModal}
                 onOpenChange={(open) => {

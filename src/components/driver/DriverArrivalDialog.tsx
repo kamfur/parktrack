@@ -25,10 +25,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Banknote, KeyRound, Loader2 } from "lucide-react";
 import { useCheckoutQuote, useNewStayQuote } from "@/hooks/useCheckoutQuote";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
+import { ManualPriceInput } from "@/components/reservations/ManualPriceInput";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
 import { GarageSpotSelect } from "@/components/reservations/GarageSpotSelect";
 import {
@@ -42,6 +44,8 @@ interface CommonProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isProcessing: boolean;
+  /** Staff may agree a price with the client at arrival; drivers never see the field (the API rejects it too). */
+  canSetPrice?: boolean;
 }
 
 /** Accepting a booked reservation from the arrivals list. */
@@ -66,6 +70,8 @@ type ArrivalFormValues = DriverArrivalFormData & {
   parking_type: ParkingType;
   /** Walk-in garage/carport spot; "" = auto-assign the first free one. */
   garage_spot_id: string;
+  /** Price agreed with the client (whole reservation); null = leave the current price. */
+  total_cost: number | null;
 };
 
 /** Walk-in validation issues shown under their field; anything else goes to the form-level error. */
@@ -86,6 +92,7 @@ function emptyValues(): ArrivalFormValues {
     phone: "",
     parking_type: "open_air",
     garage_spot_id: "",
+    total_cost: null,
     planned_check_out: "",
     flight_direction: "",
     passenger_count: null,
@@ -95,11 +102,12 @@ function emptyValues(): ArrivalFormValues {
     extra_license_plates: [],
     paid_at_arrival: true,
     keys_left: false,
+    notes: "",
   };
 }
 
 export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
-  const { open, onOpenChange, isProcessing } = props;
+  const { open, onOpenChange, isProcessing, canSetPrice = false } = props;
   const walkIn = props.mode === "walk-in";
   const reservation = props.mode === "walk-in" ? null : props.reservation;
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -129,6 +137,8 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
         extra_license_plates: platesForInputs(reservation, reservation.vehicle_count ?? 1).slice(1),
         paid_at_arrival: true,
         keys_left: reservation.keys_left ?? false,
+        notes: reservation.notes ?? "",
+        total_cost: reservation.price_overridden ? Number(reservation.total_cost) : null,
       });
     }
     setSubmitError(null);
@@ -147,7 +157,9 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
   );
   const parkingType = form.watch("parking_type");
   const walkInQuote = useNewStayQuote(open && walkIn ? openedAtIso : null, checkoutIso, parkingType, vehicleCount);
-  const quote = walkIn ? walkInQuote : reservationQuote;
+  const baseQuote = walkIn ? walkInQuote : reservationQuote;
+  const agreedPrice = canSetPrice && !agencyPaid ? (form.watch("total_cost") ?? null) : null;
+  const quote = agreedPrice != null ? { ...baseQuote, totalCost: agreedPrice } : baseQuote;
 
   // One plate input per extra car; existing entries survive a count change.
   const changeVehicleCount = (next: number) => {
@@ -203,6 +215,8 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
         passenger_count: data.passenger_count ?? null,
         paid_at_arrival: data.paid_at_arrival,
         keys_left: data.keys_left,
+        notes: data.notes?.trim() || undefined,
+        ...(canSetPrice && data.total_cost != null ? { total_cost: data.total_cost } : {}),
       });
       if (!parsed.success) {
         const issue = parsed.error.issues[0];
@@ -226,6 +240,8 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
         ...(agencyPaid ? {} : { paid_at_arrival: data.paid_at_arrival }),
         passenger_count: data.passenger_count ?? null,
         keys_left: data.keys_left,
+        notes: data.notes?.trim() ? data.notes.trim() : null,
+        ...(canSetPrice && !agencyPaid && data.total_cost != null ? { total_cost: data.total_cost } : {}),
         extra_license_plates: extraPlates,
         ...trimmed,
       };
@@ -485,6 +501,28 @@ export function DriverArrivalDialog(props: DriverArrivalDialogProps) {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className={FIELD_FULL}>
+                    <FormLabel>Notatka</FormLabel>
+                    <FormControl>
+                      <Textarea className="min-h-20" maxLength={1000} {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {canSetPrice && !agencyPaid ? (
+                <div className="col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="total_cost"
+                    render={({ field }) => <ManualPriceInput value={field.value} onChange={field.onChange} />}
+                  />
+                </div>
+              ) : null}
               {agencyPaid ? (
                 <p className="col-span-2 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
                   Biuro podróży – opłacone. Nie pobieraj płatności od klienta.

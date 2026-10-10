@@ -12,6 +12,7 @@ import { PARKING_TYPES, PARKING_TYPE_LABELS } from "@/lib/pricing/parking-type";
 import { DateTimePicker } from "@/components/shared/DateTimePicker";
 import { VehicleCountInput } from "@/components/shared/VehicleCountInput";
 import { CostPreview } from "./CostPreview";
+import { ManualPriceInput } from "./ManualPriceInput";
 import { AvailabilityIndicator } from "./AvailabilityIndicator";
 import { FlightDirectionInput } from "./FlightDirectionInput";
 import { TravelAgencySelect } from "./TravelAgencySelect";
@@ -57,10 +58,12 @@ export function FullReservationForm({
       parkingType: initialData?.parkingType ?? "open_air",
       garageSpotId: initialData?.garageSpotId ?? "",
       travelAgencyId: initialData?.travelAgencyId ?? "",
+      totalCost: initialData?.totalCost ?? null,
     },
   });
 
-  const { checkInDate, checkOutDate, notes, parkingType, travelAgencyId, licensePlate, vehicleCount } = form.watch();
+  const { checkInDate, checkOutDate, notes, parkingType, travelAgencyId, licensePlate, vehicleCount, totalCost } =
+    form.watch();
   const { isAvailable, isChecking } = useAvailabilityCheck(checkInDate, checkOutDate);
 
   // Dictation: write planned voice updates; fields the user edits are marked manual in onChange.
@@ -487,6 +490,15 @@ export function FullReservationForm({
           />
         </div>
 
+        {/* Agreed price — an agency stay is always priced from the list minus the agency discount */}
+        {travelAgencyId ? null : (
+          <FormField
+            control={form.control}
+            name="totalCost"
+            render={({ field }) => <ManualPriceInput value={field.value} onChange={field.onChange} />}
+          />
+        )}
+
         {/* Cost Preview */}
         <CostPreview
           checkInDate={checkInDate}
@@ -495,6 +507,7 @@ export function FullReservationForm({
           travelAgencyId={travelAgencyId || null}
           vehicleCount={vehicleCount}
           isCalculating={false}
+          manualPrice={travelAgencyId ? null : totalCost}
         />
 
         {/* Availability Indicator */}

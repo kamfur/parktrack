@@ -41,15 +41,18 @@ describe("driverCreateReservationSchema", () => {
     planned_check_out: "2026-09-15T10:00:00.000Z",
   };
 
-  it("defaults to open-air parking and strips price/agency fields", () => {
+  it("defaults to open-air parking and strips agency fields", () => {
     const parsed = driverCreateReservationSchema.parse({
       ...base,
-      total_cost: 1,
       travel_agency_id: "11111111-1111-4111-8111-111111111111",
     });
     expect(parsed.parking_type).toBe("open_air");
-    expect(parsed).not.toHaveProperty("total_cost");
     expect(parsed).not.toHaveProperty("travel_agency_id");
+  });
+
+  it("accepts an agreed price (staff only — the route rejects it for drivers) and rejects non-positive ones", () => {
+    expect(driverCreateReservationSchema.parse({ ...base, total_cost: 150 }).total_cost).toBe(150);
+    expect(driverCreateReservationSchema.safeParse({ ...base, total_cost: 0 }).success).toBe(false);
   });
 
   it("rejects a return not after the arrival and a blank last name", () => {

@@ -13,6 +13,7 @@ export function CostPreview({
   travelAgencyId = null,
   vehicleCount = 1,
   isCalculating: externalIsCalculating,
+  manualPrice = null,
 }: CostPreviewProps) {
   const {
     estimatedCost,
@@ -78,6 +79,16 @@ export function CostPreview({
           <strong className="text-base font-semibold text-neutral-900">{formatPln(estimatedCost)}</strong>
         </div>
         <p className="text-xs text-neutral-500">Klient nie płaci na parkingu — rezerwacja jest opłacona przez biuro.</p>
+      </div>
+    );
+  }
+
+  if (manualPrice != null) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-md border border-violet-200 bg-violet-50 p-3">
+        <span className="text-sm text-neutral-600">Cena ustalona:</span>
+        <strong className="text-base font-semibold text-neutral-900">{formatPln(manualPrice)}</strong>
+        <span className="text-xs text-neutral-500">(cennik: {formatPln(estimatedCost)})</span>
       </div>
     );
   }

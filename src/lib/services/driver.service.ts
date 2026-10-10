@@ -179,8 +179,13 @@ export class DriverService {
       parking_sector: validated.parking_sector === undefined ? current.parking_sector : validated.parking_sector,
       license_plate: validated.license_plate === undefined ? current.license_plate : validated.license_plate,
       keys_left: validated.keys_left ?? current.keys_left ?? false,
+      notes: validated.notes === undefined ? current.notes : validated.notes,
       paid_at_arrival: paidAtArrival,
       is_paid: syncIsPaid(paidAtArrival, paidAtDeparture),
+      // Price agreed with the client (staff only — the route rejects it for drivers); agency stays stay list-priced.
+      ...(validated.total_cost !== undefined && current.travel_agency_id == null
+        ? { total_cost: validated.total_cost, price_overridden: true }
+        : {}),
     };
 
     return this.applyUpdate(id, withoutPaymentForAgency(current, updateData));
@@ -224,6 +229,9 @@ export class DriverService {
     // The count can be corrected only while the arrival is being recorded (RLS blocks it later).
     const vehicleCount = (arrivesNow ? vehicleCountOverride : undefined) ?? current.vehicle_count ?? 1;
     const countChanged = vehicleCount !== (current.vehicle_count ?? 1);
+
+    // A price agreed by staff is never re-priced (trigger skips it), whatever the dates.
+    if (current.price_overridden) return Number(current.total_cost);
 
     if (
       Date.parse(checkOutIso) === Date.parse(current.planned_check_out) &&

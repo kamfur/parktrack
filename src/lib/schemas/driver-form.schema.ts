@@ -13,6 +13,7 @@ export const driverArrivalFormSchema = z.object({
   extra_license_plates: z.array(z.string().max(15)).optional(),
   paid_at_arrival: z.boolean(),
   keys_left: z.boolean(),
+  notes: z.string().max(1000).optional(),
 });
 
 export type DriverArrivalFormData = z.infer<typeof driverArrivalFormSchema>;

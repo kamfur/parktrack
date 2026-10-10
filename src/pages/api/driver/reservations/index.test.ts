@@ -15,7 +15,7 @@ vi.mock("../../../../lib/services/reservation.service", async (importOriginal) =
 const { POST } = await import("./index");
 const { NoPriceListError } = await import("../../../../lib/services/reservation.service");
 
-function makeCtx(body: unknown, user: { id: string } | null = { id: "driver-1" }) {
+function makeCtx(body: unknown, user: { id: string; role?: string } | null = { id: "driver-1", role: "driver" }) {
   return {
     request: new Request("http://localhost/api/driver/reservations", {
       method: "POST",
@@ -40,15 +40,25 @@ describe("POST /api/driver/reservations", () => {
     expect((await POST(makeCtx(VALID, null))).status).toBe(401);
   });
 
-  it("creates a walk-in reservation audited as the driver, ignoring price fields", async () => {
+  it("creates a walk-in reservation audited as the driver", async () => {
     createReservation.mockResolvedValue({ id: "r1" });
-    const res = await POST(makeCtx({ ...VALID, total_cost: 1 }));
+    const res = await POST(makeCtx(VALID));
     expect(res.status).toBe(201);
     expect(createReservation).toHaveBeenCalledWith(
       expect.objectContaining({ last_name: "Kowalski", source: "walk_in", parking_type: "open_air" }),
       "driver-1"
     );
     expect(createReservation.mock.calls[0][0]).not.toHaveProperty("total_cost");
+  });
+
+  it("rejects an agreed price from a driver but passes it through for staff", async () => {
+    createReservation.mockResolvedValue({ id: "r1" });
+    expect((await POST(makeCtx({ ...VALID, total_cost: 1 }))).status).toBe(403);
+    expect(createReservation).not.toHaveBeenCalled();
+
+    const res = await POST(makeCtx({ ...VALID, total_cost: 120 }, { id: "staff-1", role: "staff" }));
+    expect(res.status).toBe(201);
+    expect(createReservation.mock.calls[0][0]).toMatchObject({ total_cost: 120 });
   });
 
   it("returns 400 for an invalid payload", async () => {

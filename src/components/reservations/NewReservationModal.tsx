@@ -73,7 +73,9 @@ export function NewReservationModal({ isOpen, onClose, onSuccess, defaultMode = 
       travel_agency_id: data.travelAgencyId || null,
     };
 
-    // total_cost omitted — the server prices it from the price list row for the parking type
+    // total_cost only when staff agreed a price with the client; otherwise the server prices it from the
+    // price list row for the parking type. Agency stays are always priced by the DB.
+    if (data.totalCost != null && !data.travelAgencyId) command.total_cost = data.totalCost;
     return command;
   };
 

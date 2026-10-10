@@ -3,6 +3,8 @@ import { PARKING_TYPES } from "../pricing/parking-type";
 import { MAX_VEHICLE_COUNT } from "../vehicles";
 
 const vehicleCountSchema = z.number().int().min(1).max(MAX_VEHICLE_COUNT);
+/** Price agreed with the client (whole reservation, PLN). Staff only — the API rejects it for drivers. */
+const agreedPriceSchema = z.number().positive("Kwota musi być dodatnia").max(1_000_000, "Kwota jest zbyt duża");
 const extraPlatesSchema = z.array(z.string().trim().max(15)).max(MAX_VEHICLE_COUNT - 1);
 
 /** The extra plates must fit within the car count (car 1 is license_plate). */
@@ -23,6 +25,8 @@ export const driverArrivalUpdateSchema = z
     paid_at_arrival: z.boolean().optional(),
     /** Client left the car keys with the parking. */
     keys_left: z.boolean().optional(),
+    notes: z.string().max(1000).nullable().optional(),
+    total_cost: agreedPriceSchema.optional(),
     actual_check_in: z.string().datetime("Invalid actual check-in date format").optional(),
   })
   .refine(platesFitCount, {
@@ -56,6 +60,7 @@ export const driverCreateReservationSchema = z
     vehicle_count: vehicleCountSchema.default(1),
     flight_direction: z.string().trim().max(100, "Kierunek lotu może mieć maksymalnie 100 znaków").optional(),
     notes: z.string().max(1000).optional(),
+    total_cost: agreedPriceSchema.optional(),
     planned_check_in: z.string().datetime("Nieprawidłowa data przyjazdu"),
     planned_check_out: z.string().datetime("Nieprawidłowa data powrotu"),
     parking_type: z.enum(PARKING_TYPES).default("open_air"),
@@ -92,6 +97,8 @@ export const driverWalkInArrivalSchema = z
     parking_sector: z.string().trim().max(50).optional(),
     paid_at_arrival: z.boolean().default(false),
     keys_left: z.boolean().default(false),
+    notes: z.string().trim().max(1000).optional(),
+    total_cost: agreedPriceSchema.optional(),
   })
   .refine(platesFitCount, {
     message: "Za dużo numerów rejestracyjnych w stosunku do liczby aut",

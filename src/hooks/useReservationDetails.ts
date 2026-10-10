@@ -500,6 +500,7 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditNotes: true,
         canEditTravelAgency: true,
         canEditParkingType: true,
+        canEditPrice: true,
         canEditKeysLeft: false,
         canEditPayment: true,
         lockedByInvoiceNumber: null,
@@ -514,6 +515,7 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditNotes: true,
         canEditTravelAgency: true,
         canEditParkingType: true,
+        canEditPrice: true,
         canEditKeysLeft: true,
         canEditPayment: true,
         lockedByInvoiceNumber: null,
@@ -530,6 +532,7 @@ function getEditRules(status: string): ConditionalEditRules {
         canEditNotes: true, // ONLY NOTES
         canEditTravelAgency: false,
         canEditParkingType: true,
+        canEditPrice: true,
         canEditKeysLeft: false,
         canEditPayment: true,
         lockedByInvoiceNumber: null,
@@ -550,6 +553,7 @@ function withInvoiceLock(rules: ConditionalEditRules, invoiceNumber: string | nu
     canEditCheckOut: false,
     canEditTravelAgency: false,
     canEditParkingType: false,
+    canEditPrice: false,
     lockedByInvoiceNumber: invoiceNumber,
   };
 }
@@ -563,6 +567,7 @@ function getDefaultEditRules(): ConditionalEditRules {
     canEditNotes: false,
     canEditTravelAgency: false,
     canEditParkingType: false,
+    canEditPrice: false,
     canEditKeysLeft: false,
     canEditPayment: false,
     lockedByInvoiceNumber: null,

@@ -102,6 +102,7 @@ export function DashboardContainer() {
         isLoading={isProcessing}
       />
       <DriverArrivalDialog
+        canSetPrice
         reservation={arrivalTarget}
         open={Boolean(arrivalTarget)}
         onOpenChange={(open) => {
@@ -115,6 +116,7 @@ export function DashboardContainer() {
       />
       <DriverArrivalDialog
         mode="walk-in"
+        canSetPrice
         open={isWalkInOpen}
         onOpenChange={setWalkInOpen}
         isProcessing={isProcessing}

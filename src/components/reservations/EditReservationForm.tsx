@@ -13,6 +13,7 @@ import { DateTimePicker } from "@/components/shared/DateTimePicker";
 import { VehicleCountInput } from "@/components/shared/VehicleCountInput";
 import { platesForInputs } from "@/lib/vehicles";
 import { CostPreview } from "./CostPreview";
+import { ManualPriceInput } from "./ManualPriceInput";
 import { PARKING_TYPES, PARKING_TYPE_LABELS, type ParkingType } from "@/lib/pricing/parking-type";
 import { FlightDirectionInput } from "./FlightDirectionInput";
 import { TravelAgencySelect } from "./TravelAgencySelect";
@@ -91,10 +92,11 @@ export function EditReservationForm({
       keysLeft: reservation.keys_left ?? false,
       paidAtArrival: reservation.paid_at_arrival ?? false,
       paidAtDeparture: reservation.paid_at_departure ?? false,
+      totalCost: reservation.price_overridden ? Number(reservation.total_cost) : null,
     },
   });
 
-  const { checkInDate, checkOutDate, notes, travelAgencyId, parkingType, vehicleCount } = form.watch();
+  const { checkInDate, checkOutDate, notes, travelAgencyId, parkingType, vehicleCount, totalCost } = form.watch();
 
   // Keep one plate input per extra car when the count changes (existing entries are preserved).
   const changeVehicleCount = (next: number) => {
@@ -523,6 +525,16 @@ export function EditReservationForm({
           />
         </div>
 
+        {travelAgencyId ? null : (
+          <FormField
+            control={form.control}
+            name="totalCost"
+            render={({ field }) => (
+              <ManualPriceInput value={field.value} onChange={field.onChange} disabled={!editRules.canEditPrice} />
+            )}
+          />
+        )}
+
         <CostPreview
           checkInDate={checkInDate}
           checkOutDate={checkOutDate}
@@ -530,6 +542,7 @@ export function EditReservationForm({
           travelAgencyId={travelAgencyId || null}
           vehicleCount={vehicleCount}
           isCalculating={false}
+          manualPrice={travelAgencyId ? null : totalCost}
         />
 
         <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">

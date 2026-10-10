@@ -39,6 +39,7 @@ export async function createWalkInArrival(
       planned_check_out: data.planned_check_out,
       parking_type: data.parking_type,
       garage_spot_id: data.parking_type === "open_air" ? undefined : data.garage_spot_id,
+      total_cost: data.total_cost,
       source: "walk_in",
     },
     userId
@@ -51,6 +52,7 @@ export async function createWalkInArrival(
       parking_sector: data.parking_type === "open_air" ? data.parking_sector || null : null,
       paid_at_arrival: data.paid_at_arrival,
       keys_left: data.keys_left,
+      notes: data.notes || null,
     });
   } catch (error) {
     console.error("Walk-in reservation created but arrival not confirmed:", error);

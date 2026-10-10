@@ -37,6 +37,7 @@ const VALID = {
   parking_sector: "A12",
   paid_at_arrival: true,
   keys_left: true,
+  notes: "uszkodzony zderzak",
 };
 
 describe("createWalkInArrival", () => {
@@ -68,6 +69,7 @@ describe("createWalkInArrival", () => {
       parking_sector: "A12",
       paid_at_arrival: true,
       keys_left: true,
+      notes: "uszkodzony zderzak",
     });
   });
 

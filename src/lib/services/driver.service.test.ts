@@ -108,6 +108,34 @@ describe("DriverService status guards", () => {
     expect(client.update).toHaveBeenCalledWith(expect.objectContaining({ license_plate: "WX 12345" }));
   });
 
+  it("confirmArrival stores an agreed price and flags it as overridden", async () => {
+    const client = mockSupabase({
+      id: "r1",
+      status: "confirmed",
+      paid_at_arrival: false,
+      paid_at_departure: false,
+      planned_check_out: "2026-09-10T10:00:00.000Z",
+      travel_agency_id: null,
+    });
+    await new DriverService(client as never).confirmArrival("r1", { total_cost: 150 });
+
+    expect(client.update).toHaveBeenCalledWith(expect.objectContaining({ total_cost: 150, price_overridden: true }));
+  });
+
+  it("confirmArrival ignores an agreed price for agency stays", async () => {
+    const client = mockSupabase({
+      id: "r1",
+      status: "confirmed",
+      paid_at_arrival: false,
+      paid_at_departure: false,
+      planned_check_out: "2026-09-10T10:00:00.000Z",
+      travel_agency_id: "a1",
+    });
+    await new DriverService(client as never).confirmArrival("r1", { total_cost: 150 });
+
+    expect(client.update.mock.calls[0][0]).not.toHaveProperty("total_cost");
+  });
+
   it("confirmArrival keeps existing license_plate when not provided", async () => {
     const client = mockSupabase({
       id: "r1",

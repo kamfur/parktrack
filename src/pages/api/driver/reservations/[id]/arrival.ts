@@ -39,6 +39,13 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
     });
   }
 
+  if (locals.user.role === "driver" && (body as { total_cost?: unknown } | null)?.total_cost !== undefined) {
+    return new Response(JSON.stringify({ error: "Tylko personel może ustalać cenę" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const validation = await driverArrivalUpdateSchema.safeParseAsync(body);
   if (!validation.success) {
     return new Response(JSON.stringify({ error: "Validation failed", details: validation.error.format() }), {

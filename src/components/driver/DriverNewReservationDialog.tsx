@@ -10,7 +10,14 @@ import { VehicleCountInput } from "@/components/shared/VehicleCountInput";
 import { PaymentQuote } from "@/components/driver/PaymentQuote";
 import { FlightDirectionInput } from "@/components/reservations/FlightDirectionInput";
 import { GarageSpotSelect } from "@/components/reservations/GarageSpotSelect";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,6 +37,7 @@ import { toDriverFormWrites } from "@/lib/voice/apply-to-driver-form";
 import type { VoiceFieldKey } from "@/lib/voice/merge";
 import type { ParsedVoiceFields } from "@/lib/voice/types";
 import { VoiceCaptureButton } from "@/components/voice/VoiceCaptureButton";
+import { ManualPriceInput } from "@/components/reservations/ManualPriceInput";
 import { TranscriptPreview } from "@/components/voice/TranscriptPreview";
 import { VoiceFieldBadge } from "@/components/voice/VoiceFieldBadge";
 import { PlateConfirmation } from "@/components/voice/PlateConfirmation";
@@ -39,6 +47,8 @@ interface DriverNewReservationDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (body: Record<string, unknown>) => Promise<void>;
   isProcessing: boolean;
+  /** Staff may agree a price with the client; drivers never see the field (the API rejects it too). */
+  canSetPrice?: boolean;
 }
 
 interface FormValues {
@@ -54,6 +64,8 @@ interface FormValues {
   garageSpotId: string;
   flightDirection: string;
   notes: string;
+  /** Price agreed with the client (whole reservation); null = price list. */
+  totalCost: number | null;
 }
 
 function emptyForm(): FormValues {
@@ -69,6 +81,7 @@ function emptyForm(): FormValues {
     garageSpotId: "",
     flightDirection: "",
     notes: "",
+    totalCost: null,
   };
 }
 
@@ -77,9 +90,13 @@ export function DriverNewReservationDialog({
   onOpenChange,
   onSubmit,
   isProcessing,
+  canSetPrice = false,
 }: DriverNewReservationDialogProps) {
   const form = useForm<FormValues>({ defaultValues: emptyForm() });
   const [error, setError] = useState<string | null>(null);
+  // Same flow as the dashboard: quick (name + dates) first, full details on demand.
+  const [mode, setMode] = useState<"quick" | "full">("quick");
+  const full = mode === "full";
 
   // Dictation: the dialog stays mounted, so the session and provenance are reset on every open/close.
   const voice = useVoiceSession();
@@ -105,13 +122,16 @@ export function DriverNewReservationDialog({
     if (!open) return;
     form.reset(emptyForm());
     setError(null);
+    setMode("quick");
   }, [open, form, cancelVoice, resetVoiceFill]);
 
   const checkInIso = datetimeLocalToIso(form.watch("checkIn")) ?? null;
   const checkOutIso = datetimeLocalToIso(form.watch("checkOut")) ?? null;
   const parkingType = form.watch("parkingType");
   const vehicleCount = form.watch("vehicleCount");
-  const quote = useNewStayQuote(checkInIso, checkOutIso, parkingType, vehicleCount);
+  const listQuote = useNewStayQuote(checkInIso, checkOutIso, parkingType, vehicleCount);
+  const agreedPrice = canSetPrice ? (form.watch("totalCost") ?? null) : null;
+  const quote = agreedPrice != null ? { ...listQuote, totalCost: agreedPrice } : listQuote;
 
   const handleSubmit = form.handleSubmit(async (values) => {
     setError(null);
@@ -124,6 +144,7 @@ export function DriverNewReservationDialog({
       vehicle_count: values.vehicleCount,
       flight_direction: values.flightDirection.trim() || undefined,
       notes: values.notes.trim() || undefined,
+      total_cost: canSetPrice && values.totalCost != null ? values.totalCost : undefined,
       planned_check_in: checkInIso ?? "",
       planned_check_out: checkOutIso ?? "",
       parking_type: values.parkingType,
@@ -142,6 +163,55 @@ export function DriverNewReservationDialog({
     }
   });
 
+  const datesFields = (
+    <>
+      <FormField
+        control={form.control}
+        name="checkIn"
+        render={({ field }) => (
+          <FormItem className="col-span-2 sm:col-span-1">
+            <div className="flex items-center gap-2">
+              <FormLabel>Data i godzina przyjazdu *</FormLabel>
+              {voiceBadge("checkIn")}
+            </div>
+            <FormControl>
+              <DateTimePicker
+                value={field.value ? new Date(field.value) : null}
+                onChange={(d) => {
+                  voiceFill.markManual("checkIn");
+                  field.onChange(d ? isoToDatetimeLocal(d.toISOString()) : "");
+                }}
+                placeholder="Wybierz datę i godzinę"
+              />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="checkOut"
+        render={({ field }) => (
+          <FormItem className="col-span-2 sm:col-span-1">
+            <div className="flex items-center gap-2">
+              <FormLabel>Data i godzina powrotu *</FormLabel>
+              {voiceBadge("checkOut")}
+            </div>
+            <FormControl>
+              <DateTimePicker
+                value={field.value ? new Date(field.value) : null}
+                onChange={(d) => {
+                  voiceFill.markManual("checkOut");
+                  field.onChange(d ? isoToDatetimeLocal(d.toISOString()) : "");
+                }}
+                placeholder="Wybierz datę i godzinę"
+              />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+    </>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -154,6 +224,9 @@ export function DriverNewReservationDialog({
       >
         <DialogHeader>
           <DialogTitle>Nowa rezerwacja</DialogTitle>
+          <DialogDescription>
+            {full ? "Szczegółowe informacje o rezerwacji" : "Szybkie utworzenie rezerwacji z podstawowymi danymi"}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -166,7 +239,10 @@ export function DriverNewReservationDialog({
                 size="lg"
                 className="w-full"
                 state={voice.state}
-                onStart={() => void voice.start()}
+                onStart={() => {
+                  setMode("full");
+                  void voice.start();
+                }}
                 onStop={() => void voice.stop()}
               />
               <TranscriptPreview
@@ -199,227 +275,198 @@ export function DriverNewReservationDialog({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="firstName"
-              render={({ field }) => (
-                <FormItem className="col-span-2 sm:col-span-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Imię</FormLabel>
-                    {voiceBadge("firstName")}
-                  </div>
-                  <FormControl>
-                    <Input
-                      className="min-h-11"
-                      maxLength={100}
-                      {...field}
-                      onChange={(e) => {
-                        voiceFill.markManual("firstName");
-                        field.onChange(e);
-                      }}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem className="col-span-2 sm:col-span-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Telefon</FormLabel>
-                    {voiceBadge("phone")}
-                  </div>
-                  <FormControl>
-                    <Input
-                      type="tel"
-                      className="min-h-11"
-                      maxLength={20}
-                      {...field}
-                      onChange={(e) => {
-                        voiceFill.markManual("phone");
-                        field.onChange(e);
-                      }}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="licensePlate"
-              render={({ field }) => (
-                <FormItem className="col-span-2 sm:col-span-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Numer rejestracyjny</FormLabel>
-                    {voiceBadge("licensePlate")}
-                  </div>
-                  <FormControl>
-                    <Input
-                      className="min-h-11"
-                      placeholder="np. WX 12345"
-                      maxLength={15}
-                      {...field}
-                      onChange={(e) => {
-                        voiceFill.markManual("licensePlate");
-                        field.onChange(e.target.value.toUpperCase());
-                      }}
-                    />
-                  </FormControl>
-                  {voiceFill.needsPlateConfirmation && field.value ? (
-                    <PlateConfirmation
-                      plate={field.value}
-                      formatWarning={voiceFill.meta.licensePlate?.formatWarning}
-                      onConfirm={voiceFill.confirmPlate}
-                    />
-                  ) : null}
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="vehicleCount"
-              render={({ field }) => (
-                <FormItem className="col-span-2 sm:col-span-1">
-                  <FormLabel>Liczba aut</FormLabel>
-                  <FormControl>
-                    <VehicleCountInput value={field.value} onChange={field.onChange} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="parkingType"
-              render={({ field }) => (
-                <FormItem className="col-span-2 sm:col-span-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Typ miejsca</FormLabel>
-                    {voiceBadge("parkingType")}
-                  </div>
-                  <Select
-                    value={field.value}
-                    onValueChange={(value) => {
-                      voiceFill.markManual("parkingType");
-                      field.onChange(value);
-                    }}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="min-h-11 w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {PARKING_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {PARKING_TYPE_LABELS[type]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="checkIn"
-              render={({ field }) => (
-                <FormItem className="col-span-2 sm:col-span-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Przyjazd *</FormLabel>
-                    {voiceBadge("checkIn")}
-                  </div>
-                  <FormControl>
-                    <DateTimePicker
-                      value={field.value ? new Date(field.value) : null}
-                      onChange={(d) => {
-                        voiceFill.markManual("checkIn");
-                        field.onChange(d ? isoToDatetimeLocal(d.toISOString()) : "");
-                      }}
-                      placeholder="Wybierz datę"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="checkOut"
-              render={({ field }) => (
-                <FormItem className="col-span-2 sm:col-span-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Powrót *</FormLabel>
-                    {voiceBadge("checkOut")}
-                  </div>
-                  <FormControl>
-                    <DateTimePicker
-                      value={field.value ? new Date(field.value) : null}
-                      onChange={(d) => {
-                        voiceFill.markManual("checkOut");
-                        field.onChange(d ? isoToDatetimeLocal(d.toISOString()) : "");
-                      }}
-                      placeholder="Wybierz datę"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            {parkingType === "garage" || parkingType === "carport" ? (
-              <FormField
-                control={form.control}
-                name="garageSpotId"
-                render={({ field }) => (
-                  <FormItem className="col-span-2">
-                    <FormLabel>{parkingType === "garage" ? "Garaż" : "Wiata"}</FormLabel>
-                    <GarageSpotSelect
-                      parkingType={parkingType}
-                      checkIn={checkInIso}
-                      checkOut={checkOutIso}
-                      value={field.value}
-                      onChange={field.onChange}
-                      emptyLabel="Automatycznie (pierwsze wolne)"
-                    />
-                  </FormItem>
-                )}
-              />
-            ) : null}
-            <FormField
-              control={form.control}
-              name="flightDirection"
-              render={({ field }) => (
-                <FormItem className="col-span-2">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Kierunek lotu</FormLabel>
-                    {voiceBadge("flightDirection")}
-                  </div>
-                  <FlightDirectionInput
-                    className="min-h-11"
-                    placeholder="np. Londyn, LO 392"
-                    maxLength={100}
-                    value={field.value}
-                    onChange={(value) => {
-                      voiceFill.markManual("flightDirection");
-                      field.onChange(value);
-                    }}
-                    onBlur={field.onBlur}
-                    name={field.name}
+            {!full ? datesFields : null}
+            {full ? (
+              <>
+                <FormField
+                  control={form.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 sm:col-span-1">
+                      <div className="flex items-center gap-2">
+                        <FormLabel>Imię</FormLabel>
+                        {voiceBadge("firstName")}
+                      </div>
+                      <FormControl>
+                        <Input
+                          className="min-h-11"
+                          maxLength={100}
+                          {...field}
+                          onChange={(e) => {
+                            voiceFill.markManual("firstName");
+                            field.onChange(e);
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 sm:col-span-1">
+                      <div className="flex items-center gap-2">
+                        <FormLabel>Telefon</FormLabel>
+                        {voiceBadge("phone")}
+                      </div>
+                      <FormControl>
+                        <Input
+                          type="tel"
+                          className="min-h-11"
+                          maxLength={20}
+                          {...field}
+                          onChange={(e) => {
+                            voiceFill.markManual("phone");
+                            field.onChange(e);
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="licensePlate"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 sm:col-span-1">
+                      <div className="flex items-center gap-2">
+                        <FormLabel>Numer rejestracyjny</FormLabel>
+                        {voiceBadge("licensePlate")}
+                      </div>
+                      <FormControl>
+                        <Input
+                          className="min-h-11"
+                          placeholder="np. WX 12345"
+                          maxLength={15}
+                          {...field}
+                          onChange={(e) => {
+                            voiceFill.markManual("licensePlate");
+                            field.onChange(e.target.value.toUpperCase());
+                          }}
+                        />
+                      </FormControl>
+                      {voiceFill.needsPlateConfirmation && field.value ? (
+                        <PlateConfirmation
+                          plate={field.value}
+                          formatWarning={voiceFill.meta.licensePlate?.formatWarning}
+                          onConfirm={voiceFill.confirmPlate}
+                        />
+                      ) : null}
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="vehicleCount"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 sm:col-span-1">
+                      <FormLabel>Liczba aut</FormLabel>
+                      <FormControl>
+                        <VehicleCountInput value={field.value} onChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="parkingType"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 sm:col-span-1">
+                      <div className="flex items-center gap-2">
+                        <FormLabel>Typ miejsca</FormLabel>
+                        {voiceBadge("parkingType")}
+                      </div>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          voiceFill.markManual("parkingType");
+                          field.onChange(value);
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="min-h-11 w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PARKING_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {PARKING_TYPE_LABELS[type]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                {datesFields}
+                {parkingType === "garage" || parkingType === "carport" ? (
+                  <FormField
+                    control={form.control}
+                    name="garageSpotId"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormLabel>{parkingType === "garage" ? "Garaż" : "Wiata"}</FormLabel>
+                        <GarageSpotSelect
+                          parkingType={parkingType}
+                          checkIn={checkInIso}
+                          checkOut={checkOutIso}
+                          value={field.value}
+                          onChange={field.onChange}
+                          emptyLabel="Automatycznie (pierwsze wolne)"
+                        />
+                      </FormItem>
+                    )}
                   />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem className="col-span-2">
-                  <FormLabel>Notatki</FormLabel>
-                  <FormControl>
-                    <Textarea className="min-h-20" maxLength={1000} {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+                ) : null}
+                <FormField
+                  control={form.control}
+                  name="flightDirection"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <div className="flex items-center gap-2">
+                        <FormLabel>Kierunek lotu</FormLabel>
+                        {voiceBadge("flightDirection")}
+                      </div>
+                      <FlightDirectionInput
+                        className="min-h-11"
+                        placeholder="np. Londyn, LO 392"
+                        maxLength={100}
+                        value={field.value}
+                        onChange={(value) => {
+                          voiceFill.markManual("flightDirection");
+                          field.onChange(value);
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                      />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Notatki</FormLabel>
+                      <FormControl>
+                        <Textarea className="min-h-20" maxLength={1000} {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </>
+            ) : null}
+            {canSetPrice && full ? (
+              <div className="col-span-2">
+                <FormField
+                  control={form.control}
+                  name="totalCost"
+                  render={({ field }) => <ManualPriceInput value={field.value} onChange={field.onChange} />}
+                />
+              </div>
+            ) : null}
             {checkInIso && checkOutIso ? (
               <div className="col-span-2">
                 <PaymentQuote {...quote} />
@@ -446,13 +493,24 @@ export function DriverNewReservationDialog({
               >
                 Anuluj
               </Button>
+              {!full ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 flex-1 sm:flex-none"
+                  disabled={isProcessing}
+                  onClick={() => setMode("full")}
+                >
+                  Zapisz i dodaj szczegóły
+                </Button>
+              ) : null}
               <Button
                 type="submit"
                 className="min-h-11 flex-[2] sm:flex-none"
                 disabled={isProcessing || voiceFill.needsPlateConfirmation}
               >
                 {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Dodaj rezerwację
+                {full ? "Dodaj rezerwację" : "Zapisz szybko"}
               </Button>
             </DialogFooter>
           </form>

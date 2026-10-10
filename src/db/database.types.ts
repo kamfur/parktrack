@@ -442,6 +442,7 @@ export type Database = {
           extra_license_plates: string[]
           external_source: string | null
           external_reference: string | null
+          price_overridden: boolean
         }
         Insert: {
           actual_check_in?: string | null
@@ -477,6 +478,7 @@ export type Database = {
           extra_license_plates?: string[]
           external_source?: string | null
           external_reference?: string | null
+          price_overridden?: boolean
         }
         Update: {
           actual_check_in?: string | null
@@ -512,6 +514,7 @@ export type Database = {
           extra_license_plates?: string[]
           external_source?: string | null
           external_reference?: string | null
+          price_overridden?: boolean
         }
         Relationships: [
           {

@@ -297,6 +297,8 @@ export class ReservationService {
     // Agency reservations are always priced by the DB (price list − agency discount), so a
     // client total is ignored; the base price is computed here only to surface NO_PRICE_LIST early.
     let totalCost = validatedData.travel_agency_id ? undefined : validatedData.total_cost;
+    // A price agreed by staff is kept as is: the DB trigger skips re-pricing flagged reservations.
+    const priceOverridden = totalCost !== undefined;
     if (!totalCost) {
       totalCost =
         (await this.calculateCost(
@@ -322,6 +324,7 @@ export class ReservationService {
     const reservationData = {
       ...validatedData,
       total_cost: totalCost as number, // Always calculated or provided
+      price_overridden: priceOverridden,
       created_by: auditUserId,
       last_modified_by: auditUserId,
     };
@@ -537,6 +540,11 @@ ${data.notes}`
         // an edit must not be able to silently break the invariant `assign`/`swap` enforce.
         await allocationService.revalidateAssignment(id, nextCheckIn, nextCheckOut);
       }
+    }
+
+    // An agreed price sticks (price_overridden) until staff drops it; the trigger ignores it for agency stays.
+    if (validatedData.total_cost !== undefined) {
+      validatedData.price_overridden = true;
     }
 
     // Perform update operation

@@ -708,6 +708,8 @@ export interface CostPreviewProps {
   vehicleCount?: number;
   /** Czy koszt jest w trakcie obliczania */
   isCalculating: boolean;
+  /** Cena ustalona z klientem — gdy ustawiona, zastępuje cenę z cennika (nie dotyczy biur) */
+  manualPrice?: number | null;
 }
 
 /**
@@ -941,6 +943,8 @@ export interface ConditionalEditRules {
   canEditTravelAgency: boolean;
   /** Czy można zmienić typ miejsca (parking / wiata / garaż) — w każdym statusie, poza fakturą */
   canEditParkingType: boolean;
+  /** Czy można ustalić cenę ręcznie (jak typ miejsca: nie po wystawieniu faktury) */
+  canEditPrice: boolean;
   /** Czy można zmienić „Zostawił kluczyki” — tylko gdy auto stoi na parkingu (in_progress) */
   canEditKeysLeft: boolean;
   /** Czy można zmienić „Opłacono przy przyjeździe/wyjeździe” (nie dla biur podróży) */

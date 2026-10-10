@@ -112,7 +112,10 @@ export const updateReservationSchema = z.object({
       errorMap: () => ({ message: "Source must be one of: phone, walk_in, api, parkvia" }),
     })
     .optional(),
+  /** Agreed price set by staff; marks the reservation `price_overridden` (not re-priced from the price list). */
   total_cost: z.number().positive("Total cost must be a positive number").optional(),
+  /** `false` drops the agreed price — the DB re-prices the stay from the price list. */
+  price_overridden: z.boolean().optional(),
   first_name: z.string().optional(),
   email: z.string().email("Invalid email address").optional().or(z.literal("")).optional(),
   phone: z.string().optional(),
@@ -199,6 +202,14 @@ export const quickReservationSchema = z
 export type QuickReservationSchema = typeof quickReservationSchema;
 export type QuickReservationFormData = z.infer<typeof quickReservationSchema>;
 
+/** Ręcznie ustalona cena (zł); null / brak = cena z cennika. */
+const manualPriceSchema = z
+  .number({ invalid_type_error: "Podaj kwotę" })
+  .positive("Kwota musi być dodatnia")
+  .max(1_000_000, "Kwota jest zbyt duża")
+  .nullable()
+  .optional();
+
 /**
  * Schemat walidacji dla Full Mode
  */
@@ -241,6 +252,8 @@ export const fullReservationSchema = z
     garageSpotId: z.string().uuid("Nieprawidłowe miejsce").optional().or(z.literal("")),
     /** "" = brak biura (klient indywidualny) */
     travelAgencyId: z.string().uuid("Nieprawidłowe biuro podróży").optional().or(z.literal("")),
+    /** Cena ustalona z klientem (zł, całość rezerwacji); null = cena z cennika */
+    totalCost: manualPriceSchema,
   })
   .refine(
     (data) => {
@@ -310,6 +323,8 @@ export const editReservationSchema = z
     /** Opłacono przy przyjeździe / wyjeździe (nie dotyczy rezerwacji biura podróży) */
     paidAtArrival: z.boolean().optional(),
     paidAtDeparture: z.boolean().optional(),
+    /** Cena ustalona z klientem (zł, całość rezerwacji); null = cena z cennika */
+    totalCost: manualPriceSchema,
   })
   .refine(
     (data) => {

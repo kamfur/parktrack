@@ -25,6 +25,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return json({ error: "Invalid JSON" }, 400);
   }
 
+  if (locals.user.role === "driver" && (body as { total_cost?: unknown } | null)?.total_cost !== undefined) {
+    return json({ error: "Tylko personel może ustalać cenę" }, 403);
+  }
+
   const validation = await driverWalkInArrivalSchema.safeParseAsync(body);
   if (!validation.success) {
     return json(

@@ -347,6 +347,56 @@ describe("ReservationService pricing", () => {
     );
   });
 
+  it("keeps a price agreed by staff and flags it as overridden", async () => {
+    const insert = vi.fn().mockReturnThis();
+    vi.mocked(createSupabaseAdminClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        insert,
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: "r1" }, error: null }),
+      }),
+    } as never);
+    const rpc = vi.fn();
+
+    await new ReservationService({ rpc } as never).createReservation(
+      {
+        last_name: "Kowalski",
+        planned_check_in: "2026-09-02T00:00:00Z",
+        planned_check_out: "2026-09-05T00:00:00Z",
+        source: "phone",
+        total_cost: 150,
+      },
+      "user-1"
+    );
+
+    expect(rpc).not.toHaveBeenCalled();
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ total_cost: 150, price_overridden: true }));
+  });
+
+  it("does not flag a price-list price as overridden", async () => {
+    const insert = vi.fn().mockReturnThis();
+    vi.mocked(createSupabaseAdminClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        insert,
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: "r1" }, error: null }),
+      }),
+    } as never);
+    const rpc = vi.fn().mockResolvedValue({ data: 60, error: null });
+
+    await new ReservationService({ rpc } as never).createReservation(
+      {
+        last_name: "Kowalski",
+        planned_check_in: "2026-09-02T00:00:00Z",
+        planned_check_out: "2026-09-05T00:00:00Z",
+        source: "phone",
+      },
+      "user-1"
+    );
+
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ total_cost: 60, price_overridden: false }));
+  });
+
   it("throws NoPriceListError when no price list covers the check-in date", async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: null,
