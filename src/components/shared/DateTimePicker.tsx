@@ -117,18 +117,15 @@ export function DateTimePicker({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="flex flex-col gap-1 p-2">
-          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-          <span className="truncate">{displayValue}</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-auto max-h-(--radix-popover-content-available-height) overflow-y-auto p-0"
-        align="start"
-        collisionPadding={8}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <div className="flex flex-col gap-1 p-2">
-          <div className="flex items-center gap-2 px-1">
+          <Calendar
+            mode="single"
+            selected={value || undefined}
+            onSelect={handleDateSelect}
+            disabled={disabledDates}
+            locale={pl}
+            className="p-1 [--cell-size:--spacing(7)]"
+          />
+          <div className="flex items-center gap-2 px-1 pb-1">
             <ClockIcon className="h-4 w-4 shrink-0 text-neutral-500" />
             <label htmlFor={timeId} className="text-sm font-medium">
               Godzina:
@@ -142,14 +139,6 @@ export function DateTimePicker({
               disabled={!value}
             />
           </div>
-          <Calendar
-            mode="single"
-            selected={value || undefined}
-            onSelect={handleDateSelect}
-            disabled={disabledDates}
-            locale={pl}
-            className="p-1 [--cell-size:--spacing(7)]"
-          />
         </div>
       </PopoverContent>
     </Popover>
