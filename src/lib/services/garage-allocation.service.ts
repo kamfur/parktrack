@@ -155,12 +155,14 @@ export class GarageAllocationService {
   async assign(
     reservationId: string,
     garageSpotId: string,
-    assignedBy: "system" | "staff"
+    assignedBy: "system" | "staff",
+    options: { skipBuffer?: boolean } = {}
   ): Promise<GarageAssignmentDto> {
     const { data, error } = await this.supabase.rpc("assign_garage_spot", {
       p_reservation_id: reservationId,
       p_garage_spot_id: garageSpotId,
       p_assigned_by: assignedBy,
+      ...(options.skipBuffer ? { p_skip_buffer: true } : {}),
     });
 
     if (error) {
@@ -173,42 +175,40 @@ export class GarageAllocationService {
     return data;
   }
 
-  /**
-   * Re-validates that `reservationId`'s current garage assignment (if any)
-   * still respects the 10h buffer against a new `[checkIn, checkOut)` window
-   * — call before persisting an edit to a garage reservation's planned dates.
-   * No-op if the reservation has no active garage assignment.
-   */
-  async revalidateAssignment(reservationId: string, plannedCheckIn: string, plannedCheckOut: string): Promise<void> {
-    const { data: activeAssignment, error } = await this.supabase
-      .from("garage_assignments")
-      .select("garage_spot_id")
-      .eq("reservation_id", reservationId)
-      .is("superseded_at", null)
+  /** True when the spot exists and is of `spotType` (availability / buffer are not considered). */
+  async spotHasType(garageSpotId: string, spotType: CoveredParkingType): Promise<boolean> {
+    const { data, error } = await this.supabase
+      .from("garage_spots")
+      .select("id")
+      .eq("id", garageSpotId)
+      .eq("spot_type", spotType)
       .maybeSingle();
 
     if (error) {
-      throw new Error(`Failed to fetch current garage assignment: ${error.message}`);
+      throw new Error(`Failed to fetch garage spot: ${error.message}`);
     }
-    if (!activeAssignment) return;
-
-    const candidate: ReservationWindow = { checkIn: new Date(plannedCheckIn), checkOut: new Date(plannedCheckOut) };
-    const existingWindows = await this.activeWindowsForSpot(activeAssignment.garage_spot_id, reservationId);
-
-    if (!existingWindows.every((existing) => respectsBuffer(candidate, existing))) {
-      throw new GarageBufferViolationError(
-        "These dates would violate the 10h buffer for the reservation's assigned garage spot"
-      );
-    }
+    return !!data;
   }
 
   /**
    * Supersedes the reservation's current active assignment (if any) and assigns
    * the new spot, re-validating the buffer for the new spot via `assign`.
+   * When the new spot cannot be assigned the previous one is restored, so a failed
+   * swap never leaves the reservation without a spot.
    */
   async swap(reservationId: string, newGarageSpotId: string): Promise<GarageAssignmentDto> {
-    await this.release(reservationId);
-    return this.assign(reservationId, newGarageSpotId, "staff");
+    const releasedSpotId = await this.release(reservationId);
+    try {
+      return await this.assign(reservationId, newGarageSpotId, "staff");
+    } catch (error) {
+      if (releasedSpotId) {
+        await this.assign(reservationId, releasedSpotId, "staff", { skipBuffer: true }).catch((restoreError) => {
+          // eslint-disable-next-line no-console
+          console.error("Failed to restore garage assignment after a failed swap:", reservationId, restoreError);
+        });
+      }
+      throw error;
+    }
   }
 
   /** Spot id of the reservation's active assignment, or null. */

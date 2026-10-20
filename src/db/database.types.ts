@@ -663,6 +663,7 @@ export type Database = {
           p_assigned_by: string
           p_garage_spot_id: string
           p_reservation_id: string
+          p_skip_buffer?: boolean
         }
         Returns: {
           assigned_at: string

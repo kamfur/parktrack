@@ -402,6 +402,7 @@ export function EditReservationForm({
                     checkIn={checkInDate}
                     checkOut={checkOutDate}
                     reservationId={reservation.id}
+                    includeOccupied
                     value={field.value ?? ""}
                     onChange={field.onChange}
                     emptyLabel={

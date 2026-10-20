@@ -77,7 +77,42 @@ describe("GarageAllocationService.assign", () => {
   });
 });
 
+describe("GarageAllocationService.assign — skipBuffer", () => {
+  it("passes p_skip_buffer to the RPC", async () => {
+    const supabase = mockSupabase({}, { data: { id: "a1" }, error: null });
+
+    await new GarageAllocationService(supabase as never).assign("r1", "s1", "staff", { skipBuffer: true });
+
+    expect(supabase.rpc).toHaveBeenCalledWith("assign_garage_spot", {
+      p_reservation_id: "r1",
+      p_garage_spot_id: "s1",
+      p_assigned_by: "staff",
+      p_skip_buffer: true,
+    });
+  });
+});
+
 describe("GarageAllocationService.swap", () => {
+  it("restores the previous spot and rethrows when the new spot violates the buffer", async () => {
+    const supabase = mockSupabase({
+      "garage_assignments:maybeSingle": { data: { id: "old-assignment", garage_spot_id: "s1" }, error: null },
+    });
+    supabase.rpc
+      .mockResolvedValueOnce({ data: null, error: { message: "GARAGE_BUFFER_VIOLATION" } })
+      .mockResolvedValueOnce({ data: { id: "a1" }, error: null });
+
+    await expect(new GarageAllocationService(supabase as never).swap("r1", "s2")).rejects.toBeInstanceOf(
+      GarageBufferViolationError
+    );
+
+    expect(supabase.rpc).toHaveBeenLastCalledWith("assign_garage_spot", {
+      p_reservation_id: "r1",
+      p_garage_spot_id: "s1",
+      p_assigned_by: "staff",
+      p_skip_buffer: true,
+    });
+  });
+
   it("supersedes the prior assignment and re-validates the buffer for the new spot", async () => {
     const supabase = mockSupabase(
       { "garage_assignments:maybeSingle": { data: { id: "old-assignment" }, error: null } },
@@ -92,47 +127,6 @@ describe("GarageAllocationService.swap", () => {
       p_garage_spot_id: "s2",
       p_assigned_by: "staff",
     });
-  });
-});
-
-describe("GarageAllocationService.revalidateAssignment", () => {
-  it("does nothing when the reservation has no active garage assignment", async () => {
-    const supabase = mockSupabase({ "garage_assignments:maybeSingle": { data: null, error: null } });
-    const service = new GarageAllocationService(supabase as never);
-
-    await expect(
-      service.revalidateAssignment("r1", "2026-09-02T00:00:00Z", "2026-09-02T08:00:00Z")
-    ).resolves.toBeUndefined();
-  });
-
-  it("passes when the new dates still respect the buffer against other assignments on the same spot", async () => {
-    const supabase = mockSupabase({
-      "garage_assignments:maybeSingle": { data: { garage_spot_id: "s1" }, error: null },
-      garage_assignments: { data: [], error: null }, // no other active assignments on the spot
-    });
-    const service = new GarageAllocationService(supabase as never);
-
-    await expect(
-      service.revalidateAssignment("r1", "2026-09-02T00:00:00Z", "2026-09-02T08:00:00Z")
-    ).resolves.toBeUndefined();
-  });
-
-  it("throws GarageBufferViolationError when the new dates would violate the buffer", async () => {
-    const supabase = mockSupabase({
-      "garage_assignments:maybeSingle": { data: { garage_spot_id: "s1" }, error: null },
-      // Another reservation on the same spot ends just 1h before the new candidate window starts.
-      garage_assignments: {
-        data: [
-          { reservations: { planned_check_in: "2026-09-01T15:00:00Z", planned_check_out: "2026-09-01T23:00:00Z" } },
-        ],
-        error: null,
-      },
-    });
-    const service = new GarageAllocationService(supabase as never);
-
-    await expect(
-      service.revalidateAssignment("r1", "2026-09-02T00:00:00Z", "2026-09-02T08:00:00Z")
-    ).rejects.toBeInstanceOf(GarageBufferViolationError);
   });
 });
 

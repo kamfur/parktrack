@@ -94,6 +94,31 @@ async function pickGarageSpot(
   return available[0].id;
 }
 
+/**
+ * Spot for a covered stay while EDITING a reservation. An edit is never blocked by the garage:
+ * an explicitly chosen spot (of the right type) is taken as is, buffer conflicts included;
+ * without a choice the first free spot is used, and when none is free the stay simply has no spot.
+ */
+async function pickSpotForEdit(
+  allocationService: GarageAllocationService,
+  parkingType: CoveredParkingType,
+  checkIn: string,
+  checkOut: string,
+  requestedSpotId: string | undefined,
+  reservationId: string
+): Promise<string | null> {
+  if (requestedSpotId) {
+    if (!(await allocationService.spotHasType(requestedSpotId, parkingType))) {
+      throw new NoGarageAvailableError(
+        parkingType === "garage" ? "Wybrane miejsce nie jest garażem" : "Wybrane miejsce nie jest wiatą"
+      );
+    }
+    return requestedSpotId;
+  }
+  const available = await allocationService.listAvailableSpots(checkIn, checkOut, parkingType, reservationId);
+  return available[0]?.id ?? null;
+}
+
 /** Translates the DB's NO_PRICE_LIST exception (calculate_total_cost / cost trigger) into a typed error. */
 function asPriceListError(message: string | undefined): NoPriceListError | null {
   return message?.includes("NO_PRICE_LIST") ? new NoPriceListError() : null;
@@ -510,13 +535,13 @@ ${data.notes}`
 
       if (nextType !== current.parking_type) {
         const spotId = needsSpot
-          ? await pickGarageSpot(allocationService, nextType, nextCheckIn, nextCheckOut, requestedSpotId, id)
+          ? await pickSpotForEdit(allocationService, nextType, nextCheckIn, nextCheckOut, requestedSpotId, id)
           : null;
         spotChange = { previousType: current.parking_type as ParkingType, previousStatus: current.status, spotId };
       } else if (wasActive && !willBeActive) {
         spotChange = { previousType: null, previousStatus: current.status, spotId: null };
       } else if (!wasActive && willBeActive && needsSpot) {
-        const spotId = await pickGarageSpot(
+        const spotId = await pickSpotForEdit(
           allocationService,
           nextType,
           nextCheckIn,
@@ -525,20 +550,20 @@ ${data.notes}`
           id
         );
         spotChange = { previousType: null, previousStatus: current.status, spotId };
-      } else if (requestedSpotId && needsSpot && requestedSpotId !== (await allocationService.activeSpotId(id))) {
-        const spotId = await pickGarageSpot(
-          allocationService,
-          nextType,
-          nextCheckIn,
-          nextCheckOut,
-          requestedSpotId,
-          id
-        );
-        spotChange = { previousType: null, previousStatus: current.status, spotId };
-      } else if (validatedData.planned_check_in || validatedData.planned_check_out) {
-        // If planned dates are changing, re-validate the 10h garage buffer before writing —
-        // an edit must not be able to silently break the invariant `assign`/`swap` enforce.
-        await allocationService.revalidateAssignment(id, nextCheckIn, nextCheckOut);
+      } else if (needsSpot) {
+        const currentSpotId = await allocationService.activeSpotId(id);
+        // Another spot requested, or a covered stay that lost its spot: assign one (best effort — never blocks the edit).
+        if (requestedSpotId ? requestedSpotId !== currentSpotId : currentSpotId === null) {
+          const spotId = await pickSpotForEdit(
+            allocationService,
+            nextType,
+            nextCheckIn,
+            nextCheckOut,
+            requestedSpotId,
+            id
+          );
+          if (spotId) spotChange = { previousType: null, previousStatus: current.status, spotId };
+        }
       }
     }
 
@@ -568,7 +593,7 @@ ${data.notes}`
       const releasedSpotId = await allocationService.release(id);
       if (spotChange.spotId) {
         try {
-          await allocationService.assign(id, spotChange.spotId, "staff");
+          await allocationService.assign(id, spotChange.spotId, "staff", { skipBuffer: true });
         } catch (allocationError) {
           // Spot was taken in the meantime — restore the previous type (the trigger re-prices back)
           // and the previous spot.
@@ -579,7 +604,12 @@ ${data.notes}`
           if (!ACTIVE_STAY_STATUSES.includes(spotChange.previousStatus)) {
             await this.supabase.from("reservations").update({ status: spotChange.previousStatus }).eq("id", id);
           }
-          if (releasedSpotId) await allocationService.assign(id, releasedSpotId, "staff").catch(() => undefined);
+          if (releasedSpotId) {
+            await allocationService.assign(id, releasedSpotId, "staff", { skipBuffer: true }).catch((restoreError) => {
+              // eslint-disable-next-line no-console
+              console.error("Failed to restore garage assignment after a failed edit:", id, restoreError);
+            });
+          }
           throw allocationError;
         }
       }

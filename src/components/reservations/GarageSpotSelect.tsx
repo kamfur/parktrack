@@ -25,6 +25,11 @@ interface GarageSpotSelectProps {
   emptyLabel: string;
   disabled?: boolean;
   id?: string;
+  /**
+   * Also offer spots of this type that are busy in the window (marked as such) — editing staff may
+   * pick them anyway; the server skips the buffer check for an explicit choice.
+   */
+  includeOccupied?: boolean;
 }
 
 /**
@@ -41,8 +46,11 @@ export function GarageSpotSelect({
   emptyLabel,
   disabled,
   id,
+  includeOccupied = false,
 }: GarageSpotSelectProps) {
   const [spots, setSpots] = useState<GarageSpotDto[]>([]);
+  /** Every available spot of the type (only with `includeOccupied`); `spots` holds the free ones. */
+  const [allSpots, setAllSpots] = useState<GarageSpotDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   /** True once the list for the current type/window has arrived — until then `value` is kept. */
@@ -57,6 +65,7 @@ export function GarageSpotSelect({
     setLoaded(false);
     if (!covered || !windowValid) {
       setSpots([]);
+      setAllSpots([]);
       return;
     }
 
@@ -66,10 +75,18 @@ export function GarageSpotSelect({
 
     setIsLoading(true);
     setLoadError(false);
-    fetch(`/api/driver/garage-spots/available?${params}`, { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((data: GarageSpotDto[]) => {
-        setSpots(data);
+    const getJson = (url: string): Promise<GarageSpotDto[]> =>
+      fetch(url, { signal: controller.signal }).then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(String(res.status)))
+      );
+
+    Promise.all([
+      getJson(`/api/driver/garage-spots/available?${params}`),
+      includeOccupied ? getJson("/api/driver/garage-spots") : Promise.resolve<GarageSpotDto[]>([]),
+    ])
+      .then(([free, all]) => {
+        setSpots(free);
+        setAllSpots(all.filter((spot) => spot.spot_type === parkingType && spot.is_available));
         setLoaded(true);
       })
       .catch((err) => {
@@ -77,6 +94,7 @@ export function GarageSpotSelect({
         // eslint-disable-next-line no-console
         console.error("Failed to load available garage spots:", err);
         setSpots([]);
+        setAllSpots([]);
         setLoadError(true);
       })
       .finally(() => {
@@ -84,12 +102,14 @@ export function GarageSpotSelect({
       });
 
     return () => controller.abort();
-  }, [covered, windowValid, parkingType, checkInIso, checkOutIso, reservationId]);
+  }, [covered, windowValid, parkingType, checkInIso, checkOutIso, reservationId, includeOccupied]);
 
   // A spot picked for another type or window may no longer be free — fall back to "no specific spot".
+  const freeIds = new Set(spots.map((spot) => spot.id));
+  const options = includeOccupied ? allSpots : spots;
   useEffect(() => {
-    if (value && loaded && !spots.some((spot) => spot.id === value)) onChange("");
-  }, [value, spots, loaded, onChange]);
+    if (value && loaded && !options.some((spot) => spot.id === value)) onChange("");
+  }, [value, options, loaded, onChange]);
 
   if (!covered) return null;
 
@@ -98,7 +118,7 @@ export function GarageSpotSelect({
     ? "Najpierw wybierz daty przyjazdu i wyjazdu."
     : loadError
       ? "Nie udało się pobrać wolnych miejsc — zostanie przydzielone automatycznie."
-      : !isLoading && spots.length === 0
+      : !isLoading && options.length === 0
         ? "Brak wolnych miejsc tego typu w wybranym terminie."
         : null;
 
@@ -114,9 +134,9 @@ export function GarageSpotSelect({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={AUTO}>{emptyLabel}</SelectItem>
-          {spots.map((spot) => (
+          {options.map((spot) => (
             <SelectItem key={spot.id} value={spot.id}>
-              {spot.name}
+              {includeOccupied && !freeIds.has(spot.id) ? `${spot.name} (zajęte w tym terminie)` : spot.name}
             </SelectItem>
           ))}
         </SelectContent>

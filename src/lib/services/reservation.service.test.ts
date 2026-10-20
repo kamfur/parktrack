@@ -6,7 +6,6 @@ vi.mock("../supabase-admin", () => ({
 
 vi.mock("./garage-allocation.service", () => ({
   GarageAllocationService: vi.fn(),
-  GarageBufferViolationError: class GarageBufferViolationError extends Error {},
 }));
 
 import {
@@ -18,7 +17,7 @@ import {
   TravelAgencyUnavailableError,
 } from "./reservation.service";
 import { createSupabaseAdminClient } from "../supabase-admin";
-import { GarageAllocationService, GarageBufferViolationError } from "./garage-allocation.service";
+import { GarageAllocationService } from "./garage-allocation.service";
 
 const SPOT_B = "22222222-2222-4222-8222-222222222222";
 
@@ -430,37 +429,23 @@ describe("ReservationService.updateReservation — garage buffer revalidation", 
     vi.mocked(GarageAllocationService).mockClear();
   });
 
-  it("re-validates the buffer when planned dates change, and proceeds when it passes", async () => {
+  it("does not validate the garage buffer when planned dates change", async () => {
     const current = { planned_check_in: "2026-09-02T00:00:00Z", planned_check_out: "2026-09-02T08:00:00Z" };
     const updated = { id: "r1", planned_check_out: "2026-09-02T10:00:00Z" };
     const client = mockClient(current, updated);
 
-    const revalidateAssignment = vi.fn().mockResolvedValue(undefined);
+    const allocation = { assign: vi.fn(), release: vi.fn(), activeSpotId: vi.fn() };
     vi.mocked(GarageAllocationService).mockImplementation(function () {
-      return { revalidateAssignment };
+      return allocation;
     } as never);
 
-    const service = new ReservationService(client as never);
-    const result = await service.updateReservation("r1", { planned_check_out: "2026-09-02T10:00:00Z" });
+    const result = await new ReservationService(client as never).updateReservation("r1", {
+      planned_check_out: "2026-09-02T10:00:00Z",
+    });
 
-    expect(revalidateAssignment).toHaveBeenCalledWith("r1", current.planned_check_in, "2026-09-02T10:00:00Z");
     expect(result).toEqual(updated);
-  });
-
-  it("propagates GarageBufferViolationError when the new dates would break the buffer", async () => {
-    const current = { planned_check_in: "2026-09-02T00:00:00Z", planned_check_out: "2026-09-02T08:00:00Z" };
-    const client = mockClient(current, {});
-
-    const revalidateAssignment = vi.fn().mockRejectedValue(new GarageBufferViolationError());
-    vi.mocked(GarageAllocationService).mockImplementation(function () {
-      return { revalidateAssignment };
-    } as never);
-
-    const service = new ReservationService(client as never);
-
-    await expect(service.updateReservation("r1", { planned_check_out: "2026-09-02T10:00:00Z" })).rejects.toBeInstanceOf(
-      GarageBufferViolationError
-    );
+    expect(allocation.assign).not.toHaveBeenCalled();
+    expect(allocation.release).not.toHaveBeenCalled();
   });
 
   it("does not touch garage allocation when planned dates are not part of the update", async () => {
@@ -492,7 +477,7 @@ describe("ReservationService.updateReservation — garage buffer revalidation", 
         listAvailableSpots: vi.fn().mockResolvedValue(spot ? [spot] : []),
         release: vi.fn().mockResolvedValue("old-spot"),
         assign: vi.fn().mockResolvedValue({}),
-        revalidateAssignment: vi.fn(),
+        spotHasType: vi.fn().mockResolvedValue(true),
         activeSpotId: vi.fn().mockResolvedValue(null),
       };
       vi.mocked(GarageAllocationService).mockImplementation(function () {
@@ -514,18 +499,50 @@ describe("ReservationService.updateReservation — garage buffer revalidation", 
         "r1"
       );
       expect(allocation.release).toHaveBeenCalledWith("r1");
-      expect(allocation.assign).toHaveBeenCalledWith("r1", "g1", "staff");
-      expect(allocation.revalidateAssignment).not.toHaveBeenCalled();
+      expect(allocation.assign).toHaveBeenCalledWith("r1", "g1", "staff", { skipBuffer: true });
     });
 
-    it("rejects before writing when no spot of the new type is free", async () => {
-      const client = mockClient(current, {});
+    it("saves the type change without a spot when none of the new type is free", async () => {
+      const client = mockClient(current, { id: "r1", parking_type: "carport" });
       const allocation = mockAllocation(null);
 
       await expect(
         new ReservationService(client as never).updateReservation("r1", { parking_type: "carport" })
-      ).rejects.toBeInstanceOf(NoGarageAvailableError);
-      expect(allocation.release).not.toHaveBeenCalled();
+      ).resolves.toMatchObject({ id: "r1" });
+      expect(allocation.assign).not.toHaveBeenCalled();
+    });
+
+    it("assigns a free spot to an active covered stay that has none", async () => {
+      const client = mockClient({ ...current, parking_type: "garage" }, { id: "r1" });
+      const allocation = mockAllocation({ id: "g1" });
+
+      await new ReservationService(client as never).updateReservation("r1", {
+        planned_check_out: "2026-09-06T00:00:00Z",
+      });
+
+      expect(allocation.assign).toHaveBeenCalledWith("r1", "g1", "staff", { skipBuffer: true });
+    });
+
+    it("still saves an edit of a covered stay without a spot when no spot is free", async () => {
+      const client = mockClient({ ...current, parking_type: "garage" }, { id: "r1" });
+      const allocation = mockAllocation(null);
+
+      await expect(
+        new ReservationService(client as never).updateReservation("r1", {
+          planned_check_out: "2026-09-06T00:00:00Z",
+        })
+      ).resolves.toMatchObject({ id: "r1" });
+      expect(allocation.assign).not.toHaveBeenCalled();
+    });
+
+    it("assigns an explicitly chosen spot even when it is busy in the window", async () => {
+      const client = mockClient({ ...current, parking_type: "garage" }, { id: "r1" });
+      const allocation = mockAllocation(null); // no free spot at all
+      allocation.activeSpotId = vi.fn().mockResolvedValue("old-spot");
+
+      await new ReservationService(client as never).updateReservation("r1", { garage_spot_id: SPOT_B });
+
+      expect(allocation.assign).toHaveBeenCalledWith("r1", SPOT_B, "staff", { skipBuffer: true });
     });
 
     it("only releases the old spot when switching to open air", async () => {
@@ -548,7 +565,7 @@ describe("ReservationService.updateReservation — garage buffer revalidation", 
         garage_spot_id: SPOT_B,
       });
 
-      expect(allocation.assign).toHaveBeenCalledWith("r1", SPOT_B, "staff");
+      expect(allocation.assign).toHaveBeenCalledWith("r1", SPOT_B, "staff", { skipBuffer: true });
     });
 
     it("moves a garage stay to another chosen garage without changing the type", async () => {
@@ -559,7 +576,7 @@ describe("ReservationService.updateReservation — garage buffer revalidation", 
       await new ReservationService(client as never).updateReservation("r1", { garage_spot_id: SPOT_B });
 
       expect(allocation.release).toHaveBeenCalledWith("r1");
-      expect(allocation.assign).toHaveBeenCalledWith("r1", SPOT_B, "staff");
+      expect(allocation.assign).toHaveBeenCalledWith("r1", SPOT_B, "staff", { skipBuffer: true });
     });
 
     it("keeps the assignment when the chosen spot is the current one", async () => {
