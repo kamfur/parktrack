@@ -5,9 +5,9 @@ import { toast } from "sonner";
 /**
  * Hook do widoku obłożenia garaży: listuje aktywne przydziały i skonfigurowane
  * miejsca, obsługuje ręczną zamianę oraz opisową propozycję optymalizacji.
- * `readOnly` (kierowca) czyta z endpointów /api/driver/* — personelowe są dla niego zablokowane.
+ * `isDriver` czyta i zmienia przydziały przez endpointy /api/driver/* — personelowe są dla niego zablokowane.
  */
-export function useGarageOccupancy({ readOnly = false }: { readOnly?: boolean } = {}) {
+export function useGarageOccupancy({ isDriver = false }: { isDriver?: boolean } = {}) {
   const [entries, setEntries] = useState<GarageOccupancyEntryDto[]>([]);
   const [spots, setSpots] = useState<GarageSpotDto[]>([]);
   const [suggestions, setSuggestions] = useState<GarageOptimizationSuggestionDto[]>([]);
@@ -20,7 +20,7 @@ export function useGarageOccupancy({ readOnly = false }: { readOnly?: boolean } 
     setIsLoading(true);
     setError(null);
     try {
-      const apiBase = readOnly ? "/api/driver" : "/api";
+      const apiBase = isDriver ? "/api/driver" : "/api";
       const [entriesRes, spotsRes] = await Promise.all([
         fetch(`${apiBase}/garage-assignments`),
         fetch(`${apiBase}/garage-spots`),
@@ -33,7 +33,7 @@ export function useGarageOccupancy({ readOnly = false }: { readOnly?: boolean } 
     } finally {
       setIsLoading(false);
     }
-  }, [readOnly]);
+  }, [isDriver]);
 
   useEffect(() => {
     void refetch();
@@ -43,7 +43,7 @@ export function useGarageOccupancy({ readOnly = false }: { readOnly?: boolean } 
     async (reservationId: string, garageSpotId: string) => {
       setIsSwapping(true);
       try {
-        const res = await fetch("/api/garage-assignments", {
+        const res = await fetch(`${isDriver ? "/api/driver" : "/api"}/garage-assignments`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reservationId, garageSpotId }),
@@ -64,7 +64,7 @@ export function useGarageOccupancy({ readOnly = false }: { readOnly?: boolean } 
         setIsSwapping(false);
       }
     },
-    [refetch]
+    [refetch, isDriver]
   );
 
   const suggestOptimizations = useCallback(async () => {

@@ -12,7 +12,7 @@ const isDriver = user?.role === "driver";
 {
   isDriver ? (
     <DriverLayout title="Obłożenie garaży — ParkTrack" userEmail={user?.email}>
-      <GarageOccupancyView client:load readOnly />
+      <GarageOccupancyView client:load isDriver />
     </DriverLayout>
   ) : (
     <Layout title="Obłożenie garaży - ParkTrack">

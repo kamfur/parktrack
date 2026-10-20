@@ -9,13 +9,13 @@ import { warsawDateKey } from "@/lib/calendar/warsaw-time";
 import type { GarageOccupancyEntryDto } from "@/types";
 
 interface GarageOccupancyViewProps {
-  /** Kierowca: tylko podgląd — bez zamiany przydziałów i propozycji optymalizacji. */
-  readOnly?: boolean;
+  /** Kierowca: może zamieniać miejsca, ale nie widzi propozycji optymalizacji. */
+  isDriver?: boolean;
 }
 
-export function GarageOccupancyView({ readOnly = false }: GarageOccupancyViewProps) {
+export function GarageOccupancyView({ isDriver = false }: GarageOccupancyViewProps) {
   const { entries, spots, suggestions, isLoading, isSwapping, isOptimizing, swap, suggestOptimizations } =
-    useGarageOccupancy({ readOnly });
+    useGarageOccupancy({ isDriver });
   const [swapTarget, setSwapTarget] = useState<GarageOccupancyEntryDto | null>(null);
   const [monthAnchor, setMonthAnchor] = useState(() => warsawDateKey(new Date()));
 
@@ -23,7 +23,7 @@ export function GarageOccupancyView({ readOnly = false }: GarageOccupancyViewPro
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Obłożenie garaży</h2>
-        {readOnly ? null : (
+        {isDriver ? null : (
           <Button type="button" variant="outline" onClick={() => void suggestOptimizations()} disabled={isOptimizing}>
             <Sparkles className="mr-2 h-4 w-4" />
             {isOptimizing ? "Analiza..." : "Zaproponuj optymalizację"}
@@ -61,18 +61,16 @@ export function GarageOccupancyView({ readOnly = false }: GarageOccupancyViewPro
         monthAnchor={monthAnchor}
         isLoading={isLoading}
         onMonthChange={setMonthAnchor}
-        onSelectEntry={readOnly ? undefined : setSwapTarget}
+        onSelectEntry={setSwapTarget}
       />
 
-      {readOnly ? null : (
-        <GarageSwapDialog
-          entry={swapTarget}
-          spots={spots}
-          isSwapping={isSwapping}
-          onOpenChange={(open) => !open && setSwapTarget(null)}
-          onSwap={swap}
-        />
-      )}
+      <GarageSwapDialog
+        entry={swapTarget}
+        spots={spots}
+        isSwapping={isSwapping}
+        onOpenChange={(open) => !open && setSwapTarget(null)}
+        onSwap={swap}
+      />
     </div>
   );
 }
