@@ -31,8 +31,10 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
       return json({ error: "Validation failed", details: validationResult.error.format() }, 400);
     }
 
-    const { reservationId, garageSpotId } = validationResult.data;
-    const assignment = await new GarageAllocationService(locals.supabase).swap(reservationId, garageSpotId);
+    const { reservationId, garageSpotId, skipBuffer } = validationResult.data;
+    const assignment = await new GarageAllocationService(locals.supabase).swap(reservationId, garageSpotId, {
+      skipBuffer,
+    });
     return json(assignment);
   } catch (error) {
     if (error instanceof GarageBufferViolationError) {

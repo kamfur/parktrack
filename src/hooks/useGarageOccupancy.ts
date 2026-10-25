@@ -40,13 +40,13 @@ export function useGarageOccupancy({ isDriver = false }: { isDriver?: boolean } 
   }, [refetch]);
 
   const swap = useCallback(
-    async (reservationId: string, garageSpotId: string) => {
+    async (reservationId: string, garageSpotId: string, skipBuffer = false) => {
       setIsSwapping(true);
       try {
         const res = await fetch(`${isDriver ? "/api/driver" : "/api"}/garage-assignments`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reservationId, garageSpotId }),
+          body: JSON.stringify({ reservationId, garageSpotId, ...(skipBuffer ? { skipBuffer: true } : {}) }),
         });
         if (!res.ok) {
           const payload = await res.json().catch(() => null);

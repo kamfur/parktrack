@@ -196,10 +196,14 @@ export class GarageAllocationService {
    * When the new spot cannot be assigned the previous one is restored, so a failed
    * swap never leaves the reservation without a spot.
    */
-  async swap(reservationId: string, newGarageSpotId: string): Promise<GarageAssignmentDto> {
+  async swap(
+    reservationId: string,
+    newGarageSpotId: string,
+    options: { skipBuffer?: boolean } = {}
+  ): Promise<GarageAssignmentDto> {
     const releasedSpotId = await this.release(reservationId);
     try {
-      return await this.assign(reservationId, newGarageSpotId, "staff");
+      return await this.assign(reservationId, newGarageSpotId, "staff", { skipBuffer: options.skipBuffer });
     } catch (error) {
       if (releasedSpotId) {
         await this.assign(reservationId, releasedSpotId, "staff", { skipBuffer: true }).catch((restoreError) => {

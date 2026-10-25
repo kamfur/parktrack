@@ -27,7 +27,7 @@ export const GET: APIRoute = async ({ locals }) => {
 /**
  * PATCH /api/driver/garage-assignments — move a reservation to another garage/carport spot
  * (occupancy view). Staff AND driver. Drivers have no write RLS on garage_assignments, so the
- * swap runs with the admin client after the session check; the 10h buffer is still enforced.
+ * swap runs with the admin client after the session check; the 10h buffer is enforced unless `skipBuffer` is set.
  */
 export const PATCH: APIRoute = async ({ request, locals }) => {
   if (!locals.user) return json({ error: "Unauthorized" }, 401);
@@ -41,8 +41,10 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
     const adminClient = createSupabaseAdminClient();
     if (!adminClient) return json({ error: "Admin client not available" }, 500);
 
-    const { reservationId, garageSpotId } = validationResult.data;
-    const assignment = await new GarageAllocationService(adminClient).swap(reservationId, garageSpotId);
+    const { reservationId, garageSpotId, skipBuffer } = validationResult.data;
+    const assignment = await new GarageAllocationService(adminClient).swap(reservationId, garageSpotId, {
+      skipBuffer,
+    });
     return json(assignment);
   } catch (error) {
     if (error instanceof GarageBufferViolationError) return json({ error: error.message }, 409);

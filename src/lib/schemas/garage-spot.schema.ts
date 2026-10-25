@@ -47,6 +47,7 @@ export type UpdateGarageSpotSchema = typeof updateGarageSpotSchema;
 export const garageAssignmentSwapSchema = z.object({
   reservationId: z.string().uuid("reservationId must be a valid UUID"),
   garageSpotId: z.string().uuid("garageSpotId must be a valid UUID"),
+  skipBuffer: z.boolean().optional(),
 });
 
 export type GarageAssignmentSwapSchema = typeof garageAssignmentSwapSchema;
