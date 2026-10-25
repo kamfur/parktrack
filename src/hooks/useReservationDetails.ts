@@ -217,7 +217,8 @@ export function useReservationDetails({
   // Drop edit mode when the reservation cannot be edited (completed / cancelled)
   useEffect(() => {
     if (!reservation || !isEditMode) return;
-    const canEdit = reservation.status === "confirmed" || reservation.status === "in_progress";
+    const canEdit =
+      reservation.status === "confirmed" || reservation.status === "in_progress" || reservation.status === "no_show";
     if (!canEdit) {
       setIsEditMode(false);
       setIsDirty(false);
@@ -492,6 +493,7 @@ function buildTimelineEvents(reservation: ReservationDto): TimelineEvent[] {
 function getEditRules(status: string): ConditionalEditRules {
   switch (status) {
     case "confirmed":
+    case "no_show": // a no-show can still be corrected (dates, client data) — same rules as confirmed
       return {
         canEditCheckIn: true,
         canEditCheckOut: true,
@@ -523,7 +525,6 @@ function getEditRules(status: string): ConditionalEditRules {
 
     case "completed":
     case "cancelled":
-    case "no_show":
       return {
         canEditCheckIn: false,
         canEditCheckOut: false,
@@ -581,7 +582,7 @@ function getAvailableActions(status: string) {
   return {
     canCheckIn: status === "confirmed",
     canCheckOut: status === "in_progress",
-    canEdit: status === "confirmed" || status === "in_progress",
+    canEdit: status === "confirmed" || status === "in_progress" || status === "no_show",
     canCancel: status === "confirmed" || status === "in_progress",
   };
 }

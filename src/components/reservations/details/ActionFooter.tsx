@@ -122,7 +122,7 @@ function getAvailableActions(status: ReservationStatus, isInvoiced: boolean) {
   return {
     canCheckIn: status === "confirmed",
     canCheckOut: status === "in_progress",
-    canEdit: status === "confirmed" || status === "in_progress",
+    canEdit: status === "confirmed" || status === "in_progress" || status === "no_show",
     canCancel: !isInvoiced && (status === "confirmed" || status === "in_progress"),
     canMarkNoShow: !isInvoiced && status === "confirmed",
     canRestore: !isInvoiced && status === "cancelled",

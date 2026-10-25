@@ -139,7 +139,9 @@ export function ReservationCards({ reservations, isLoading, onCardClick, onActio
                       <Eye className="mr-2 h-4 w-4" />
                       Szczegóły
                     </DropdownMenuItem>
-                    {(reservation.status === "confirmed" || reservation.status === "in_progress") && (
+                    {(reservation.status === "confirmed" ||
+                      reservation.status === "in_progress" ||
+                      reservation.status === "no_show") && (
                       <DropdownMenuItem onClick={(e) => handleAction("edit", reservation, e)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edytuj
