@@ -61,12 +61,31 @@ const reactConfig = tseslint.config({
 
 export default tseslint.config(
   includeIgnoreFile(gitignorePath),
-  { ignores: ["src/components/ui/**"] },
+  { ignores: ["src/components/ui/**", ".claude/**", "packages/**", "public/**", "src/db/database.types.ts"] },
   baseConfig,
   jsxA11yConfig,
   reactConfig,
   eslintPluginAstro.configs["flat/recommended"],
   eslintPluginPrettier,
+  {
+    // Standalone Node scripts (e.g. scripts/soniox-poc) run outside Astro.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        Buffer: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        performance: "readonly",
+        WebSocket: "readonly",
+        URL: "readonly",
+      },
+    },
+    rules: {
+      "no-console": "off",
+    },
+  },
   {
     files: ["**/*.astro"],
     rules: {

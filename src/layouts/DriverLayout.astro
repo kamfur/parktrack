@@ -1,0 +1,68 @@
+---
+import "../styles/global.css";
+import { DriverLogoutButton } from "../components/driver/DriverLogoutButton";
+
+interface Props {
+  title?: string;
+  userEmail?: string;
+}
+
+const { title = "ParkTrack — Kierowca", userEmail } = Astro.props;
+
+const navLinks = [
+  { href: "/kierowca", label: "Operacje" },
+  { href: "/garage-occupancy", label: "Garaże" },
+];
+const currentPath = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground antialiased">
+    <header class="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
+      <div class="mx-auto flex max-w-lg lg:max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">ParkTrack</p>
+          <h1 class="text-lg font-semibold leading-tight">Kierowca</h1>
+        </div>
+        <nav class="flex items-center gap-1" aria-label="Panel kierowcy">
+          {
+            navLinks.map((link) => {
+              const active = currentPath === link.href || currentPath.startsWith(`${link.href}/`);
+              return (
+                <a
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  class:list={[
+                    "rounded-md px-3 py-2 text-sm font-medium",
+                    active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                  ]}
+                >
+                  {link.label}
+                </a>
+              );
+            })
+          }
+        </nav>
+        <div class="flex items-center gap-3">
+          {
+            userEmail ? (
+              <span class="hidden max-w-[10rem] truncate text-xs text-muted-foreground sm:inline">{userEmail}</span>
+            ) : null
+          }
+          <DriverLogoutButton client:load />
+        </div>
+      </div>
+    </header>
+    <main class="mx-auto max-w-lg lg:max-w-6xl px-4 py-4 lg:pb-8">
+      <slot />
+    </main>
+  </body>
+</html>

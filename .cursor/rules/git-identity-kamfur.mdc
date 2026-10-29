@@ -1,0 +1,34 @@
+---
+description: Always use GitHub account kamfur for this repository
+alwaysApply: true
+---
+
+# Git identity: kamfur only
+
+This repository is `https://github.com/kamfur/parktrack.git`. Always use the **kamfur** account. Never use `kamil-furtak-s4d` or `kamil@solutions4delivery.com` here.
+
+## Required local identity
+
+```text
+user.name  = kamfur
+user.email = furtakamil@gmail.com
+```
+
+Before every `git commit` or `git push`:
+
+1. `git config --local user.name` and `user.email` must match the values above. If they do not, set them with `git config --local`.
+2. `gh auth status` must show **kamfur** as the active account. If another account is active, run `gh auth switch --user kamfur`.
+3. `git remote -v` origin must stay `https://github.com/kamfur/parktrack.git`.
+
+## Examples
+
+```text
+# ❌ BAD — work account on this private repo
+git config --local user.email "kamil@solutions4delivery.com"
+gh auth switch --user kamil-furtak-s4d
+
+# ✅ GOOD — kamfur for every Git and GitHub operation here
+git config --local user.name "kamfur"
+git config --local user.email "furtakamil@gmail.com"
+gh auth switch --user kamfur
+```

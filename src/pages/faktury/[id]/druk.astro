@@ -2,6 +2,8 @@
 export const prerender = false;
 
 import { z } from "zod";
+import { parkingTypeLabel } from "../../../lib/pricing/parking-type";
+import { InvoiceService } from "../../../lib/services/invoice.service";
 
 const { id } = Astro.params;
 
@@ -11,28 +13,76 @@ if (!id || !z.string().uuid().safeParse(id).success) {
 
 const supabase = Astro.locals.supabase;
 
-const { data: invoice } = await supabase.from("invoices").select("*").eq("id", id).maybeSingle();
+const invoice = await new InvoiceService(supabase).getById(id);
 
 if (!invoice) {
   return new Response("Faktura nie znaleziona", { status: 404 });
 }
 
-const { data: reservation } = await supabase
-  .from("reservations")
-  .select("is_paid, planned_check_in, planned_check_out")
-  .eq("id", invoice.reservation_id)
-  .maybeSingle();
+// Legacy = issued before the VAT breakdown (vat_rate null): render exactly as it was printed then.
+const isLegacy = invoice.vat_rate === null;
+const isAgencyInvoice = invoice.travel_agency_id !== null;
+const firstItem = invoice.items[0];
+
+// Payment status only makes sense for a single individual reservation.
+const { data: reservation } =
+  !isAgencyInvoice && invoice.items.length === 1
+    ? await supabase
+        .from("reservations")
+        .select("is_paid, planned_check_in, planned_check_out, parking_type")
+        .eq("id", firstItem.reservation_id)
+        .maybeSingle()
+    : { data: null };
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" });
 
+const formatWarsawDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("pl-PL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "Europe/Warsaw",
+  });
+
+/** `YYYY-MM-DD` (SQL date) → `DD.MM.YYYY` without timezone shifts. */
+const formatDateOnly = (value: string | null) => {
+  if (!value) return "—";
+  const [y, m, d] = value.split("-");
+  return `${d}.${m}.${y}`;
+};
+
 const formatCurrency = (amount: number) =>
   amount.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " PLN";
+
+const formatDays = (days: number) => `${days} ${days === 1 ? "dzień" : "dni"}`;
 
 const createdDate = formatDate(invoice.created_at);
 const checkInDate = reservation ? formatDate(reservation.planned_check_in) : "—";
 const checkOutDate = reservation ? formatDate(reservation.planned_check_out) : "—";
 const isPaid = reservation?.is_paid ?? false;
+const parkingLabel = parkingTypeLabel(reservation?.parking_type);
+// Price lists price the whole stay (not a per-day rate), so the invoice line is one service at the total.
+const daysLabel = formatDays(firstItem?.days_count ?? 1);
+
+const billingPeriodLabel =
+  invoice.billing_year && invoice.billing_month
+    ? new Date(Date.UTC(invoice.billing_year, invoice.billing_month - 1, 15)).toLocaleDateString("pl-PL", {
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      })
+    : null;
+
+const itemLabel = (item: (typeof invoice.items)[number]) => {
+  const period = `${formatWarsawDate(item.period_start)} – ${formatWarsawDate(item.period_end)}`;
+  const base = `${item.description} (${parkingTypeLabel(item.parking_type)}, ${formatDays(item.days_count)}) – ${period}`;
+  if (!isAgencyInvoice) return base;
+  const plate = item.license_plate ? `, ${item.license_plate}` : "";
+  return `${base} – ${item.guest_name}${plate}`;
+};
+
+const vatRateLabel = `${Number(invoice.vat_rate ?? 0).toLocaleString("pl-PL")}%`;
 ---
 
 <!doctype html>
@@ -150,6 +200,15 @@ const isPaid = reservation?.is_paid ?? false;
         font-weight: bold;
         font-size: 15px;
       }
+      td.num {
+        text-align: right;
+        white-space: nowrap;
+      }
+      .summary {
+        margin-top: 8px;
+        font-size: 14px;
+        line-height: 1.8;
+      }
       .payment-status {
         margin-top: 24px;
         padding: 12px 16px;
@@ -190,7 +249,7 @@ const isPaid = reservation?.is_paid ?? false;
   <body>
     <div class="no-print no-print-bar">
       <button onclick="window.print()">Drukuj</button>
-      <a href={`/rezerwacje`}>← Wróć do listy</a>
+      <a href={`/faktury`}>← Wróć do listy</a>
     </div>
 
     <div class="page">
@@ -198,7 +257,17 @@ const isPaid = reservation?.is_paid ?? false;
         <div class="invoice-title">FAKTURA VAT</div>
         <div class="invoice-meta">
           <div class="number">{invoice.invoice_number}</div>
-          <div>Wystawiono: {createdDate}</div>
+          {
+            isLegacy ? (
+              <div>Wystawiono: {createdDate}</div>
+            ) : (
+              <>
+                <div>Data wystawienia: {formatDateOnly(invoice.issue_date)}</div>
+                <div>Data sprzedaży: {formatDateOnly(invoice.sale_date)}</div>
+                {billingPeriodLabel && <div>Okres rozliczeniowy: {billingPeriodLabel}</div>}
+              </>
+            )
+          }
         </div>
       </div>
 
@@ -230,36 +299,100 @@ const isPaid = reservation?.is_paid ?? false;
         </div>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Lp</th>
-            <th>Nazwa usługi</th>
-            <th>Ilość</th>
-            <th>J.m.</th>
-            <th>Cena jedn.</th>
-            <th>Wartość</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>1</td>
-            <td>Usługa parkingowa – {checkInDate} – {checkOutDate}</td>
-            <td>{invoice.days_count}</td>
-            <td>dzień</td>
-            <td>{formatCurrency(invoice.daily_rate_snapshot)}</td>
-            <td>{formatCurrency(invoice.total_amount)}</td>
-          </tr>
-          <tr class="total-row">
-            <td colspan="5" style="text-align: right;">Razem:</td>
-            <td>{formatCurrency(invoice.total_amount)}</td>
-          </tr>
-        </tbody>
-      </table>
+      {
+        isLegacy ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Lp</th>
+                <th>Nazwa usługi</th>
+                <th>Ilość</th>
+                <th>J.m.</th>
+                <th>Cena jedn.</th>
+                <th>Wartość</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>
+                  Usługa parkingowa ({parkingLabel}, {daysLabel}) – {checkInDate} – {checkOutDate}
+                </td>
+                <td>1</td>
+                <td>usł.</td>
+                <td>{formatCurrency(invoice.total_amount)}</td>
+                <td>{formatCurrency(invoice.total_amount)}</td>
+              </tr>
+              <tr class="total-row">
+                <td colspan="5" style="text-align: right;">
+                  Razem:
+                </td>
+                <td>{formatCurrency(invoice.total_amount)}</td>
+              </tr>
+            </tbody>
+          </table>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Lp</th>
+                <th>Nazwa usługi</th>
+                <th>Ilość</th>
+                <th>J.m.</th>
+                <th>Wartość netto</th>
+                <th>VAT</th>
+                <th>Kwota VAT</th>
+                <th>Wartość brutto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoice.items.map((item) => (
+                <tr>
+                  <td>{item.position}</td>
+                  <td>{itemLabel(item)}</td>
+                  <td>1</td>
+                  <td>usł.</td>
+                  <td class="num">{formatCurrency(item.net_amount ?? 0)}</td>
+                  <td class="num">{vatRateLabel}</td>
+                  <td class="num">{formatCurrency(item.vat_amount ?? 0)}</td>
+                  <td class="num">{formatCurrency(item.gross_amount)}</td>
+                </tr>
+              ))}
+              <tr class="total-row">
+                <td colspan="4" style="text-align: right;">
+                  Razem:
+                </td>
+                <td class="num">{formatCurrency(invoice.total_net ?? 0)}</td>
+                <td class="num">{vatRateLabel}</td>
+                <td class="num">{formatCurrency(invoice.total_vat ?? 0)}</td>
+                <td class="num">{formatCurrency(invoice.total_amount)}</td>
+              </tr>
+            </tbody>
+          </table>
+        )
+      }
 
-      <div class={`payment-status ${isPaid ? "paid" : "unpaid"}`}>
-        {isPaid ? "Opłacono" : "Oczekuje na płatność"}
-      </div>
+      {
+        !isLegacy && (
+          <div class="summary">
+            <div>
+              Do zapłaty: <strong>{formatCurrency(invoice.total_amount)}</strong>
+            </div>
+            {invoice.payment_due_date && (
+              <div>
+                Termin płatności: {formatDateOnly(invoice.payment_due_date)} (przelew na konto:{" "}
+                {invoice.seller_bank_account})
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      {
+        !isAgencyInvoice && (
+          <div class={`payment-status ${isPaid ? "paid" : "unpaid"}`}>{isPaid ? "Opłacono" : "Oczekuje na płatność"}</div>
+        )
+      }
     </div>
   </body>
 </html>

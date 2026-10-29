@@ -75,10 +75,10 @@ orchestrator updates Status as artifacts appear on disk.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
-| 1 | Test runner bootstrap + auth guard | Install Vitest and prove auth middleware covers all new M-1 routes | #5 | integration | complete | testing-auth-guard |
-| 2 | Invoice service correctness | Prove invoice total accuracy, completed-only guard, numbering integrity, and external API contract | #1, #2, #4, #7 | unit + integration | complete | testing-invoice-service |
-| 3 | Settings admin client + stats correctness | Prove settings write failure surfaces visibly and Warsaw timezone boundary is enforced | #3, #6 | integration | researched | testing-settings-stats |
-| 4 | Quality gates wiring | Wire `npm run test`, lint, and build into a GitHub Actions CI workflow on every PR | cross-cutting | CI config | not started | — |
+| 1 | Test runner bootstrap + auth guard | Install Vitest and prove auth middleware covers all new M-1 routes | #5 | integration | complete | context/archive/2026-09-02-testing-auth-guard |
+| 2 | Invoice service correctness | Prove invoice total accuracy, completed-only guard, numbering integrity, and external API contract | #1, #2, #4, #7 | unit + integration | complete | context/archive/2026-09-02-testing-invoice-service |
+| 3 | Settings admin client + stats correctness | Prove settings write failure surfaces visibly and Warsaw timezone boundary is enforced | #3, #6 | integration | complete | context/archive/2026-09-02-testing-settings-stats |
+| 4 | Quality gates wiring | Wire `npm run test`, lint, and build into a GitHub Actions CI workflow on every PR | cross-cutting | CI config | complete | context/archive/2026-09-03-testing-quality-gates |
 
 **Status vocabulary** (parser literals — do not rename):
 `not started` → `change opened` → `researched` → `planned` → `implementing` → `complete`
@@ -176,6 +176,22 @@ and month-start strings.
 - **Call `getWarsawPeriodBounds("month")`** and assert the full ISO 8601 string including offset suffix (e.g. `"2026-08-01T00:00:00+02:00"`). Asserting the full string catches a regression that strips the `${tz}` suffix.
 - **Restore timers in `afterEach`**: `vi.useRealTimers()` — prevents bleed between test cases.
 - **Reference test**: `src/pages/api/stats.test.ts`
+
+### 6.6 Adding a DB-level test (pgTAP) for a trigger or RPC
+
+Use when a rule lives in Postgres (pricing trigger, driver allowlist, invoice RPCs, locks) —
+Vitest mocks cannot see it.
+
+- **File**: `supabase/tests/NNN_<area>.test.sql`; wrap in `begin; … select * from finish(); rollback;`
+  so fixtures never persist. Start with `create extension if not exists pgtap with schema extensions;`.
+- **Fixtures inline**: insert a far-future price list (`valid_from 2099-01-01`) so seeded lists never win;
+  use `public.get_system_user()` for `created_by` / `last_modified_by`.
+- **Act as a role**: `select set_config('request.jwt.claims', json_build_object('sub', …, 'app_metadata',
+  json_build_object('role', 'driver'))::text, true);` — `current_app_role()` / `auth.uid()` read it.
+- **Assert money with literals** (oracle problem, §6.4); errors with `throws_ok(sql, '42501', …)` or
+  `throws_like(sql, 'CODE%', …)`.
+- **Run**: `npx supabase test db` (CI job `db-tests`).
+- **Reference test**: `supabase/tests/000_smoke.test.sql`
 
 ---
 

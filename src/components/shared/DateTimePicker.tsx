@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { CalendarIcon, ClockIcon } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -41,6 +41,7 @@ export function DateTimePicker({
   label: _label,
 }: DateTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const timeId = useId();
 
   // Synchronizuj timeValue z value
   const timeValue = value ? format(value, "HH:mm") : "00:00";
@@ -94,42 +95,52 @@ export function DateTimePicker({
   const displayValue = value ? `${format(value, "dd.MM.yyyy", { locale: pl })} ${format(value, "HH:mm")}` : placeholder;
 
   return (
-    <div className="space-y-2">
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            disabled={disabled}
-            className={cn(
-              "w-full justify-start text-left font-normal",
-              !value && "text-neutral-500",
-              error && "border-red-500 focus-visible:ring-red-500"
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {displayValue}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <div className="p-3">
-            <Calendar
-              mode="single"
-              selected={value || undefined}
-              onSelect={handleDateSelect}
-              disabled={disabledDates}
-              initialFocus
-              locale={pl}
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          disabled={disabled}
+          className={cn(
+            "min-h-11 w-full justify-start text-left font-normal md:min-h-9",
+            !value && "text-neutral-500",
+            error && "border-red-500 focus-visible:ring-red-500"
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+          <span className="truncate">{displayValue}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-auto max-h-(--radix-popover-content-available-height) overflow-y-auto p-0"
+        align="start"
+        collisionPadding={8}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="flex flex-col gap-1 p-2">
+          <Calendar
+            mode="single"
+            selected={value || undefined}
+            onSelect={handleDateSelect}
+            disabled={disabledDates}
+            locale={pl}
+            className="p-1 [--cell-size:--spacing(7)]"
+          />
+          <div className="flex items-center gap-2 px-1 pb-1">
+            <ClockIcon className="h-4 w-4 shrink-0 text-neutral-500" />
+            <label htmlFor={timeId} className="text-sm font-medium">
+              Godzina:
+            </label>
+            <Input
+              id={timeId}
+              type="time"
+              value={timeValue}
+              onChange={handleTimeChange}
+              className="h-9 w-32"
+              disabled={!value}
             />
-            <div className="mt-4 border-t pt-4">
-              <div className="flex items-center gap-2">
-                <ClockIcon className="h-4 w-4 text-neutral-500" />
-                <label className="text-sm font-medium">Godzina:</label>
-                <Input type="time" value={timeValue} onChange={handleTimeChange} className="w-32" disabled={!value} />
-              </div>
-            </div>
           </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

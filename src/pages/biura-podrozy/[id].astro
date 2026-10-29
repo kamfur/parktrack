@@ -1,0 +1,22 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { AgencyMonthView } from "../../components/agencies/AgencyMonthView";
+import { previousBillingMonth } from "../../lib/services/agency-billing.service";
+
+export const prerender = false;
+
+const { id } = Astro.params;
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+if (!id || !uuidRegex.test(id)) {
+  return Astro.redirect("/biura-podrozy");
+}
+
+// Billing month `YYYY-MM`; defaults to the previous Warsaw month (month-end invoicing).
+const monthParam = Astro.url.searchParams.get("month");
+const month = monthParam && /^\d{4}-(0[1-9]|1[0-2])$/.test(monthParam) ? monthParam : previousBillingMonth();
+---
+
+<Layout title="Biuro podróży - ParkTrack">
+  <AgencyMonthView client:load agencyId={id} month={month} />
+</Layout>

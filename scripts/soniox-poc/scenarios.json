@@ -1,0 +1,183 @@
+[
+  {
+    "id": "s01-basic",
+    "note": "Podstawowy przypadek: nazwisko, daty słownie, rejestracja literowana.",
+    "script": "Dobrze, to zapisuję. Pan Tomasz Wróblewski, przyjazd dwunastego października o szóstej rano, powrót dziewiętnastego października około dwudziestej drugiej. Numer rejestracyjny ka er siedem ha iks dwa dziewięć. Parking odkryty, dwie osoby.",
+    "entities": [
+      { "label": "surname", "value": "Wróblewski" },
+      { "label": "first_name", "value": "Tomasz" },
+      { "label": "plate", "value": "KR7HX29" },
+      { "label": "date", "value": "12 października" },
+      { "label": "date", "value": "19 października" },
+      { "label": "passengers", "value": "2 osoby" }
+    ]
+  },
+  {
+    "id": "s02-phone-groups",
+    "note": "Telefon w grupach po trzy cyfry, garaż, kierunek lotu.",
+    "script": "Pani Agnieszka Szczepańska, telefon sześćset cztery, sto dwadzieścia trzy, dziewięćset osiemdziesiąt siedem. Rejestracja es ka cztery er dwa siedem a. Od trzeciego listopada do dziesiątego listopada, garaż. Lot do Londynu Stansted.",
+    "entities": [
+      { "label": "surname", "value": "Szczepańska" },
+      { "label": "phone", "value": "604123987" },
+      { "label": "plate", "value": "SK4R27A" },
+      { "label": "date", "value": "3 listopada" },
+      { "label": "date", "value": "10 listopada" },
+      { "label": "parking_type", "value": "garaż" },
+      { "label": "flight", "value": "Stansted" }
+    ]
+  },
+  {
+    "id": "s03-correction",
+    "note": "Pracownik się poprawia: LLM ma wziąć drugą datę, STT ma oddać obie.",
+    "script": "Marek Grzegorczyk, przyjazd piętnastego października, nie, przepraszam, siedemnastego października o czwartej czterdzieści. Powrót dwudziestego czwartego października. Numer es o jeden dwa trzy cztery pięć.",
+    "entities": [
+      { "label": "surname", "value": "Grzegorczyk" },
+      { "label": "date", "value": "17 października" },
+      { "label": "date", "value": "24 października" },
+      { "label": "plate", "value": "SO12345" }
+    ]
+  },
+  {
+    "id": "s04-phone-digits",
+    "note": "Telefon cyfra po cyfrze, wiata, cztery osoby.",
+    "script": "Paweł Kędzierski, telefon pięć zero jeden, dwa dwa trzy, cztery cztery pięć. Samochód es ka el pięć jeden dziewięć ce. Wiata, cztery osoby, lot do Eindhoven, wylot dwudziestego października.",
+    "entities": [
+      { "label": "surname", "value": "Kędzierski" },
+      { "label": "phone", "value": "501223445" },
+      { "label": "plate", "value": "SKL519C" },
+      { "label": "parking_type", "value": "wiata" },
+      { "label": "passengers", "value": "4 osoby" },
+      { "label": "flight", "value": "Eindhoven" },
+      { "label": "date", "value": "20 października" }
+    ]
+  },
+  {
+    "id": "s05-weekdays",
+    "note": "Dni tygodnia razem z datą, trudne nazwisko z Ż.",
+    "script": "Bartłomiej Żurawski, w piątek dwudziestego czwartego października, wraca w niedzielę drugiego listopada. Rejestracja ka ka dziewięć ce zet cztery. Trzy osoby, Antalya.",
+    "entities": [
+      { "label": "surname", "value": "Żurawski" },
+      { "label": "date", "value": "24 października" },
+      { "label": "date", "value": "2 listopada" },
+      { "label": "plate", "value": "KK9CZ4" },
+      { "label": "passengers", "value": "3 osoby" },
+      { "label": "flight", "value": "Antalya" }
+    ]
+  },
+  {
+    "id": "s06-email",
+    "note": "Adres e-mail dyktowany słownie.",
+    "script": "Anna Nowak, mail anna kropka nowak małpa gmail kropka com. Przyjazd szóstego listopada, powrót trzynastego listopada, parking odkryty. Rejestracja es te pięć siedem siedem ka.",
+    "entities": [
+      { "label": "surname", "value": "Nowak" },
+      { "label": "email", "value": "anna.nowak@gmail.com" },
+      { "label": "date", "value": "6 listopada" },
+      { "label": "date", "value": "13 listopada" },
+      { "label": "plate", "value": "ST577K" }
+    ]
+  },
+  {
+    "id": "s07-foreign-name",
+    "note": "Obce nazwisko literowane, daty względne (bez sprawdzania dnia).",
+    "script": "Nazwisko Nguyen, literuję en gie u igrek e en, imię Minh. Przyjazd jutro rano o siódmej, powrót za tydzień w środę. Numer de wu dwa trzy siedem ef.",
+    "entities": [
+      { "label": "surname", "value": "Nguyen" },
+      { "label": "plate", "value": "DW237F" }
+    ]
+  },
+  {
+    "id": "s08-hours",
+    "note": "Godziny z minutami, przylot z Dortmundu.",
+    "script": "Kowalczyk, czternastego listopada godzina piąta piętnaście, powrót dwudziestego pierwszego listopada o dwudziestej trzeciej czterdzieści, przylot z Dortmundu. Numer rejestracyjny ka er ka jeden dwa trzy cztery.",
+    "entities": [
+      { "label": "surname", "value": "Kowalczyk" },
+      { "label": "date", "value": "14 listopada" },
+      { "label": "date", "value": "21 listopada" },
+      { "label": "flight", "value": "Dortmundu" },
+      { "label": "plate", "value": "KRK1234" }
+    ]
+  },
+  {
+    "id": "s09-double-surname",
+    "note": "Nazwisko dwuczłonowe, telefon w parach.",
+    "script": "Katarzyna Wiśniewska-Lis, telefon siedemset dziewięćdziesiąt, dwanaście, trzydzieści cztery, pięćdziesiąt sześć. Rejestracja es i cztery siedem pięć wu. Od ósmego do piętnastego listopada.",
+    "entities": [
+      { "label": "surname", "value": "Wiśniewska-Lis" },
+      { "label": "phone", "value": "790123456" },
+      { "label": "plate", "value": "SI475W" },
+      { "label": "date", "value": "8" },
+      { "label": "date", "value": "15 listopada" }
+    ]
+  },
+  {
+    "id": "s10-long-stay",
+    "note": "Długi postój przez przełom roku, zera w rejestracji.",
+    "script": "Jerzy Dąbrowski, od pierwszego grudnia do szóstego stycznia, garaż. Samochód numer ka ce ha zero zero siedem.",
+    "entities": [
+      { "label": "surname", "value": "Dąbrowski" },
+      { "label": "date", "value": "1 grudnia" },
+      { "label": "date", "value": "6 stycznia" },
+      { "label": "parking_type", "value": "garaż" },
+      { "label": "plate", "value": "KCH007" }
+    ]
+  },
+  {
+    "id": "s11-family",
+    "note": "Rodzina, 31. dzień miesiąca.",
+    "script": "Państwo Zielińscy, cztery osoby, przyjazd trzydziestego pierwszego października, powrót siódmego listopada. Numer es be pięć pięć dwa er, parking odkryty.",
+    "entities": [
+      { "label": "surname", "value": "Zielińscy" },
+      { "label": "passengers", "value": "4 osoby" },
+      { "label": "date", "value": "31 października" },
+      { "label": "date", "value": "7 listopada" },
+      { "label": "plate", "value": "SB552R" }
+    ]
+  },
+  {
+    "id": "s12-background-noise",
+    "note": "NAGRAJ Z HAŁASEM W TLE (radio, rozmowy, otwarte okno).",
+    "script": "Piotr Lewandowski, telefon pięćset dwanaście, trzysta czterdzieści pięć, sześćset siedemdziesiąt osiem. Przyjazd dziewiątego listopada, powrót szesnastego listopada. Rejestracja es ka er sześć sześć jeden.",
+    "entities": [
+      { "label": "surname", "value": "Lewandowski" },
+      { "label": "phone", "value": "512345678" },
+      { "label": "date", "value": "9 listopada" },
+      { "label": "date", "value": "16 listopada" },
+      { "label": "plate", "value": "SKR661" }
+    ]
+  },
+  {
+    "id": "s13-year-digits",
+    "note": "Cyfry w rejestracji podobne do roku.",
+    "script": "Ewa Michalak, wylot do Barcelony dwudziestego ósmego października, powrót trzeciego listopada. Rejestracja es te dwa zero dwa pięć.",
+    "entities": [
+      { "label": "surname", "value": "Michalak" },
+      { "label": "flight", "value": "Barcelony" },
+      { "label": "date", "value": "28 października" },
+      { "label": "date", "value": "3 listopada" },
+      { "label": "plate", "value": "ST2025" }
+    ]
+  },
+  {
+    "id": "s14-fillers",
+    "note": "Wtrącenia i zawahania, mówione naturalnie.",
+    "script": "Yyy, dobrze, to pani Małgorzata Chrząszcz, eee, przyjazd czwartego listopada, powrót, moment, jedenastego listopada. Numer es ka em siedem jeden cztery dwa.",
+    "entities": [
+      { "label": "surname", "value": "Chrząszcz" },
+      { "label": "date", "value": "4 listopada" },
+      { "label": "date", "value": "11 listopada" },
+      { "label": "plate", "value": "SKM7142" }
+    ]
+  },
+  {
+    "id": "s15-change-type",
+    "note": "Zmiana typu parkingu w trakcie rozmowy.",
+    "script": "Robert Jankowski, piątego listopada do dwunastego listopada, parking odkryty, a nie, jednak wiata. Rejestracja pe o dwa dwa dwa ka ha.",
+    "entities": [
+      { "label": "surname", "value": "Jankowski" },
+      { "label": "date", "value": "5 listopada" },
+      { "label": "date", "value": "12 listopada" },
+      { "label": "parking_type", "value": "wiata" },
+      { "label": "plate", "value": "PO222KH" }
+    ]
+  }
+]

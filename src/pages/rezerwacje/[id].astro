@@ -3,6 +3,7 @@ import Layout from "../../layouts/Layout.astro";
 import { ReservationDetailsView } from "../../components/reservations/details";
 
 const { id } = Astro.params;
+const initialEditMode = Astro.url.searchParams.get("edit") === "1";
 
 // Validate UUID format
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -20,6 +21,7 @@ export const prerender = false;
       client:load
       reservationId={id}
       isOpen={true}
+      initialEditMode={initialEditMode}
       onClose={() => {
         window.history.back();
       }}

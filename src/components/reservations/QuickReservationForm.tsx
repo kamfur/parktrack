@@ -14,12 +14,18 @@ import { CostPreview } from "./CostPreview";
 import { AvailabilityIndicator } from "./AvailabilityIndicator";
 import { useAvailabilityCheck } from "@/hooks/useAvailabilityCheck";
 import { Loader2 } from "lucide-react";
+import { VoiceCaptureButton } from "@/components/voice/VoiceCaptureButton";
 
 /**
  * Formularz szybkiego tworzenia rezerwacji z trzema wymaganymi polami.
  * Zoptymalizowany pod kątem szybkości wprowadzania danych (cel: <30 sekund).
  */
-export function QuickReservationForm({ onSubmit, onSwitchToFull, isSubmitting }: QuickReservationFormProps) {
+export function QuickReservationForm({
+  onSubmit,
+  onSwitchToFull,
+  onStartVoice,
+  isSubmitting,
+}: QuickReservationFormProps) {
   // Ustaw domyślne daty: dzisiaj i jutro
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -67,6 +73,21 @@ export function QuickReservationForm({ onSubmit, onSwitchToFull, isSubmitting }:
     }
   };
 
+  // Dyktowanie: przejście do trybu pełnego z bieżącymi wartościami; pola zmienione ręcznie nie są nadpisywane głosem.
+  const handleStartVoice = () => {
+    if (!onStartVoice) return;
+    const manual = (
+      [
+        ["lastName", "lastName"],
+        ["checkInDate", "checkIn"],
+        ["checkOutDate", "checkOut"],
+      ] as const
+    )
+      .filter(([field]) => form.getFieldState(field).isDirty)
+      .map(([, key]) => key);
+    onStartVoice(form.getValues() as Partial<QuickReservationFormData>, manual);
+  };
+
   // Auto-focus na pole nazwisko
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -81,6 +102,7 @@ export function QuickReservationForm({ onSubmit, onSwitchToFull, isSubmitting }:
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {onStartVoice ? <VoiceCaptureButton state="idle" onStart={handleStartVoice} onStop={handleStartVoice} /> : null}
         {/* Nazwisko */}
         <FormField
           control={form.control}

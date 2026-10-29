@@ -1,0 +1,56 @@
+{
+  "package": "@przeprogramowani/10x-cli",
+  "version": "1.20.0",
+  "manifestVersion": 3,
+  "lastApplied": "2026-09-07T12:42:41.000Z",
+  "lessonId": "m5l3",
+  "course": "10xdevs3",
+  "tool": "cursor",
+  "files": {
+    "skills": {
+      "10x-impl-review-ci": {
+        "files": [
+          "references/impl-review-instructions.md",
+          "references/workflow-template.yml",
+          "SKILL.md"
+        ],
+        "contentHashes": {
+          "references/impl-review-instructions.md": "b045095889ac573f6f03b6e4d5c79f0bf199bb530a2dd40b3fee319d44af1cee",
+          "references/workflow-template.yml": "f9c039b74d595790ebb931876e08b30061d2f4d4064d0cb5466c52a064d64904",
+          "SKILL.md": "ea159116b833555e84d37dc9ba555b5b67fa702f95c28c59c4ea154889f8adda"
+        }
+      }
+    },
+    "prompts": [
+      "m5l3-requirements.md",
+      "m5l3-cicd.md",
+      "m5l3-promptfoo.md"
+    ],
+    "configs": [],
+    "promptHashes": {
+      "m5l3-requirements.md": "43bf65b250bbf0a4789edc307d49e3afe3f04a51964dc5e9e094e3243f0f5269",
+      "m5l3-cicd.md": "914a809f9b85093b71be4c518096b8baf3aa2ad51d103b84ae9ccfb3ed84778c",
+      "m5l3-promptfoo.md": "9115dda1e11324d1bd09241a32b1ebc72b181c08581921091268aed31d07a796"
+    }
+  },
+  "lessons": {
+    "m5l3": {
+      "appliedAt": "2026-09-07T12:42:40.999Z",
+      "skills": {
+        "10x-impl-review-ci": {
+          "files": [
+            "references/impl-review-instructions.md",
+            "references/workflow-template.yml",
+            "SKILL.md"
+          ]
+        }
+      },
+      "prompts": [
+        "m5l3-requirements.md",
+        "m5l3-cicd.md",
+        "m5l3-promptfoo.md"
+      ],
+      "configs": []
+    }
+  }
+}

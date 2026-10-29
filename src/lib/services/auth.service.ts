@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../db/database.types";
 import type { AuthUserDTO } from "../../types";
+import { resolveAppRole } from "../auth/resolve-app-role";
 
 export class AuthServiceError extends Error {
   constructor(
@@ -46,6 +47,17 @@ function mapAuthError(error: { message: string; code?: string; status?: number }
   );
 }
 
+function toAuthUserDTO(
+  user: { id: string; email?: string | null; app_metadata?: Record<string, unknown> },
+  fallbackEmail?: string
+): AuthUserDTO {
+  return {
+    id: user.id,
+    email: user.email ?? fallbackEmail ?? "",
+    role: resolveAppRole(user.app_metadata),
+  };
+}
+
 export class AuthService {
   constructor(private supabase: SupabaseClient<Database>) {}
 
@@ -60,10 +72,7 @@ export class AuthService {
       throw new AuthServiceError("Nieprawidłowy e-mail lub hasło", 401);
     }
 
-    return {
-      id: data.user.id,
-      email: data.user.email ?? email,
-    };
+    return toAuthUserDTO(data.user, email);
   }
 
   async signOut(): Promise<void> {
@@ -89,10 +98,7 @@ export class AuthService {
     if (data.session && data.user) {
       return {
         status: "session",
-        user: {
-          id: data.user.id,
-          email: data.user.email ?? email,
-        },
+        user: toAuthUserDTO(data.user, email),
       };
     }
 
@@ -130,9 +136,6 @@ export class AuthService {
       return null;
     }
 
-    return {
-      id: user.id,
-      email: user.email ?? "",
-    };
+    return toAuthUserDTO(user);
   }
 }

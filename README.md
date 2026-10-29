@@ -151,7 +151,15 @@ Dla rozwoju lokalnego możesz użyć lokalnej instancji Supabase:
    supabase db reset
    ```
    
-   To zastosuje wszystkie migracje z katalogu `supabase/migrations/`
+   To zastosuje wszystkie migracje z `supabase/migrations/` oraz seed demo z `supabase/seed.sql`.
+
+   Seed wstawia rezerwacje z prefiksem notatki `[DEMO]`. Daty są liczone od **dzisiaj w strefie Europe/Warsaw**, więc na prezentacji widać:
+   - przyjazdy dzisiaj (dashboard + moduł kierowcy),
+   - wyjazdy dzisiaj (w tym bliski checkout),
+   - auta na parkingu z wyjazdem w ciągu 2–3 tygodni,
+   - nadchodzące rezerwacje, zakończone, anulowane i no-show.
+
+   Ponowne wklejenie `supabase/seed.sql` w SQL Editorze (Studio) tylko podmienia wiersze `[DEMO]` — nie rusza reszty danych.
 
 ### Przydatne komendy Supabase CLI
 

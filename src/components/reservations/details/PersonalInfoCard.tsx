@@ -3,12 +3,19 @@ import { Mail, Phone, Car, Copy, Check } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import type { PersonalInfoCardProps } from "@/types";
+import { platesForInputs } from "@/lib/vehicles";
 
 /**
  * Karta wyświetlająca dane osobowe klienta.
  * Umożliwia kliknięcie w email/telefon oraz kopiowanie numeru rejestracyjnego.
  */
-export function PersonalInfoCard({ email, phone, licensePlate }: PersonalInfoCardProps) {
+export function PersonalInfoCard({
+  email,
+  phone,
+  licensePlate,
+  extraLicensePlates = [],
+  vehicleCount = 1,
+}: PersonalInfoCardProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const formatPhone = (phoneNumber: string | null): string => {
@@ -46,7 +53,11 @@ export function PersonalInfoCard({ email, phone, licensePlate }: PersonalInfoCar
   };
 
   const formattedPhone = formatPhone(phone);
-  const formattedPlate = formatLicensePlate(licensePlate);
+  // One entry per car, car 1 first; missing plates (not yet entered at arrival) stay empty.
+  const plates = platesForInputs(
+    { license_plate: licensePlate, extra_license_plates: extraLicensePlates },
+    vehicleCount
+  );
 
   return (
     <Card>
@@ -78,28 +89,38 @@ export function PersonalInfoCard({ email, phone, licensePlate }: PersonalInfoCar
           )}
         </div>
 
-        {/* License Plate */}
-        <div className="flex items-center gap-3">
-          <Car className="h-5 w-5 text-muted-foreground" />
-          {licensePlate ? (
-            <div className="flex items-center gap-2">
-              <span className="font-mono">{formattedPlate}</span>
-              <button
-                onClick={() => copyToClipboard(licensePlate, "licensePlate")}
-                className="p-1 rounded hover:bg-muted transition-colors"
-                aria-label="Kopiuj numer rejestracyjny"
-              >
-                {copiedField === "licensePlate" ? (
-                  <Check className="h-4 w-4 text-green-600" />
-                ) : (
-                  <Copy className="h-4 w-4 text-muted-foreground" />
-                )}
-              </button>
+        {/* License plates — one row per car */}
+        {plates.map((plate, index) => {
+          const field = `licensePlate-${index}`;
+          return (
+            <div key={field} className="flex items-center gap-3">
+              <Car className="h-5 w-5 text-muted-foreground" />
+              {plate ? (
+                <div className="flex items-center gap-2">
+                  <span className="font-mono">{formatLicensePlate(plate)}</span>
+                  {vehicleCount > 1 ? <span className="text-xs text-muted-foreground">auto {index + 1}</span> : null}
+                  <button
+                    onClick={() => copyToClipboard(plate, field)}
+                    className="p-1 rounded hover:bg-muted transition-colors"
+                    aria-label={
+                      vehicleCount > 1 ? `Kopiuj numer rejestracyjny – auto ${index + 1}` : "Kopiuj numer rejestracyjny"
+                    }
+                  >
+                    {copiedField === field ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">
+                  Brak danych{vehicleCount > 1 ? ` (auto ${index + 1})` : ""}
+                </span>
+              )}
             </div>
-          ) : (
-            <span className="text-muted-foreground">Brak danych</span>
-          )}
-        </div>
+          );
+        })}
       </CardContent>
     </Card>
   );

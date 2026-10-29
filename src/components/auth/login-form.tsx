@@ -47,7 +47,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
         body: JSON.stringify(data),
       });
 
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      const payload = (await response.json().catch(() => null)) as { error?: string; user?: { role?: string } } | null;
 
       if (!response.ok) {
         if (response.status === 429) {
@@ -59,7 +59,14 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
         return;
       }
 
-      navigateTo(safeRedirectTo(redirectTo));
+      const requested = safeRedirectTo(redirectTo);
+      if (payload?.user?.role === "driver") {
+        const driverTarget = requested === "/kierowca" || requested.startsWith("/kierowca/") ? requested : "/kierowca";
+        navigateTo(driverTarget);
+        return;
+      }
+
+      navigateTo(requested);
     } catch {
       setFormError("Wystąpił nieoczekiwany błąd. Spróbuj ponownie.");
     }

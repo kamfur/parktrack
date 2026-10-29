@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "parktrack-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 4321
+    },
+    {
+      "name": "parktrack-voice-fake",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set PUBLIC_VOICE_ENABLED=true&& set PUBLIC_VOICE_FAKE=true&& npx astro dev --port 3100"],
+      "port": 3100
+    },
+    {
+      "name": "soniox-poc-recorder",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/soniox-poc/record-server.mjs"],
+      "port": 5178
+    }
+  ]
+}

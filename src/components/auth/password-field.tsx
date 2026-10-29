@@ -29,8 +29,8 @@ export function PasswordField<TFieldValues extends FieldValues>({
       render={({ field }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
-          <FormControl>
-            <div className="relative">
+          <div className="relative">
+            <FormControl>
               <Input
                 type={visible ? "text" : "password"}
                 autoComplete={autoComplete}
@@ -38,19 +38,19 @@ export function PasswordField<TFieldValues extends FieldValues>({
                 className="pr-10"
                 {...field}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-9 w-9 text-muted-foreground"
-                onClick={() => setVisible((prev) => !prev)}
-                aria-label={visible ? "Ukryj hasło" : "Pokaż hasło"}
-                tabIndex={-1}
-              >
-                {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-          </FormControl>
+            </FormControl>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-9 w-9 text-muted-foreground"
+              onClick={() => setVisible((prev) => !prev)}
+              aria-label={visible ? "Ukryj hasło" : "Pokaż hasło"}
+              tabIndex={-1}
+            >
+              {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          </div>
           <FormMessage />
         </FormItem>
       )}

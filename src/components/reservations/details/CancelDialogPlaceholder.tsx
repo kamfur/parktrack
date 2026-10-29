@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle } from "lucide-react";
+import { MOBILE_FULLSCREEN_DIALOG } from "@/components/common/dialog-layout";
 
 /**
  * Dialog anulowania rezerwacji z opcją podania powodu.
@@ -37,7 +38,7 @@ export function CancelDialogPlaceholder({ isOpen, onClose, onConfirm, isLoading 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className={MOBILE_FULLSCREEN_DIALOG}>
         <DialogHeader>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />

@@ -32,6 +32,10 @@ export function useCreateReservation() {
           throw new Error("Brak wolnych miejsc w wybranych datach");
         }
 
+        if (response.status === 422) {
+          throw new Error(errorData.error || "Brak cennika obejmującego datę przyjazdu");
+        }
+
         if (response.status === 400) {
           throw new Error(errorData.message || "Nieprawidłowe dane formularza");
         }

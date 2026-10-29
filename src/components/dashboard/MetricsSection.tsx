@@ -1,6 +1,6 @@
 import type { StatsData, StatsPeriod } from "@/types";
 import { MetricCard } from "./MetricCard";
-import { ParkingCircle, ArrowRight, ArrowLeft, DollarSign } from "lucide-react";
+import { ParkingCircle, ArrowRight, ArrowLeft, DollarSign, ClipboardList, Warehouse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface MetricsSectionProps {
@@ -25,7 +25,15 @@ export function MetricsSection({ stats, period, onPeriodChange, isLoading = fals
           Miesiąc
         </Button>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <MetricCard
+          icon={<ClipboardList />}
+          value={stats?.reservationsCount ?? 0}
+          label="Rezerwacje"
+          accentColor="indigo"
+          subtitle={period === "day" ? "nowe dziś" : "nowe w tym miesiącu"}
+          isLoading={isLoading}
+        />
         <MetricCard
           icon={<ArrowRight />}
           value={stats?.arrivalsCount ?? 0}
@@ -46,6 +54,14 @@ export function MetricsSection({ stats, period, onPeriodChange, isLoading = fals
           label="Obciążenie"
           accentColor="green"
           subtitle={stats ? `${stats.freeSpots} wolnych miejsc` : undefined}
+          isLoading={isLoading}
+        />
+        <MetricCard
+          icon={<Warehouse />}
+          value={stats ? `${stats.garageOccupancyPct}%` : "0%"}
+          label="Obłożenie garaży"
+          accentColor="teal"
+          subtitle={stats ? `${stats.garageOccupiedSpots} / ${stats.garageTotalSpots} miejsc zajętych` : undefined}
           isLoading={isLoading}
         />
         <MetricCard

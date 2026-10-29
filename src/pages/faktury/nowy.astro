@@ -15,22 +15,23 @@ const supabase = Astro.locals.supabase;
 
 const { data: reservation } = await supabase
   .from("reservations")
-  .select("id, last_name, first_name, planned_check_in, planned_check_out, total_cost, status")
+  .select("id, last_name, first_name, planned_check_in, planned_check_out, total_cost, status, travel_agency_id")
   .eq("id", reservationId)
   .maybeSingle();
 
-if (!reservation || reservation.status !== "completed") {
+// Agency stays are billed on the agency's monthly invoice (Biura podróży), never individually.
+if (!reservation || reservation.status !== "completed" || reservation.travel_agency_id) {
   return Astro.redirect("/");
 }
 
-const { data: existingInvoice } = await supabase
-  .from("invoices")
-  .select("id")
+const { data: existingItem } = await supabase
+  .from("invoice_items")
+  .select("invoice_id")
   .eq("reservation_id", reservationId)
   .maybeSingle();
 
-if (existingInvoice) {
-  return Astro.redirect(`/faktury/${existingInvoice.id}/druk`);
+if (existingItem) {
+  return Astro.redirect(`/faktury/${existingItem.invoice_id}/druk`);
 }
 
 const reservationSummary = {

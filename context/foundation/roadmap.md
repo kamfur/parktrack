@@ -3,7 +3,7 @@ project: "ParkTrack — Statistics & Invoicing"
 version: 1
 status: draft
 created: 2026-08-30
-updated: 2026-09-01
+updated: 2026-09-14
 main_goal: low-complexity
 top_blocker: decisions
 milestone_id: statistics-and-invoicing-mvp
@@ -13,9 +13,9 @@ milestone_status: open
 
 ## Milestone: M-1 — Statistics and Invoicing MVP
 
-**Outcome:** Staff can configure the parking's daily rate and capacity, view a multi-dimensional statistics dashboard, and generate a printable invoice for any reservation.
+**Outcome:** Staff can configure the parking's daily rate and capacity, view a multi-dimensional statistics dashboard, generate a printable invoice for any reservation, and use a reservation QR code on confirmation and at arrival.
 
-**Source:** `context/foundation/prd.md` (FR-001–FR-015, US-01)
+**Source:** `context/foundation/prd.md` (FR-001–FR-017, US-01, US-02)
 
 ---
 
@@ -39,6 +39,7 @@ All baseline layers are present and production-deployed. No foundation slices ne
 | settings-configuration | S-01: Staff configures daily rate and capacity | done | FR-007, FR-013, FR-015 |
 | statistics-dashboard | S-02: Staff views statistics dashboard | in-progress | FR-001, FR-002, FR-003, FR-004, FR-005, FR-012 |
 | invoice-generation | S-03: Staff generates and prints invoice | done | FR-008, FR-009, FR-010, FR-011, FR-013, FR-014, US-01 |
+| qr-reservation-codes | S-04: Confirmation QR and scan at arrival | proposed | FR-016, FR-017, US-02 |
 
 ---
 
@@ -120,12 +121,39 @@ All baseline layers are present and production-deployed. No foundation slices ne
 
 ---
 
+### S-04 — Confirmation QR and scan at arrival
+
+**Change ID:** `qr-reservation-codes`
+**Status:** proposed
+**Stream:** C (independent of S-02; uses existing reservation create + staff/driver ops)
+
+**User-visible outcome:** After a reservation is created, confirmation shows the reservation number and a QR code. At arrival, staff or a driver can scan that QR to open the matching reservation without searching the list.
+
+**PRD refs:** FR-016 (QR on confirmation), FR-017 (scan at arrival), US-02
+
+**Prerequisites:** existing reservation create (staff + external API), staff reservation detail, driver arrival flow (`driver-operations`)
+
+**Parallel with:** S-02
+
+**Blockers:** —
+
+**Unknowns:**
+- What the QR encodes (opaque public token vs raw reservation id) — Owner: plan. Block: no (default: opaque token).
+- Whether email confirmation must embed the QR image or only the in-app confirmation — Owner: plan. Block: no.
+
+**Risk:** Scan UX on driver phones (camera permission, fallback if scan fails) — keep list search as fallback.
+
+**Out of scope:** Hardware gate/barrier control, public self-check-in without staff/driver, printable parking tickets as a separate product.
+
+---
+
 ## Streams
 
 **Stream A** (north star path): S-01 → S-02
-**Stream B** (blocked): S-03 (can be planned in parallel once Open Questions are resolved)
+**Stream B:** S-03 (done)
+**Stream C:** S-04 QR confirmation + scan (parallel with remaining S-02 work)
 
-These streams can be executed by separate agent runs. Stream B unblocks independently of Stream A's progress — resolve the two Open Questions and it can start while Stream A is still in flight.
+These streams can be executed by separate agent runs.
 
 ---
 

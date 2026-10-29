@@ -7,31 +7,31 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 interface SettingsFormProps {
-  initialDailyRate: number;
   initialTotalSpots: number;
   initialSellerName: string;
   initialSellerAddress: string;
   initialSellerNip: string;
   initialSellerBankAccount: string;
+  initialVatRate: number;
 }
 
 export function SettingsForm({
-  initialDailyRate,
   initialTotalSpots,
   initialSellerName,
   initialSellerAddress,
   initialSellerNip,
   initialSellerBankAccount,
+  initialVatRate,
 }: SettingsFormProps) {
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      daily_rate: initialDailyRate,
       total_parking_spots: initialTotalSpots,
       seller_name: initialSellerName,
       seller_address: initialSellerAddress,
       seller_nip: initialSellerNip,
       seller_bank_account: initialSellerBankAccount,
+      vat_rate: initialVatRate,
     },
   });
 
@@ -40,11 +40,6 @@ export function SettingsForm({
   const onSubmit = async (data: SettingsFormData) => {
     try {
       const results = await Promise.all([
-        fetch("/api/settings?key=eq.daily_rate", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ value: data.daily_rate }),
-        }),
         fetch("/api/settings?key=eq.total_parking_spots", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -70,6 +65,11 @@ export function SettingsForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ value: data.seller_bank_account }),
         }),
+        fetch("/api/settings?key=eq.vat_rate", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: data.vat_rate }),
+        }),
       ]);
 
       if (results.some((r) => !r.ok)) throw new Error("Błąd zapisu ustawień");
@@ -82,29 +82,6 @@ export function SettingsForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-md">
-        <FormField
-          control={form.control}
-          name="daily_rate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Stawka dobowa (PLN)</FormLabel>
-              <FormControl>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                  />
-                  <span className="text-sm text-neutral-500 shrink-0">PLN</span>
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <FormField
           control={form.control}
           name="total_parking_spots"
@@ -179,6 +156,27 @@ export function SettingsForm({
                   <FormLabel>Numer konta bankowego</FormLabel>
                   <FormControl>
                     <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="vat_rate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Stawka VAT (%)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      {...field}
+                      onChange={(e) => field.onChange(e.target.value === "" ? Number.NaN : Number(e.target.value))}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

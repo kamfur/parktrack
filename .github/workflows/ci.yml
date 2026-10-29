@@ -21,3 +21,15 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
+
+  db-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local database (applies migrations + seed)
+        run: supabase db start
+      - name: Run pgTAP tests
+        run: supabase test db

@@ -1,0 +1,14 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { StatsContainer } from "../components/stats/StatsContainer";
+---
+
+<Layout title="Statystyki - ParkTrack">
+  <main class="container mx-auto p-6">
+    <div class="mb-6">
+      <h1 class="text-4xl font-bold mb-2">Statystyki</h1>
+      <p class="text-muted-foreground">Przychód, obłożenie i struktura rezerwacji w czasie</p>
+    </div>
+    <StatsContainer client:load />
+  </main>
+</Layout>

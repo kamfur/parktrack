@@ -1,0 +1,36 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "direction": 2,
+      "scheduled_time": "10:00",
+      "airport": "Londyn - Luton",
+      "status": "WYLĄDOWAŁ 10:12"
+    },
+    {
+      "id": 2,
+      "direction": 2,
+      "scheduled_time": "14:30",
+      "airport": "Londyn - Stansted"
+    },
+    {
+      "id": 3,
+      "direction": 2,
+      "scheduled_time": "12:00",
+      "airport": "Dortmund"
+    },
+    {
+      "id": 4,
+      "direction": 1,
+      "scheduled_time": "11:00",
+      "airport": "Londyn - Gatwick"
+    },
+    {
+      "id": 5,
+      "direction": 2,
+      "scheduled_time": "18:00",
+      "airport": "Londyn - Gatwick"
+    }
+  ],
+  "status": { "code": 1, "message": "Sukces" }
+}

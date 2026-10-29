@@ -1,83 +1,94 @@
-import { useState } from "react";
 import type { ReservationCardProps } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Phone, Car, Clock, Mail } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { KeysLeftBadge } from "@/components/shared/KeysLeftBadge";
+import { Banknote, Phone, Car, Clock, Mail, Plane, PlaneLanding, Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { amountDue, flightDirectionLabel, garageSpotLabel, isAfterToday, isOverdue } from "@/lib/driver/display";
+import { formatKtwHourList } from "@/lib/ktw/format-hours";
+import { formatCost } from "@/lib/utils/reservation.formatters";
+import { joinLicensePlates } from "@/lib/vehicles";
+
+function formatWarsawDateTime(dateString: string): string {
+  return new Date(dateString).toLocaleString("pl-PL", {
+    timeZone: "Europe/Warsaw",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 /**
  * Kompaktowa karta wyświetlająca kluczowe informacje o rezerwacji.
- * Zawiera dane klienta, status rezerwacji oraz przycisk akcji (Check-in lub Check-out).
+ * Zawiera dane klienta, status rezerwacji oraz przyciski akcji.
  */
-export function ReservationCard({ reservation, actionType, onAction, isLoading = false }: ReservationCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+export function ReservationCard({
+  reservation,
+  actionType,
+  onAction,
+  onCancel,
+  onChangeReturnDate,
+  isLoading = false,
+}: ReservationCardProps) {
+  const plannedAt = actionType === "check-in" ? reservation.planned_check_in : reservation.planned_check_out;
+  const overdue = isOverdue(plannedAt);
+  const tomorrow = isAfterToday(plannedAt);
 
-  // Mapowanie statusu na kolor border-left
-  const statusColorClasses = {
-    confirmed: "border-l-orange-500",
-    in_progress: "border-l-blue-500",
-    completed: "border-l-green-500",
-    cancelled: "border-l-red-500",
-    no_show: "border-l-gray-500",
-  };
-
-  // Walidacja przycisków
   const isCheckInDisabled =
     actionType === "check-in" &&
-    (reservation.status !== "confirmed" || reservation.actual_check_in !== null || isProcessing || isLoading);
+    (reservation.status !== "confirmed" || reservation.actual_check_in !== null || isLoading);
 
   const isCheckOutDisabled =
     actionType === "check-out" &&
     (reservation.status !== "in_progress" ||
       reservation.actual_check_in === null ||
       reservation.actual_check_out !== null ||
-      isProcessing ||
       isLoading);
 
   const isButtonDisabled = actionType === "check-in" ? isCheckInDisabled : isCheckOutDisabled;
+  const canCancel =
+    Boolean(onCancel) &&
+    overdue &&
+    reservation.status !== "cancelled" &&
+    reservation.status !== "completed" &&
+    !isLoading;
 
-  // Formatowanie godziny
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
-  };
-
-  // Wybór odpowiedniej godziny
-  const displayTime =
-    actionType === "check-in" ? formatTime(reservation.planned_check_in) : formatTime(reservation.planned_check_out);
-
-  // Obsługa kliknięcia przycisku
-  const handleAction = async () => {
-    setIsProcessing(true);
-    try {
-      await onAction(reservation.id);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Pełne imię i nazwisko
   const fullName = reservation.first_name
     ? `${reservation.first_name} ${reservation.last_name}`
     : reservation.last_name;
+  const directionLabel = actionType === "check-out" ? flightDirectionLabel(reservation.flight_direction) : null;
+  const ktwHoursLabel = actionType === "check-out" ? formatKtwHourList(reservation.ktw_arrival_hours) : null;
+  const garageLabel = garageSpotLabel(reservation.parking_type, reservation.garage_spot_name);
+  const due = amountDue(reservation);
 
   return (
     <Card
-      className={cn("border-l-4 transition-shadow hover:shadow-md", statusColorClasses[reservation.status])}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className={cn(
+        "border-l-4",
+        overdue && "border-l-amber-500 bg-amber-50/50",
+        !overdue && actionType === "check-in" && "border-l-emerald-500",
+        !overdue && actionType === "check-out" && "border-l-rose-500"
+      )}
     >
       <CardContent className="p-4">
         <div className="space-y-3">
-          {/* Nazwa klienta */}
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-lg">{fullName}</h3>
+            {overdue ? <Badge variant="secondary">{actionType === "check-in" ? "Zaległe" : "Opóźniony"}</Badge> : null}
+            {tomorrow ? <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100">Jutro</Badge> : null}
+            {actionType === "check-out" && reservation.keys_left ? <KeysLeftBadge /> : null}
           </div>
 
-          {/* Informacje podstawowe */}
           <div className="space-y-2 text-sm text-muted-foreground">
-            {/* Telefon */}
+            {due != null ? (
+              <div className="flex items-center gap-2 font-semibold text-foreground">
+                <Banknote className="h-4 w-4" aria-hidden />
+                <span>Do zapłaty: {formatCost(due)}</span>
+              </div>
+            ) : null}
+
             {reservation.phone && (
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
@@ -85,57 +96,87 @@ export function ReservationCard({ reservation, actionType, onAction, isLoading =
               </div>
             )}
 
-            {/* Numer rejestracyjny */}
-            {reservation.license_plate && (
+            {(joinLicensePlates(reservation) || (reservation.vehicle_count ?? 1) > 1) && (
               <div className="flex items-center gap-2">
                 <Car className="h-4 w-4" />
-                <span className="font-mono">{reservation.license_plate}</span>
+                <span className="font-mono">{joinLicensePlates(reservation)}</span>
+                {(reservation.vehicle_count ?? 1) > 1 && (
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
+                    {reservation.vehicle_count} auta
+                  </span>
+                )}
               </div>
             )}
 
-            {/* Godzina */}
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              <span>{displayTime}</span>
+              <span>{formatWarsawDateTime(plannedAt)}</span>
             </div>
 
-            {/* Dodatkowe informacje przy hover */}
-            {isHovered && reservation.email && (
-              <div className="flex items-center gap-2 pt-2 border-t">
+            {directionLabel ? (
+              <div className="flex items-center gap-2">
+                <Plane className="h-4 w-4" aria-hidden />
+                <span>{directionLabel}</span>
+              </div>
+            ) : null}
+
+            {ktwHoursLabel ? (
+              <div className="flex items-center gap-2">
+                <PlaneLanding className="h-4 w-4" aria-hidden />
+                <span>{ktwHoursLabel}</span>
+              </div>
+            ) : null}
+
+            {garageLabel ? (
+              <div className="flex items-center gap-2">
+                <Warehouse className="h-4 w-4" aria-hidden />
+                <span>{garageLabel}</span>
+              </div>
+            ) : null}
+
+            {reservation.email ? (
+              <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 <span className="text-xs">{reservation.email}</span>
               </div>
-            )}
+            ) : null}
 
-            {/* Notatki przy hover */}
-            {isHovered && reservation.notes && (
-              <div className="pt-2 border-t">
-                <p className="text-xs italic">{reservation.notes}</p>
-              </div>
-            )}
+            {reservation.notes ? <p className="text-xs italic">{reservation.notes}</p> : null}
           </div>
 
-          {/* Przycisk akcji */}
-          <Button
-            onClick={handleAction}
-            disabled={isButtonDisabled}
-            className="w-full"
-            variant={actionType === "check-in" ? "default" : "outline"}
-            aria-label={`${actionType === "check-in" ? "Zamelduj" : "Wymelduj"} ${fullName}`}
-          >
-            {isProcessing ? (
-              <span className="flex items-center gap-2">
-                <span className="animate-spin" aria-hidden="true">
-                  ⏳
-                </span>
-                Przetwarzanie...
-              </span>
-            ) : actionType === "check-in" ? (
-              "Check-in"
-            ) : (
-              "Check-out"
-            )}
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={() => onAction(reservation)}
+              disabled={isButtonDisabled}
+              className="w-full"
+              variant={actionType === "check-in" ? "default" : "outline"}
+              aria-label={`${actionType === "check-in" ? "Zamelduj" : "Wymelduj"} ${fullName}`}
+            >
+              {actionType === "check-in" ? "Przyjęcie" : "Wydanie"}
+            </Button>
+            {actionType === "check-in" && canCancel ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-destructive hover:text-destructive"
+                disabled={isLoading}
+                onClick={() => onCancel?.(reservation)}
+              >
+                Anuluj rezerwację
+              </Button>
+            ) : null}
+            {actionType === "check-out" && onChangeReturnDate ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                disabled={isLoading}
+                onClick={() => onChangeReturnDate(reservation)}
+              >
+                Zmień datę powrotu
+              </Button>
+            ) : null}
+          </div>
         </div>
       </CardContent>
     </Card>

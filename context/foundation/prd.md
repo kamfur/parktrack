@@ -60,6 +60,11 @@ This change adds two capabilities: a statistics dashboard to surface occupancy a
 - Existing operational views (reservations list, arrivals/departures) must not degrade in response time.
 - Automated email confirmation on reservation creation must continue working.
 
+### Adjacent (QR confirmation — S-04)
+
+- After a reservation is created, the guest (or staff acting for them) can see a confirmation that includes the reservation number and a QR code.
+- At arrival, staff or a driver can scan that QR code to open the matching reservation without searching the list.
+
 ## User Stories
 
 ### US-01: Staff generates an invoice for a completed stay
@@ -72,6 +77,21 @@ This change adds two capabilities: a statistics dashboard to surface occupancy a
 - Invoice displays: parking company data (seller), customer company data (buyer), stay dates, number of days, daily rate, total amount
 - Staff can print directly from the browser view
 - Invoice can only be generated for completed reservations
+
+### US-02: Guest confirmation includes a QR code; ops can open the reservation by scan
+
+- **Given** a reservation has just been created (staff form or external API)
+- **When** the confirmation is shown (and emailed, if email confirmation is already sent)
+- **Then** the confirmation includes the reservation number and a QR code that uniquely identifies that reservation
+- **And when** staff or a driver scans the QR at arrival
+- **Then** the matching reservation opens so they can continue check-in without searching the list
+
+#### Acceptance Criteria
+- QR is generated for every new reservation and remains stable for that reservation
+- Confirmation UI shows reservation number + QR; existing email confirmation continues to send
+- Scanning the QR opens the correct reservation for the current role (staff detail or driver arrival card)
+- Invalid or unknown QR does not mutate reservation state; user sees a clear error
+- Scan is additive: list search and existing check-in remain available
 
 ## Scope of Change
 
@@ -107,6 +127,9 @@ This change adds two capabilities: a statistics dashboard to surface occupancy a
   > Socrates: Counter-argument considered: "print-from-browser requires precision in print layout." Resolution: accepted as v1 compromise; PDF generation deferred to v2.
 
 - [new] Staff can print an invoice from the browser
+
+- [new] Guest/staff confirmation after reservation create includes a reservation number and QR code (FR-016)
+- [new] Staff or driver can scan the reservation QR at arrival to open that reservation (FR-017)
 
 ### Preserved capabilities
 
@@ -152,6 +175,7 @@ Any authenticated staff member can access the statistics dashboard and generate 
 - **No statistics CSV export** — statistics are visible on-screen only in v1. Export deferred to v2.
 - **No custom date range in statistics** — preset periods only (last 7 days, last month, this year). Custom range deferred to v2.
 - **No NIP format validation** — staff is responsible for the accuracy of customer billing data entered during invoice generation.
+- **No hardware gate/barrier integration from QR** — scan opens the reservation in the app; it does not open a boom barrier or third-party access control.
 
 ## Open Questions
 
