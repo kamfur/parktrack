@@ -5,8 +5,8 @@ set search_path = public, extensions;
 
 select plan(3);
 
-insert into public.garage_spots (id, name, spot_type, capacity_label, price_per_day)
-values ('00000000-0000-4000-8000-0000000000c1', 'Test-G1', 'garage', 'single', 10);
+insert into public.garage_spots (id, name, spot_type, capacity_label)
+values ('00000000-0000-4000-8000-0000000000c1', 'Test-G1', 'garage', 'single');
 
 insert into public.reservations (
   id, last_name, planned_check_in, planned_check_out, total_cost, source, status, parking_type,

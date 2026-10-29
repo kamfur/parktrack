@@ -32,7 +32,7 @@ describe("PATCH /api/driver/garage-assignments", () => {
     swap.mockResolvedValueOnce({ id: "a1" });
     const res = await PATCH(ctx({ reservationId: RES, garageSpotId: SPOT }));
     expect(res.status).toBe(200);
-    expect(swap).toHaveBeenCalledWith(RES, SPOT);
+    expect(swap).toHaveBeenCalledWith(RES, SPOT, { skipBuffer: undefined });
   });
 
   it("returns 409 on a buffer violation", async () => {
