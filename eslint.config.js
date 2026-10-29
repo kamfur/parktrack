@@ -61,7 +61,7 @@ const reactConfig = tseslint.config({
 
 export default tseslint.config(
   includeIgnoreFile(gitignorePath),
-  { ignores: ["src/components/ui/**", ".claude/**", "packages/**", "public/**"] },
+  { ignores: ["src/components/ui/**", ".claude/**", "packages/**", "public/**", "src/db/database.types.ts"] },
   baseConfig,
   jsxA11yConfig,
   reactConfig,

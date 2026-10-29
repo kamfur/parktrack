@@ -9,7 +9,9 @@ export function useFlightDirections(): string[] {
     void fetch("/api/flight-directions", { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : { data: [] }))
       .then((body: { data?: unknown }) => {
-        setOptions(Array.isArray(body.data) ? body.data.filter((item): item is string => typeof item === "string") : []);
+        setOptions(
+          Array.isArray(body.data) ? body.data.filter((item): item is string => typeof item === "string") : []
+        );
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
