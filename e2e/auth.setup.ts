@@ -9,9 +9,7 @@ setup("authenticate", async ({ request }) => {
   const password = process.env.E2E_TEST_PASSWORD;
 
   if (!email || !password) {
-    throw new Error(
-      "Set E2E_TEST_EMAIL and E2E_TEST_PASSWORD in .env (Supabase user with staff access).",
-    );
+    throw new Error("Set E2E_TEST_EMAIL and E2E_TEST_PASSWORD in .env (Supabase user with staff access).");
   }
 
   mkdirSync(path.dirname(authFile), { recursive: true });
